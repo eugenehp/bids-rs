@@ -1,2 +1,4 @@
-[build]
-rustc-wrapper = "sccache"
+# sccache and mold are configured in CI via environment variables.
+# Uncomment locally if you have sccache installed:
+# [build]
+# rustc-wrapper = "sccache"
