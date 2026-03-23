@@ -10,6 +10,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  RUSTC_WRAPPER: ""
 
 jobs:
   parity:
@@ -39,8 +40,12 @@ jobs:
 
       - name: Install PyBIDS (latest)
         run: |
+          python -m venv .venv
+          source .venv/bin/activate
           pip install pybids scipy nibabel maturin
           echo "PYBIDS_VERSION=$(python -c 'import bids; print(bids.__version__)')" >> $GITHUB_ENV
+          echo "$PWD/.venv/bin" >> $GITHUB_PATH
+          echo "VIRTUAL_ENV=$PWD/.venv" >> $GITHUB_ENV
 
       - name: Build pybids-rs wheel
         working-directory: crates/pybids-rs
@@ -91,13 +96,13 @@ jobs:
           echo "**PyBIDS version:** ${{ env.PYBIDS_VERSION }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Rust Tests" >> $GITHUB_STEP_SUMMARY
-          grep "test result:" /tmp/rust_tests.log | tail -1 >> $GITHUB_STEP_SUMMARY
+          grep "test result:" /tmp/rust_tests.log | tail -1 >> $GITHUB_STEP_SUMMARY || echo "_(no results)_" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### E2E Tests" >> $GITHUB_STEP_SUMMARY
-          grep "test result:" /tmp/e2e_tests.log | tail -1 >> $GITHUB_STEP_SUMMARY
+          grep "test result:" /tmp/e2e_tests.log | tail -1 >> $GITHUB_STEP_SUMMARY || echo "_(no results)_" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Benchmark Summary" >> $GITHUB_STEP_SUMMARY
-          grep -A20 "SUMMARY" /tmp/benchmark.log | head -25 >> $GITHUB_STEP_SUMMARY
+          grep -A20 "SUMMARY" /tmp/benchmark.log | head -25 >> $GITHUB_STEP_SUMMARY || echo "_(no results)_" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Change Detection" >> $GITHUB_STEP_SUMMARY
-          cat /tmp/detect.log >> $GITHUB_STEP_SUMMARY
+          cat /tmp/detect.log >> $GITHUB_STEP_SUMMARY || echo "_(no results)_" >> $GITHUB_STEP_SUMMARY
