@@ -10,7 +10,9 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  RUSTC_WRAPPER: ""
+  SCCACHE_GHA_ENABLED: true
+  RUSTC_WRAPPER: sccache
+  RUSTFLAGS: -Clink-arg=-fuse-ld=mold
 
 jobs:
   parity:
@@ -23,6 +25,12 @@ jobs:
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Install sccache
+        uses: mozilla-actions/sccache-action@v0.0.7
+
+      - name: Install mold
+        run: sudo apt-get install -y mold
 
       - name: Cache cargo
         uses: actions/cache@v4
