@@ -73,7 +73,7 @@ fn read_edf_naive(path: &Path) -> (usize, usize) {
         .trim()
         .parse()
         .unwrap();
-    let rec_dur: f64 = String::from_utf8_lossy(&hdr[244..252])
+    let _rec_dur: f64 = String::from_utf8_lossy(&hdr[244..252])
         .trim()
         .parse()
         .unwrap();
@@ -130,7 +130,7 @@ fn read_edf_naive(path: &Path) -> (usize, usize) {
     (data.len(), data[0].len())
 }
 
-fn bench<F: Fn() -> R, R>(name: &str, f: F, runs: usize) -> f64 {
+fn bench<F: Fn() -> R, R>(_name: &str, f: F, runs: usize) -> f64 {
     let _ = f(); // warmup
     let mut best = f64::MAX;
     for _ in 0..runs {
@@ -331,7 +331,7 @@ fn main() {
         || bids_nifti::NiftiImage::from_file_volume(&nii_path, 50).unwrap(),
         5,
     );
-    let mmap_ms = bench(
+    let _mmap_ms = bench(
         "mmap open",
         || bids_nifti::mmap::MmapNifti::open(&nii_path).unwrap(),
         3,

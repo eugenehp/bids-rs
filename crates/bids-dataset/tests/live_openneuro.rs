@@ -8,7 +8,6 @@
 
 use bids_dataset::{Aggregator, DatasetFilter, OpenNeuro, Split};
 
-
 #[test]
 #[ignore] // requires network
 fn test_search_eeg_datasets() {
