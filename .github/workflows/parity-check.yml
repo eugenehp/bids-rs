@@ -10,6 +10,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  RUSTFLAGS: -Clink-arg=-fuse-ld=mold
 
 jobs:
   parity:
@@ -22,9 +23,6 @@ jobs:
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
-
-      - name: Install sccache
-        uses: mozilla-actions/sccache-action@v0.0.7
 
       - name: Install mold
         run: sudo apt-get install -y mold
@@ -62,10 +60,6 @@ jobs:
 
       - name: Run Rust tests
         run: cargo test --workspace --exclude bids-e2e-tests 2>&1 | tee /tmp/rust_tests.log
-        env:
-          RUSTC_WRAPPER: sccache
-          SCCACHE_GHA_ENABLED: true
-          RUSTFLAGS: -Clink-arg=-fuse-ld=mold
 
       - name: Generate golden data
         run: python tests/generate_golden.py
@@ -75,10 +69,6 @@ jobs:
 
       - name: Run E2E tests
         run: cargo test -p bids-e2e-tests -- --nocapture 2>&1 | tee /tmp/e2e_tests.log
-        env:
-          RUSTC_WRAPPER: sccache
-          SCCACHE_GHA_ENABLED: true
-          RUSTFLAGS: -Clink-arg=-fuse-ld=mold
 
       - name: Run full benchmark
         run: python tests/benchmark_all.py 2>&1 | tee /tmp/benchmark.log
