@@ -1,0 +1,13 @@
+[package]
+name = "bids-derive"
+description = "Support for BIDS-Derivatives datasets"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+bids-core = { workspace = true }
+bids-layout = { workspace = true }
+bids-validate = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }

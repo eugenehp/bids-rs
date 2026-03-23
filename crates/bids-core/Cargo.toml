@@ -1,0 +1,15 @@
+[package]
+name = "bids-core"
+description = "Core types for BIDS datasets: entities, file models, metadata, errors"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+regex = { workspace = true }
+thiserror = { workspace = true }
+indexmap = { workspace = true }
+flate2 = { workspace = true }
+log = { workspace = true }

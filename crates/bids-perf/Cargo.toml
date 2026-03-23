@@ -1,0 +1,15 @@
+[package]
+name = "bids-perf"
+description = "BIDS perf domain support"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+bids-core = { workspace = true }
+bids-io = { workspace = true }
+bids-layout = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+bids-nifti = { workspace = true }
+

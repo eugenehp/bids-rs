@@ -1,0 +1,3179 @@
+{
+  "api": {
+    "bids": {
+      "BIDSLayout": {
+        "type": "class",
+        "methods": [
+          "add_derivatives",
+          "build_path",
+          "clone",
+          "copy_files",
+          "get",
+          "get_bval",
+          "get_bvec",
+          "get_collections",
+          "get_dataset_description",
+          "get_entities",
+          "get_fieldmap",
+          "get_file",
+          "get_files",
+          "get_metadata",
+          "get_nearest",
+          "get_tr",
+          "load",
+          "parse_file_entities",
+          "save",
+          "to_df",
+          "write_to_file"
+        ]
+      },
+      "BIDSLayoutIndexer": {
+        "type": "class",
+        "methods": []
+      },
+      "BIDSValidator": {
+        "type": "class",
+        "methods": [
+          "is_associated_data",
+          "is_bids",
+          "is_file",
+          "is_phenotypic",
+          "is_session_level",
+          "is_subject_level",
+          "is_top_level",
+          "parse"
+        ]
+      }
+    },
+    "bids.layout": {
+      "BIDSDataFile": {
+        "type": "class",
+        "methods": [
+          "copy",
+          "get_associations",
+          "get_df",
+          "get_entities",
+          "get_metadata"
+        ]
+      },
+      "BIDSFile": {
+        "type": "class",
+        "methods": [
+          "copy",
+          "get_associations",
+          "get_entities",
+          "get_metadata"
+        ]
+      },
+      "BIDSImageFile": {
+        "type": "class",
+        "methods": [
+          "copy",
+          "get_associations",
+          "get_entities",
+          "get_image",
+          "get_metadata"
+        ]
+      },
+      "BIDSJSONFile": {
+        "type": "class",
+        "methods": [
+          "copy",
+          "get_associations",
+          "get_dict",
+          "get_entities",
+          "get_json",
+          "get_metadata"
+        ]
+      },
+      "BIDSLayout": {
+        "type": "class",
+        "methods": [
+          "add_derivatives",
+          "build_path",
+          "clone",
+          "copy_files",
+          "get",
+          "get_bval",
+          "get_bvec",
+          "get_collections",
+          "get_dataset_description",
+          "get_entities",
+          "get_fieldmap",
+          "get_file",
+          "get_files",
+          "get_metadata",
+          "get_nearest",
+          "get_tr",
+          "load",
+          "parse_file_entities",
+          "save",
+          "to_df",
+          "write_to_file"
+        ]
+      },
+      "BIDSLayoutIndexer": {
+        "type": "class",
+        "methods": []
+      },
+      "BIDSValidator": {
+        "type": "class",
+        "methods": [
+          "is_associated_data",
+          "is_bids",
+          "is_file",
+          "is_phenotypic",
+          "is_session_level",
+          "is_subject_level",
+          "is_top_level",
+          "parse"
+        ]
+      },
+      "Config": {
+        "type": "class",
+        "methods": [
+          "load"
+        ]
+      },
+      "Entity": {
+        "type": "class",
+        "methods": [
+          "count",
+          "match_file",
+          "unique"
+        ]
+      },
+      "Query": {
+        "type": "class",
+        "methods": []
+      },
+      "Tag": {
+        "type": "class",
+        "methods": []
+      },
+      "add_config_paths": {
+        "type": "function"
+      },
+      "parse_file_entities": {
+        "type": "function"
+      }
+    },
+    "bids.layout.layout": {
+      "BIDSDerivativesValidationError": {
+        "type": "class",
+        "methods": [
+          "add_note",
+          "with_traceback"
+        ]
+      },
+      "BIDSEntityError": {
+        "type": "class",
+        "methods": [
+          "add_note",
+          "with_traceback"
+        ]
+      },
+      "BIDSFile": {
+        "type": "class",
+        "methods": [
+          "copy",
+          "get_associations",
+          "get_entities",
+          "get_metadata"
+        ]
+      },
+      "BIDSLayout": {
+        "type": "class",
+        "methods": [
+          "add_derivatives",
+          "build_path",
+          "clone",
+          "copy_files",
+          "get",
+          "get_bval",
+          "get_bvec",
+          "get_collections",
+          "get_dataset_description",
+          "get_entities",
+          "get_fieldmap",
+          "get_file",
+          "get_files",
+          "get_metadata",
+          "get_nearest",
+          "get_tr",
+          "load",
+          "parse_file_entities",
+          "save",
+          "to_df",
+          "write_to_file"
+        ]
+      },
+      "BIDSLayoutIndexer": {
+        "type": "class",
+        "methods": []
+      },
+      "BIDSMetadata": {
+        "type": "class",
+        "methods": [
+          "clear",
+          "copy",
+          "fromkeys",
+          "get",
+          "items",
+          "keys",
+          "pop",
+          "popitem",
+          "setdefault",
+          "update",
+          "values"
+        ]
+      },
+      "BIDSValidationError": {
+        "type": "class",
+        "methods": [
+          "add_note",
+          "with_traceback"
+        ]
+      },
+      "BIDSValidator": {
+        "type": "class",
+        "methods": [
+          "is_associated_data",
+          "is_bids",
+          "is_file",
+          "is_phenotypic",
+          "is_session_level",
+          "is_subject_level",
+          "is_top_level",
+          "parse"
+        ]
+      },
+      "Config": {
+        "type": "class",
+        "methods": [
+          "load"
+        ]
+      },
+      "ConnectionManager": {
+        "type": "class",
+        "methods": [
+          "exists",
+          "reset_database",
+          "reset_session",
+          "save_database"
+        ]
+      },
+      "DerivativeDatasets": {
+        "type": "class",
+        "methods": [
+          "clear",
+          "copy",
+          "fromkeys",
+          "get",
+          "get_pipeline",
+          "items",
+          "keys",
+          "pop",
+          "popitem",
+          "setdefault",
+          "update",
+          "values"
+        ]
+      },
+      "Entity": {
+        "type": "class",
+        "methods": [
+          "count",
+          "match_file",
+          "unique"
+        ]
+      },
+      "NoMatchError": {
+        "type": "class",
+        "methods": [
+          "add_note",
+          "with_traceback"
+        ]
+      },
+      "Path": {
+        "type": "class",
+        "methods": [
+          "absolute",
+          "as_posix",
+          "as_uri",
+          "chmod",
+          "copy",
+          "copy_into",
+          "cwd",
+          "exists",
+          "expanduser",
+          "from_uri",
+          "full_match",
+          "glob",
+          "group",
+          "hardlink_to",
+          "home",
+          "is_absolute",
+          "is_block_device",
+          "is_char_device",
+          "is_dir",
+          "is_fifo",
+          "is_file",
+          "is_junction",
+          "is_mount",
+          "is_relative_to",
+          "is_reserved",
+          "is_socket",
+          "is_symlink",
+          "iterdir",
+          "joinpath",
+          "joinuri",
+          "lchmod",
+          "lstat",
+          "match",
+          "mkdir",
+          "move",
+          "move_into",
+          "open",
+          "owner",
+          "read_bytes",
+          "read_text",
+          "readlink",
+          "relative_to",
+          "rename",
+          "replace",
+          "resolve",
+          "rglob",
+          "rmdir",
+          "samefile",
+          "stat",
+          "symlink_to",
+          "touch",
+          "unlink",
+          "walk",
+          "with_name",
+          "with_segments",
+          "with_stem",
+          "with_suffix",
+          "write_bytes",
+          "write_text"
+        ]
+      },
+      "Query": {
+        "type": "class",
+        "methods": []
+      },
+      "Sentinel": {
+        "type": "class",
+        "methods": []
+      },
+      "Tag": {
+        "type": "class",
+        "methods": []
+      },
+      "TargetError": {
+        "type": "class",
+        "methods": [
+          "add_note",
+          "with_traceback"
+        ]
+      },
+      "aliased": {
+        "type": "function"
+      },
+      "build_path": {
+        "type": "function"
+      },
+      "cast": {
+        "type": "function"
+      },
+      "chain": {
+        "type": "class",
+        "methods": [
+          "from_iterable"
+        ]
+      },
+      "defaultdict": {
+        "type": "class",
+        "methods": [
+          "clear",
+          "copy",
+          "fromkeys",
+          "get",
+          "items",
+          "keys",
+          "pop",
+          "popitem",
+          "setdefault",
+          "update",
+          "values"
+        ]
+      },
+      "hashablefy": {
+        "type": "function"
+      },
+      "listify": {
+        "type": "function"
+      },
+      "lru_cache": {
+        "type": "function"
+      },
+      "natural_sort": {
+        "type": "function"
+      },
+      "parse_file_entities": {
+        "type": "function"
+      },
+      "partial": {
+        "type": "class",
+        "methods": []
+      },
+      "validate_derivative_path": {
+        "type": "function"
+      },
+      "validate_root": {
+        "type": "function"
+      },
+      "write_to_file": {
+        "type": "function"
+      }
+    },
+    "bids.layout.models": {
+      "BIDSChildDatasetError": {
+        "type": "class",
+        "methods": [
+          "add_note",
+          "with_traceback"
+        ]
+      },
+      "BIDSDataFile": {
+        "type": "class",
+        "methods": [
+          "copy",
+          "get_associations",
+          "get_df",
+          "get_entities",
+          "get_metadata"
+        ]
+      },
+      "BIDSFile": {
+        "type": "class",
+        "methods": [
+          "copy",
+          "get_associations",
+          "get_entities",
+          "get_metadata"
+        ]
+      },
+      "BIDSImageFile": {
+        "type": "class",
+        "methods": [
+          "copy",
+          "get_associations",
+          "get_entities",
+          "get_image",
+          "get_metadata"
+        ]
+      },
+      "BIDSJSONFile": {
+        "type": "class",
+        "methods": [
+          "copy",
+          "get_associations",
+          "get_dict",
+          "get_entities",
+          "get_json",
+          "get_metadata"
+        ]
+      },
+      "BIDSMetadata": {
+        "type": "class",
+        "methods": [
+          "clear",
+          "copy",
+          "fromkeys",
+          "get",
+          "items",
+          "keys",
+          "pop",
+          "popitem",
+          "setdefault",
+          "update",
+          "values"
+        ]
+      },
+      "Base": {
+        "type": "class",
+        "methods": []
+      },
+      "Boolean": {
+        "type": "class",
+        "methods": [
+          "Comparator",
+          "adapt",
+          "adapt_to_emulated",
+          "as_generic",
+          "bind_expression",
+          "bind_processor",
+          "coerce_compared_value",
+          "column_expression",
+          "comparator_factory",
+          "compare_values",
+          "compile",
+          "copy",
+          "copy_value",
+          "create",
+          "dialect_impl",
+          "drop",
+          "evaluates_none",
+          "get_dbapi_type",
+          "literal_processor",
+          "result_processor",
+          "with_variant"
+        ]
+      },
+      "Column": {
+        "type": "class",
+        "methods": [
+          "all_",
+          "any_",
+          "append_foreign_key",
+          "argument_for",
+          "asc",
+          "between",
+          "bitwise_and",
+          "bitwise_lshift",
+          "bitwise_not",
+          "bitwise_or",
+          "bitwise_rshift",
+          "bitwise_xor",
+          "bool_op",
+          "cast",
+          "collate",
+          "compare",
+          "compile",
+          "concat",
+          "contains",
+          "copy",
+          "desc",
+          "distinct",
+          "endswith",
+          "get_children",
+          "get_dialect_option",
+          "icontains",
+          "iendswith",
+          "ilike",
+          "in_",
+          "is_",
+          "is_distinct_from",
+          "is_not",
+          "is_not_distinct_from",
+          "isnot",
+          "isnot_distinct_from",
+          "istartswith",
+          "label",
+          "like",
+          "match",
+          "memoized_attribute",
+          "memoized_instancemethod",
+          "not_ilike",
+          "not_in",
+          "not_like",
+          "notilike",
+          "notin_",
+          "notlike",
+          "nulls_first",
+          "nulls_last",
+          "nullsfirst",
+          "nullslast",
+          "op",
+          "operate",
+          "params",
+          "references",
+          "regexp_match",
+          "regexp_replace",
+          "reverse_operate",
+          "self_group",
+          "shares_lineage",
+          "startswith",
+          "unique_params"
+        ]
+      },
+      "Config": {
+        "type": "class",
+        "methods": [
+          "load"
+        ]
+      },
+      "DerivativeDatasets": {
+        "type": "class",
+        "methods": [
+          "clear",
+          "copy",
+          "fromkeys",
+          "get",
+          "get_pipeline",
+          "items",
+          "keys",
+          "pop",
+          "popitem",
+          "setdefault",
+          "update",
+          "values"
+        ]
+      },
+      "Entity": {
+        "type": "class",
+        "methods": [
+          "count",
+          "match_file",
+          "unique"
+        ]
+      },
+      "FileAssociation": {
+        "type": "class",
+        "methods": []
+      },
+      "ForeignKey": {
+        "type": "class",
+        "methods": [
+          "argument_for",
+          "copy",
+          "get_dialect_option",
+          "get_referent",
+          "references"
+        ]
+      },
+      "LayoutInfo": {
+        "type": "class",
+        "methods": []
+      },
+      "PaddedInt": {
+        "type": "class",
+        "methods": [
+          "as_integer_ratio",
+          "bit_count",
+          "bit_length",
+          "conjugate",
+          "from_bytes",
+          "is_integer",
+          "to_bytes"
+        ]
+      },
+      "Path": {
+        "type": "class",
+        "methods": [
+          "absolute",
+          "as_posix",
+          "as_uri",
+          "chmod",
+          "copy",
+          "copy_into",
+          "cwd",
+          "exists",
+          "expanduser",
+          "from_uri",
+          "full_match",
+          "glob",
+          "group",
+          "hardlink_to",
+          "home",
+          "is_absolute",
+          "is_block_device",
+          "is_char_device",
+          "is_dir",
+          "is_fifo",
+          "is_file",
+          "is_junction",
+          "is_mount",
+          "is_relative_to",
+          "is_reserved",
+          "is_socket",
+          "is_symlink",
+          "iterdir",
+          "joinpath",
+          "lchmod",
+          "lstat",
+          "match",
+          "mkdir",
+          "move",
+          "move_into",
+          "open",
+          "owner",
+          "read_bytes",
+          "read_text",
+          "readlink",
+          "relative_to",
+          "rename",
+          "replace",
+          "resolve",
+          "rglob",
+          "rmdir",
+          "samefile",
+          "stat",
+          "symlink_to",
+          "touch",
+          "unlink",
+          "walk",
+          "with_name",
+          "with_segments",
+          "with_stem",
+          "with_suffix",
+          "write_bytes",
+          "write_text"
+        ]
+      },
+      "String": {
+        "type": "class",
+        "methods": [
+          "Comparator",
+          "adapt",
+          "as_generic",
+          "bind_expression",
+          "bind_processor",
+          "coerce_compared_value",
+          "column_expression",
+          "comparator_factory",
+          "compare_values",
+          "compile",
+          "copy",
+          "copy_value",
+          "dialect_impl",
+          "evaluates_none",
+          "get_dbapi_type",
+          "literal_processor",
+          "result_processor",
+          "with_variant"
+        ]
+      },
+      "Table": {
+        "type": "class",
+        "methods": [
+          "add_is_dependent_on",
+          "alias",
+          "append_column",
+          "append_constraint",
+          "argument_for",
+          "compare",
+          "compile",
+          "corresponding_column",
+          "create",
+          "delete",
+          "drop",
+          "get_children",
+          "get_dialect_option",
+          "insert",
+          "is_derived_from",
+          "join",
+          "lateral",
+          "memoized_attribute",
+          "memoized_instancemethod",
+          "outerjoin",
+          "params",
+          "replace_selectable",
+          "select",
+          "self_group",
+          "table_valued",
+          "tablesample",
+          "to_metadata",
+          "tometadata",
+          "unique_params",
+          "update"
+        ]
+      },
+      "Tag": {
+        "type": "class",
+        "methods": []
+      },
+      "UPath": {
+        "type": "class",
+        "methods": [
+          "absolute",
+          "as_posix",
+          "as_uri",
+          "chmod",
+          "copy",
+          "copy_into",
+          "cwd",
+          "exists",
+          "expanduser",
+          "from_uri",
+          "full_match",
+          "glob",
+          "group",
+          "hardlink_to",
+          "home",
+          "is_absolute",
+          "is_block_device",
+          "is_char_device",
+          "is_dir",
+          "is_fifo",
+          "is_file",
+          "is_junction",
+          "is_mount",
+          "is_relative_to",
+          "is_reserved",
+          "is_socket",
+          "is_symlink",
+          "iterdir",
+          "joinpath",
+          "joinuri",
+          "lchmod",
+          "lstat",
+          "match",
+          "mkdir",
+          "move",
+          "move_into",
+          "open",
+          "owner",
+          "read_bytes",
+          "read_text",
+          "readlink",
+          "relative_to",
+          "rename",
+          "replace",
+          "resolve",
+          "rglob",
+          "rmdir",
+          "samefile",
+          "stat",
+          "symlink_to",
+          "touch",
+          "unlink",
+          "walk",
+          "with_name",
+          "with_segments",
+          "with_stem",
+          "with_suffix",
+          "write_bytes",
+          "write_text"
+        ]
+      },
+      "UserDict": {
+        "type": "class",
+        "methods": [
+          "clear",
+          "copy",
+          "fromkeys",
+          "get",
+          "items",
+          "keys",
+          "pop",
+          "popitem",
+          "setdefault",
+          "update",
+          "values"
+        ]
+      },
+      "association_proxy": {
+        "type": "function"
+      },
+      "attribute_mapped_collection": {
+        "type": "function"
+      },
+      "backref": {
+        "type": "function"
+      },
+      "bids_sort": {
+        "type": "function"
+      },
+      "build_path": {
+        "type": "function"
+      },
+      "chain": {
+        "type": "class",
+        "methods": [
+          "from_iterable"
+        ]
+      },
+      "declarative_base": {
+        "type": "function"
+      },
+      "deepcopy": {
+        "type": "function"
+      },
+      "get_option": {
+        "type": "function"
+      },
+      "listify": {
+        "type": "function"
+      },
+      "lru_cache": {
+        "type": "function"
+      },
+      "object_session": {
+        "type": "function"
+      },
+      "reconstructor": {
+        "type": "function"
+      },
+      "relationship": {
+        "type": "function"
+      },
+      "write_to_file": {
+        "type": "function"
+      }
+    },
+    "bids.layout.writing": {
+      "Formatter": {
+        "type": "class",
+        "methods": [
+          "check_unused_args",
+          "convert_field",
+          "format",
+          "format_field",
+          "get_field",
+          "get_value",
+          "parse",
+          "vformat"
+        ]
+      },
+      "Path": {
+        "type": "class",
+        "methods": [
+          "absolute",
+          "as_posix",
+          "as_uri",
+          "chmod",
+          "copy",
+          "copy_into",
+          "cwd",
+          "exists",
+          "expanduser",
+          "from_uri",
+          "full_match",
+          "glob",
+          "group",
+          "hardlink_to",
+          "home",
+          "is_absolute",
+          "is_block_device",
+          "is_char_device",
+          "is_dir",
+          "is_fifo",
+          "is_file",
+          "is_junction",
+          "is_mount",
+          "is_relative_to",
+          "is_reserved",
+          "is_socket",
+          "is_symlink",
+          "iterdir",
+          "joinpath",
+          "joinuri",
+          "lchmod",
+          "lstat",
+          "match",
+          "mkdir",
+          "move",
+          "move_into",
+          "open",
+          "owner",
+          "read_bytes",
+          "read_text",
+          "readlink",
+          "relative_to",
+          "rename",
+          "replace",
+          "resolve",
+          "rglob",
+          "rmdir",
+          "samefile",
+          "stat",
+          "symlink_to",
+          "touch",
+          "unlink",
+          "walk",
+          "with_name",
+          "with_segments",
+          "with_stem",
+          "with_suffix",
+          "write_bytes",
+          "write_text"
+        ]
+      },
+      "build_path": {
+        "type": "function"
+      },
+      "listify": {
+        "type": "function"
+      },
+      "product": {
+        "type": "class",
+        "methods": []
+      },
+      "write_to_file": {
+        "type": "function"
+      }
+    },
+    "bids.layout.utils": {
+      "BIDSMetadata": {
+        "type": "class",
+        "methods": [
+          "clear",
+          "copy",
+          "fromkeys",
+          "get",
+          "items",
+          "keys",
+          "pop",
+          "popitem",
+          "setdefault",
+          "update",
+          "values"
+        ]
+      },
+      "ConfigError": {
+        "type": "class",
+        "methods": [
+          "add_note",
+          "with_traceback"
+        ]
+      },
+      "PaddedInt": {
+        "type": "class",
+        "methods": [
+          "as_integer_ratio",
+          "bit_count",
+          "bit_length",
+          "conjugate",
+          "from_bytes",
+          "is_integer",
+          "to_bytes"
+        ]
+      },
+      "Path": {
+        "type": "class",
+        "methods": [
+          "absolute",
+          "as_posix",
+          "as_uri",
+          "chmod",
+          "copy",
+          "copy_into",
+          "cwd",
+          "exists",
+          "expanduser",
+          "from_uri",
+          "full_match",
+          "glob",
+          "group",
+          "hardlink_to",
+          "home",
+          "is_absolute",
+          "is_block_device",
+          "is_char_device",
+          "is_dir",
+          "is_fifo",
+          "is_file",
+          "is_junction",
+          "is_mount",
+          "is_relative_to",
+          "is_reserved",
+          "is_socket",
+          "is_symlink",
+          "iterdir",
+          "joinpath",
+          "joinuri",
+          "lchmod",
+          "lstat",
+          "match",
+          "mkdir",
+          "move",
+          "move_into",
+          "open",
+          "owner",
+          "read_bytes",
+          "read_text",
+          "readlink",
+          "relative_to",
+          "rename",
+          "replace",
+          "resolve",
+          "rglob",
+          "rmdir",
+          "samefile",
+          "stat",
+          "symlink_to",
+          "touch",
+          "unlink",
+          "walk",
+          "with_name",
+          "with_segments",
+          "with_stem",
+          "with_suffix",
+          "write_bytes",
+          "write_text"
+        ]
+      },
+      "add_config_paths": {
+        "type": "function"
+      },
+      "listify": {
+        "type": "function"
+      },
+      "make_bidsfile": {
+        "type": "function"
+      },
+      "parse_file_entities": {
+        "type": "function"
+      }
+    },
+    "bids.layout.validation": {
+      "BIDSDerivativesValidationError": {
+        "type": "class",
+        "methods": [
+          "add_note",
+          "with_traceback"
+        ]
+      },
+      "BIDSValidationError": {
+        "type": "class",
+        "methods": [
+          "add_note",
+          "with_traceback"
+        ]
+      },
+      "Path": {
+        "type": "class",
+        "methods": [
+          "absolute",
+          "as_posix",
+          "as_uri",
+          "chmod",
+          "copy",
+          "copy_into",
+          "cwd",
+          "exists",
+          "expanduser",
+          "from_uri",
+          "full_match",
+          "glob",
+          "group",
+          "hardlink_to",
+          "home",
+          "is_absolute",
+          "is_block_device",
+          "is_char_device",
+          "is_dir",
+          "is_fifo",
+          "is_file",
+          "is_junction",
+          "is_mount",
+          "is_relative_to",
+          "is_reserved",
+          "is_socket",
+          "is_symlink",
+          "iterdir",
+          "joinpath",
+          "joinuri",
+          "lchmod",
+          "lstat",
+          "match",
+          "mkdir",
+          "move",
+          "move_into",
+          "open",
+          "owner",
+          "read_bytes",
+          "read_text",
+          "readlink",
+          "relative_to",
+          "rename",
+          "replace",
+          "resolve",
+          "rglob",
+          "rmdir",
+          "samefile",
+          "stat",
+          "symlink_to",
+          "touch",
+          "unlink",
+          "walk",
+          "with_name",
+          "with_segments",
+          "with_stem",
+          "with_suffix",
+          "write_bytes",
+          "write_text"
+        ]
+      },
+      "listify": {
+        "type": "function"
+      },
+      "validate_derivative_path": {
+        "type": "function"
+      },
+      "validate_indexing_args": {
+        "type": "function"
+      },
+      "validate_root": {
+        "type": "function"
+      }
+    },
+    "bids.layout.index": {
+      "BIDSConflictingValuesError": {
+        "type": "class",
+        "methods": [
+          "add_note",
+          "with_traceback"
+        ]
+      },
+      "BIDSLayoutIndexer": {
+        "type": "class",
+        "methods": []
+      },
+      "BIDSValidator": {
+        "type": "class",
+        "methods": [
+          "is_associated_data",
+          "is_bids",
+          "is_file",
+          "is_phenotypic",
+          "is_session_level",
+          "is_subject_level",
+          "is_top_level",
+          "parse"
+        ]
+      },
+      "Config": {
+        "type": "class",
+        "methods": [
+          "load"
+        ]
+      },
+      "Entity": {
+        "type": "class",
+        "methods": [
+          "count",
+          "match_file",
+          "unique"
+        ]
+      },
+      "FileAssociation": {
+        "type": "class",
+        "methods": []
+      },
+      "Path": {
+        "type": "class",
+        "methods": [
+          "absolute",
+          "as_posix",
+          "as_uri",
+          "chmod",
+          "copy",
+          "copy_into",
+          "cwd",
+          "exists",
+          "expanduser",
+          "from_uri",
+          "full_match",
+          "glob",
+          "group",
+          "hardlink_to",
+          "home",
+          "is_absolute",
+          "is_block_device",
+          "is_char_device",
+          "is_dir",
+          "is_fifo",
+          "is_file",
+          "is_junction",
+          "is_mount",
+          "is_relative_to",
+          "is_reserved",
+          "is_socket",
+          "is_symlink",
+          "iterdir",
+          "joinpath",
+          "joinuri",
+          "lchmod",
+          "lstat",
+          "match",
+          "mkdir",
+          "move",
+          "move_into",
+          "open",
+          "owner",
+          "read_bytes",
+          "read_text",
+          "readlink",
+          "relative_to",
+          "rename",
+          "replace",
+          "resolve",
+          "rglob",
+          "rmdir",
+          "samefile",
+          "stat",
+          "symlink_to",
+          "touch",
+          "unlink",
+          "walk",
+          "with_name",
+          "with_segments",
+          "with_stem",
+          "with_suffix",
+          "write_bytes",
+          "write_text"
+        ]
+      },
+      "Tag": {
+        "type": "class",
+        "methods": []
+      },
+      "defaultdict": {
+        "type": "class",
+        "methods": [
+          "clear",
+          "copy",
+          "fromkeys",
+          "get",
+          "items",
+          "keys",
+          "pop",
+          "popitem",
+          "setdefault",
+          "update",
+          "values"
+        ]
+      },
+      "listify": {
+        "type": "function"
+      },
+      "lru_cache": {
+        "type": "function"
+      },
+      "make_bidsfile": {
+        "type": "function"
+      },
+      "partial": {
+        "type": "class",
+        "methods": []
+      },
+      "validate_indexing_args": {
+        "type": "function"
+      }
+    },
+    "bids.layout.db": {
+      "Base": {
+        "type": "class",
+        "methods": []
+      },
+      "Config": {
+        "type": "class",
+        "methods": [
+          "load"
+        ]
+      },
+      "ConnectionManager": {
+        "type": "class",
+        "methods": [
+          "exists",
+          "reset_database",
+          "reset_session",
+          "save_database"
+        ]
+      },
+      "LayoutInfo": {
+        "type": "class",
+        "methods": []
+      },
+      "Path": {
+        "type": "class",
+        "methods": [
+          "absolute",
+          "as_posix",
+          "as_uri",
+          "chmod",
+          "copy",
+          "copy_into",
+          "cwd",
+          "exists",
+          "expanduser",
+          "from_uri",
+          "full_match",
+          "glob",
+          "group",
+          "hardlink_to",
+          "home",
+          "is_absolute",
+          "is_block_device",
+          "is_char_device",
+          "is_dir",
+          "is_fifo",
+          "is_file",
+          "is_junction",
+          "is_mount",
+          "is_relative_to",
+          "is_reserved",
+          "is_socket",
+          "is_symlink",
+          "iterdir",
+          "joinpath",
+          "joinuri",
+          "lchmod",
+          "lstat",
+          "match",
+          "mkdir",
+          "move",
+          "move_into",
+          "open",
+          "owner",
+          "read_bytes",
+          "read_text",
+          "readlink",
+          "relative_to",
+          "rename",
+          "replace",
+          "resolve",
+          "rglob",
+          "rmdir",
+          "samefile",
+          "stat",
+          "symlink_to",
+          "touch",
+          "unlink",
+          "walk",
+          "with_name",
+          "with_segments",
+          "with_stem",
+          "with_suffix",
+          "write_bytes",
+          "write_text"
+        ]
+      },
+      "get_database_file": {
+        "type": "function"
+      },
+      "listify": {
+        "type": "function"
+      },
+      "lru_cache": {
+        "type": "function"
+      }
+    },
+    "bids.variables": {
+      "BIDSRunVariableCollection": {
+        "type": "class",
+        "methods": [
+          "all_dense",
+          "all_sparse",
+          "clone",
+          "from_df",
+          "get_dense_variables",
+          "get_sparse_variables",
+          "match_variables",
+          "merge_variables",
+          "resample",
+          "to_dense",
+          "to_df"
+        ]
+      },
+      "BIDSVariableCollection": {
+        "type": "class",
+        "methods": [
+          "clone",
+          "from_df",
+          "match_variables",
+          "merge_variables",
+          "to_df"
+        ]
+      },
+      "DenseRunVariable": {
+        "type": "class",
+        "methods": [
+          "apply",
+          "clone",
+          "filter",
+          "get_grouper",
+          "merge",
+          "resample",
+          "split",
+          "to_df"
+        ]
+      },
+      "SimpleVariable": {
+        "type": "class",
+        "methods": [
+          "apply",
+          "clone",
+          "filter",
+          "get_grouper",
+          "merge",
+          "select_rows",
+          "split",
+          "to_df"
+        ]
+      },
+      "SparseRunVariable": {
+        "type": "class",
+        "methods": [
+          "apply",
+          "clone",
+          "filter",
+          "get_duration",
+          "get_grouper",
+          "merge",
+          "select_rows",
+          "split",
+          "to_dense",
+          "to_df"
+        ]
+      },
+      "load_variables": {
+        "type": "function"
+      },
+      "merge_collections": {
+        "type": "function"
+      },
+      "merge_variables": {
+        "type": "function"
+      }
+    },
+    "bids.variables.variables": {
+      "ABCMeta": {
+        "type": "class",
+        "methods": [
+          "mro",
+          "register"
+        ]
+      },
+      "BIDSVariable": {
+        "type": "class",
+        "methods": [
+          "apply",
+          "clone",
+          "filter",
+          "get_grouper",
+          "merge",
+          "to_df"
+        ]
+      },
+      "DenseRunVariable": {
+        "type": "class",
+        "methods": [
+          "apply",
+          "clone",
+          "filter",
+          "get_grouper",
+          "merge",
+          "resample",
+          "split",
+          "to_df"
+        ]
+      },
+      "SimpleVariable": {
+        "type": "class",
+        "methods": [
+          "apply",
+          "clone",
+          "filter",
+          "get_grouper",
+          "merge",
+          "select_rows",
+          "split",
+          "to_df"
+        ]
+      },
+      "SparseRunVariable": {
+        "type": "class",
+        "methods": [
+          "apply",
+          "clone",
+          "filter",
+          "get_duration",
+          "get_grouper",
+          "merge",
+          "select_rows",
+          "split",
+          "to_dense",
+          "to_df"
+        ]
+      },
+      "abstractmethod": {
+        "type": "function"
+      },
+      "chain": {
+        "type": "class",
+        "methods": [
+          "from_iterable"
+        ]
+      },
+      "deepcopy": {
+        "type": "function"
+      },
+      "listify": {
+        "type": "function"
+      },
+      "merge_variables": {
+        "type": "function"
+      }
+    },
+    "bids.variables.collections": {
+      "BIDSRunVariableCollection": {
+        "type": "class",
+        "methods": [
+          "all_dense",
+          "all_sparse",
+          "clone",
+          "from_df",
+          "get_dense_variables",
+          "get_sparse_variables",
+          "match_variables",
+          "merge_variables",
+          "resample",
+          "to_dense",
+          "to_df"
+        ]
+      },
+      "BIDSVariable": {
+        "type": "class",
+        "methods": [
+          "apply",
+          "clone",
+          "filter",
+          "get_grouper",
+          "merge",
+          "to_df"
+        ]
+      },
+      "BIDSVariableCollection": {
+        "type": "class",
+        "methods": [
+          "clone",
+          "from_df",
+          "match_variables",
+          "merge_variables",
+          "to_df"
+        ]
+      },
+      "DenseRunVariable": {
+        "type": "class",
+        "methods": [
+          "apply",
+          "clone",
+          "filter",
+          "get_grouper",
+          "merge",
+          "resample",
+          "split",
+          "to_df"
+        ]
+      },
+      "OrderedDict": {
+        "type": "class",
+        "methods": [
+          "clear",
+          "copy",
+          "fromkeys",
+          "get",
+          "items",
+          "keys",
+          "move_to_end",
+          "pop",
+          "popitem",
+          "setdefault",
+          "update",
+          "values"
+        ]
+      },
+      "SimpleVariable": {
+        "type": "class",
+        "methods": [
+          "apply",
+          "clone",
+          "filter",
+          "get_grouper",
+          "merge",
+          "select_rows",
+          "split",
+          "to_df"
+        ]
+      },
+      "SparseRunVariable": {
+        "type": "class",
+        "methods": [
+          "apply",
+          "clone",
+          "filter",
+          "get_duration",
+          "get_grouper",
+          "merge",
+          "select_rows",
+          "split",
+          "to_dense",
+          "to_df"
+        ]
+      },
+      "cache": {
+        "type": "function"
+      },
+      "chain": {
+        "type": "class",
+        "methods": [
+          "from_iterable"
+        ]
+      },
+      "copy": {
+        "type": "function"
+      },
+      "is_numeric_dtype": {
+        "type": "function"
+      },
+      "listify": {
+        "type": "function"
+      },
+      "merge_collections": {
+        "type": "function"
+      },
+      "merge_variables": {
+        "type": "function"
+      }
+    },
+    "bids.variables.io": {
+      "DenseRunVariable": {
+        "type": "class",
+        "methods": [
+          "apply",
+          "clone",
+          "filter",
+          "get_grouper",
+          "merge",
+          "resample",
+          "split",
+          "to_df"
+        ]
+      },
+      "NodeIndex": {
+        "type": "class",
+        "methods": [
+          "create_node",
+          "get_collections",
+          "get_nodes",
+          "get_or_create_node"
+        ]
+      },
+      "SimpleVariable": {
+        "type": "class",
+        "methods": [
+          "apply",
+          "clone",
+          "filter",
+          "get_grouper",
+          "merge",
+          "select_rows",
+          "split",
+          "to_df"
+        ]
+      },
+      "SparseRunVariable": {
+        "type": "class",
+        "methods": [
+          "apply",
+          "clone",
+          "filter",
+          "get_duration",
+          "get_grouper",
+          "merge",
+          "select_rows",
+          "split",
+          "to_dense",
+          "to_df"
+        ]
+      },
+      "listify": {
+        "type": "function"
+      },
+      "load_variables": {
+        "type": "function"
+      }
+    },
+    "bids.variables.entities": {
+      "Node": {
+        "type": "class",
+        "methods": [
+          "add_variable"
+        ]
+      },
+      "NodeIndex": {
+        "type": "class",
+        "methods": [
+          "create_node",
+          "get_collections",
+          "get_nodes",
+          "get_or_create_node"
+        ]
+      },
+      "RunInfo": {
+        "type": "class",
+        "methods": [
+          "count",
+          "index"
+        ]
+      },
+      "RunInfo_": {
+        "type": "class",
+        "methods": [
+          "count",
+          "index"
+        ]
+      },
+      "RunNode": {
+        "type": "class",
+        "methods": [
+          "add_variable",
+          "get_info"
+        ]
+      },
+      "chain": {
+        "type": "class",
+        "methods": [
+          "from_iterable"
+        ]
+      },
+      "matches_entities": {
+        "type": "function"
+      },
+      "namedtuple": {
+        "type": "function"
+      }
+    },
+    "bids.modeling": {
+      "BIDSStatsModelsEdge": {
+        "type": "class",
+        "methods": [
+          "count",
+          "index"
+        ]
+      },
+      "BIDSStatsModelsGraph": {
+        "type": "class",
+        "methods": [
+          "get_node",
+          "load_collections",
+          "run_graph",
+          "write_graph"
+        ]
+      },
+      "BIDSStatsModelsNode": {
+        "type": "class",
+        "methods": [
+          "add_child",
+          "add_collections",
+          "add_parent",
+          "get_collections",
+          "run"
+        ]
+      },
+      "BIDSStatsModelsNodeOutput": {
+        "type": "class",
+        "methods": []
+      },
+      "TransformerManager": {
+        "type": "class",
+        "methods": [
+          "register",
+          "transform"
+        ]
+      },
+      "auto_model": {
+        "type": "function"
+      }
+    },
+    "bids.modeling.statsmodels": {
+      "BIDSLayout": {
+        "type": "class",
+        "methods": [
+          "add_derivatives",
+          "build_path",
+          "clone",
+          "copy_files",
+          "get",
+          "get_bval",
+          "get_bvec",
+          "get_collections",
+          "get_dataset_description",
+          "get_entities",
+          "get_fieldmap",
+          "get_file",
+          "get_files",
+          "get_metadata",
+          "get_nearest",
+          "get_tr",
+          "load",
+          "parse_file_entities",
+          "save",
+          "to_df",
+          "write_to_file"
+        ]
+      },
+      "BIDSStatsModelsEdge": {
+        "type": "class",
+        "methods": [
+          "count",
+          "index"
+        ]
+      },
+      "BIDSStatsModelsGraph": {
+        "type": "class",
+        "methods": [
+          "get_node",
+          "load_collections",
+          "run_graph",
+          "write_graph"
+        ]
+      },
+      "BIDSStatsModelsNode": {
+        "type": "class",
+        "methods": [
+          "add_child",
+          "add_collections",
+          "add_parent",
+          "get_collections",
+          "run"
+        ]
+      },
+      "BIDSStatsModelsNodeOutput": {
+        "type": "class",
+        "methods": []
+      },
+      "BIDSVariableCollection": {
+        "type": "class",
+        "methods": [
+          "clone",
+          "from_df",
+          "match_variables",
+          "merge_variables",
+          "to_df"
+        ]
+      },
+      "ContrastInfo": {
+        "type": "class",
+        "methods": [
+          "count",
+          "index"
+        ]
+      },
+      "Counter": {
+        "type": "class",
+        "methods": [
+          "clear",
+          "copy",
+          "elements",
+          "fromkeys",
+          "get",
+          "items",
+          "keys",
+          "most_common",
+          "pop",
+          "popitem",
+          "setdefault",
+          "subtract",
+          "total",
+          "update",
+          "values"
+        ]
+      },
+      "GLMMSpec": {
+        "type": "class",
+        "methods": [
+          "add_term",
+          "build_fixed_terms",
+          "build_variance_components",
+          "from_df",
+          "set_priors"
+        ]
+      },
+      "MetaAnalysisSpec": {
+        "type": "class",
+        "methods": [
+          "add_term",
+          "build_fixed_terms",
+          "build_variance_components",
+          "from_df",
+          "set_priors"
+        ]
+      },
+      "OrderedDict": {
+        "type": "class",
+        "methods": [
+          "clear",
+          "copy",
+          "fromkeys",
+          "get",
+          "items",
+          "keys",
+          "move_to_end",
+          "pop",
+          "popitem",
+          "setdefault",
+          "update",
+          "values"
+        ]
+      },
+      "convert_JSON": {
+        "type": "function"
+      },
+      "defaultdict": {
+        "type": "class",
+        "methods": [
+          "clear",
+          "copy",
+          "fromkeys",
+          "get",
+          "items",
+          "keys",
+          "pop",
+          "popitem",
+          "setdefault",
+          "update",
+          "values"
+        ]
+      },
+      "expand_wildcards": {
+        "type": "function"
+      },
+      "listify": {
+        "type": "function"
+      },
+      "matches_entities": {
+        "type": "function"
+      },
+      "merge_collections": {
+        "type": "function"
+      },
+      "namedtuple": {
+        "type": "function"
+      },
+      "node_report": {
+        "type": "function"
+      },
+      "snake_to_camel": {
+        "type": "function"
+      },
+      "validate_model": {
+        "type": "function"
+      }
+    },
+    "bids.modeling.hrf": {
+      "compute_regressor": {
+        "type": "function"
+      },
+      "glover_dispersion_derivative": {
+        "type": "function"
+      },
+      "glover_hrf": {
+        "type": "function"
+      },
+      "glover_time_derivative": {
+        "type": "function"
+      },
+      "spm_dispersion_derivative": {
+        "type": "function"
+      },
+      "spm_hrf": {
+        "type": "function"
+      },
+      "spm_time_derivative": {
+        "type": "function"
+      }
+    },
+    "bids.modeling.auto_model": {
+      "OrderedDict": {
+        "type": "class",
+        "methods": [
+          "clear",
+          "copy",
+          "fromkeys",
+          "get",
+          "items",
+          "keys",
+          "move_to_end",
+          "pop",
+          "popitem",
+          "setdefault",
+          "update",
+          "values"
+        ]
+      },
+      "auto_model": {
+        "type": "function"
+      },
+      "load_variables": {
+        "type": "function"
+      }
+    },
+    "bids.modeling.model_spec": {
+      "ABCMeta": {
+        "type": "class",
+        "methods": [
+          "mro",
+          "register"
+        ]
+      },
+      "GLMMSpec": {
+        "type": "class",
+        "methods": [
+          "add_term",
+          "build_fixed_terms",
+          "build_variance_components",
+          "from_df",
+          "set_priors"
+        ]
+      },
+      "MetaAnalysisSpec": {
+        "type": "class",
+        "methods": [
+          "add_term",
+          "build_fixed_terms",
+          "build_variance_components",
+          "from_df",
+          "set_priors"
+        ]
+      },
+      "ModelSpec": {
+        "type": "class",
+        "methods": [
+          "from_df"
+        ]
+      },
+      "Prior": {
+        "type": "class",
+        "methods": []
+      },
+      "Term": {
+        "type": "class",
+        "methods": []
+      },
+      "VarComp": {
+        "type": "class",
+        "methods": [
+          "dummies_to_vec"
+        ]
+      },
+      "abstractmethod": {
+        "type": "function"
+      },
+      "convert_JSON": {
+        "type": "function"
+      },
+      "model_matrix": {
+        "type": "function"
+      }
+    },
+    "bids.modeling.transformations": {
+      "And": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "And_": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "Assign": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "Convolve": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "Copy": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "Delete": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "Demean": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "DropNA": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "Factor": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "Filter": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "Group": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "Lag": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "Not": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "Or": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "Or_": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "Orthogonalize": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "Product": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "Rename": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "Replace": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "Resample": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "Scale": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "Select": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "Split": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "Sum": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "Threshold": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "ToDense": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "TransformerManager": {
+        "type": "class",
+        "methods": [
+          "register",
+          "transform"
+        ]
+      }
+    },
+    "bids.modeling.transformations.base": {
+      "ABCMeta": {
+        "type": "class",
+        "methods": [
+          "mro",
+          "register"
+        ]
+      },
+      "BIDSVariableCollection": {
+        "type": "class",
+        "methods": [
+          "clone",
+          "from_df",
+          "match_variables",
+          "merge_variables",
+          "to_df"
+        ]
+      },
+      "SparseRunVariable": {
+        "type": "class",
+        "methods": [
+          "apply",
+          "clone",
+          "filter",
+          "get_duration",
+          "get_grouper",
+          "merge",
+          "select_rows",
+          "split",
+          "to_dense",
+          "to_df"
+        ]
+      },
+      "Transformation": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "TransformationOutput": {
+        "type": "class",
+        "methods": []
+      },
+      "TransformerManager": {
+        "type": "class",
+        "methods": [
+          "register",
+          "transform"
+        ]
+      },
+      "abstractmethod": {
+        "type": "function"
+      },
+      "convert_JSON": {
+        "type": "function"
+      },
+      "dataclass": {
+        "type": "function"
+      },
+      "deepcopy": {
+        "type": "function"
+      },
+      "listify": {
+        "type": "function"
+      }
+    },
+    "bids.modeling.transformations.compute": {
+      "And_": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "Convolve": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "Demean": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "DenseRunVariable": {
+        "type": "class",
+        "methods": [
+          "apply",
+          "clone",
+          "filter",
+          "get_grouper",
+          "merge",
+          "resample",
+          "split",
+          "to_df"
+        ]
+      },
+      "Lag": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "Not": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "Or_": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "Orthogonalize": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "Product": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "Scale": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "SparseRunVariable": {
+        "type": "class",
+        "methods": [
+          "apply",
+          "clone",
+          "filter",
+          "get_duration",
+          "get_grouper",
+          "merge",
+          "select_rows",
+          "split",
+          "to_dense",
+          "to_df"
+        ]
+      },
+      "Sum": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "Threshold": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "Transformation": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "listify": {
+        "type": "function"
+      }
+    },
+    "bids.modeling.transformations.munge": {
+      "Assign": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "Copy": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "Delete": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "DenseRunVariable": {
+        "type": "class",
+        "methods": [
+          "apply",
+          "clone",
+          "filter",
+          "get_grouper",
+          "merge",
+          "resample",
+          "split",
+          "to_df"
+        ]
+      },
+      "DropNA": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "Factor": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "Filter": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "Group": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "Rename": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "Replace": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "Resample": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "Select": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "SimpleVariable": {
+        "type": "class",
+        "methods": [
+          "apply",
+          "clone",
+          "filter",
+          "get_grouper",
+          "merge",
+          "select_rows",
+          "split",
+          "to_df"
+        ]
+      },
+      "Split": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "ToDense": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "Transformation": {
+        "type": "class",
+        "methods": [
+          "transform"
+        ]
+      },
+      "listify": {
+        "type": "function"
+      },
+      "model_matrix": {
+        "type": "function"
+      },
+      "odict": {
+        "type": "class",
+        "methods": [
+          "clear",
+          "copy",
+          "fromkeys",
+          "get",
+          "items",
+          "keys",
+          "move_to_end",
+          "pop",
+          "popitem",
+          "setdefault",
+          "update",
+          "values"
+        ]
+      }
+    },
+    "bids.reports": {
+      "BIDSReport": {
+        "type": "class",
+        "methods": [
+          "generate",
+          "generate_from_files"
+        ]
+      }
+    },
+    "bids.reports.report": {
+      "BIDSReport": {
+        "type": "class",
+        "methods": [
+          "generate",
+          "generate_from_files"
+        ]
+      },
+      "Counter": {
+        "type": "class",
+        "methods": [
+          "clear",
+          "copy",
+          "elements",
+          "fromkeys",
+          "get",
+          "items",
+          "keys",
+          "most_common",
+          "pop",
+          "popitem",
+          "setdefault",
+          "subtract",
+          "total",
+          "update",
+          "values"
+        ]
+      }
+    },
+    "bids.reports.parsing": {
+      "anat_info": {
+        "type": "function"
+      },
+      "collect_associated_files": {
+        "type": "function"
+      },
+      "dwi_info": {
+        "type": "function"
+      },
+      "final_paragraph": {
+        "type": "function"
+      },
+      "fmap_info": {
+        "type": "function"
+      },
+      "func_info": {
+        "type": "function"
+      },
+      "general_acquisition_info": {
+        "type": "function"
+      },
+      "num2words": {
+        "type": "function"
+      },
+      "parse_files": {
+        "type": "function"
+      }
+    },
+    "bids.reports.parameters": {
+      "describe_bvals": {
+        "type": "function"
+      },
+      "describe_dmri_directions": {
+        "type": "function"
+      },
+      "describe_duration": {
+        "type": "function"
+      },
+      "describe_echo_times": {
+        "type": "function"
+      },
+      "describe_echo_times_fmap": {
+        "type": "function"
+      },
+      "describe_flip_angle": {
+        "type": "function"
+      },
+      "describe_func_duration": {
+        "type": "function"
+      },
+      "describe_image_size": {
+        "type": "function"
+      },
+      "describe_inplane_accel": {
+        "type": "function"
+      },
+      "describe_intendedfor_targets": {
+        "type": "function"
+      },
+      "describe_multiband_factor": {
+        "type": "function"
+      },
+      "describe_pe_direction": {
+        "type": "function"
+      },
+      "describe_repetition_time": {
+        "type": "function"
+      },
+      "describe_sequence": {
+        "type": "function"
+      },
+      "describe_slice_timing": {
+        "type": "function"
+      },
+      "get_size_str": {
+        "type": "function"
+      },
+      "get_slice_info": {
+        "type": "function"
+      },
+      "list_to_str": {
+        "type": "function"
+      },
+      "num2words": {
+        "type": "function"
+      },
+      "num_to_str": {
+        "type": "function"
+      },
+      "remove_duplicates": {
+        "type": "function"
+      }
+    },
+    "bids.utils": {
+      "Path": {
+        "type": "class",
+        "methods": [
+          "absolute",
+          "as_posix",
+          "as_uri",
+          "chmod",
+          "copy",
+          "copy_into",
+          "cwd",
+          "exists",
+          "expanduser",
+          "from_uri",
+          "full_match",
+          "glob",
+          "group",
+          "hardlink_to",
+          "home",
+          "is_absolute",
+          "is_block_device",
+          "is_char_device",
+          "is_dir",
+          "is_fifo",
+          "is_file",
+          "is_junction",
+          "is_mount",
+          "is_relative_to",
+          "is_reserved",
+          "is_socket",
+          "is_symlink",
+          "iterdir",
+          "joinpath",
+          "joinuri",
+          "lchmod",
+          "lstat",
+          "match",
+          "mkdir",
+          "move",
+          "move_into",
+          "open",
+          "owner",
+          "read_bytes",
+          "read_text",
+          "readlink",
+          "relative_to",
+          "rename",
+          "replace",
+          "resolve",
+          "rglob",
+          "rmdir",
+          "samefile",
+          "stat",
+          "symlink_to",
+          "touch",
+          "unlink",
+          "walk",
+          "with_name",
+          "with_segments",
+          "with_stem",
+          "with_suffix",
+          "write_bytes",
+          "write_text"
+        ]
+      },
+      "bids_sort": {
+        "type": "function"
+      },
+      "cache": {
+        "type": "function"
+      },
+      "collect_associated_files": {
+        "type": "function"
+      },
+      "convert_JSON": {
+        "type": "function"
+      },
+      "frozendict": {
+        "type": "class",
+        "methods": [
+          "clear",
+          "copy",
+          "delete",
+          "fromkeys",
+          "get",
+          "item",
+          "items",
+          "key",
+          "keys",
+          "pop",
+          "popitem",
+          "set",
+          "setdefault",
+          "update",
+          "value",
+          "values"
+        ]
+      },
+      "hashablefy": {
+        "type": "function"
+      },
+      "listify": {
+        "type": "function"
+      },
+      "make_bidsfile": {
+        "type": "function"
+      },
+      "matches_entities": {
+        "type": "function"
+      },
+      "natural_sort": {
+        "type": "function"
+      },
+      "splitext": {
+        "type": "function"
+      },
+      "validate_multiple": {
+        "type": "function"
+      }
+    },
+    "bids.config": {
+      "Path": {
+        "type": "class",
+        "methods": [
+          "absolute",
+          "as_posix",
+          "as_uri",
+          "chmod",
+          "copy",
+          "copy_into",
+          "cwd",
+          "exists",
+          "expanduser",
+          "from_uri",
+          "full_match",
+          "glob",
+          "group",
+          "hardlink_to",
+          "home",
+          "is_absolute",
+          "is_block_device",
+          "is_char_device",
+          "is_dir",
+          "is_fifo",
+          "is_file",
+          "is_junction",
+          "is_mount",
+          "is_relative_to",
+          "is_reserved",
+          "is_socket",
+          "is_symlink",
+          "iterdir",
+          "joinpath",
+          "joinuri",
+          "lchmod",
+          "lstat",
+          "match",
+          "mkdir",
+          "move",
+          "move_into",
+          "open",
+          "owner",
+          "read_bytes",
+          "read_text",
+          "readlink",
+          "relative_to",
+          "rename",
+          "replace",
+          "resolve",
+          "rglob",
+          "rmdir",
+          "samefile",
+          "stat",
+          "symlink_to",
+          "touch",
+          "unlink",
+          "walk",
+          "with_name",
+          "with_segments",
+          "with_stem",
+          "with_suffix",
+          "write_bytes",
+          "write_text"
+        ]
+      },
+      "from_file": {
+        "type": "function"
+      },
+      "get_option": {
+        "type": "function"
+      },
+      "listify": {
+        "type": "function"
+      },
+      "reset_options": {
+        "type": "function"
+      },
+      "set_option": {
+        "type": "function"
+      },
+      "set_options": {
+        "type": "function"
+      }
+    },
+    "bids.cli": {
+      "BIDSLayout": {
+        "type": "class",
+        "methods": [
+          "add_derivatives",
+          "build_path",
+          "clone",
+          "copy_files",
+          "get",
+          "get_bval",
+          "get_bvec",
+          "get_collections",
+          "get_dataset_description",
+          "get_entities",
+          "get_fieldmap",
+          "get_file",
+          "get_files",
+          "get_metadata",
+          "get_nearest",
+          "get_tr",
+          "load",
+          "parse_file_entities",
+          "save",
+          "to_df",
+          "write_to_file"
+        ]
+      },
+      "BIDSLayoutIndexer": {
+        "type": "class",
+        "methods": []
+      },
+      "Either": {
+        "type": "class",
+        "methods": [
+          "convert",
+          "fail",
+          "get_metavar",
+          "get_missing_message",
+          "shell_complete",
+          "split_envvar_value",
+          "to_info_dict"
+        ]
+      },
+      "Path": {
+        "type": "class",
+        "methods": [
+          "absolute",
+          "as_posix",
+          "as_uri",
+          "chmod",
+          "copy",
+          "copy_into",
+          "cwd",
+          "exists",
+          "expanduser",
+          "from_uri",
+          "full_match",
+          "glob",
+          "group",
+          "hardlink_to",
+          "home",
+          "is_absolute",
+          "is_block_device",
+          "is_char_device",
+          "is_dir",
+          "is_fifo",
+          "is_file",
+          "is_junction",
+          "is_mount",
+          "is_relative_to",
+          "is_reserved",
+          "is_socket",
+          "is_symlink",
+          "iterdir",
+          "joinpath",
+          "lchmod",
+          "lstat",
+          "match",
+          "mkdir",
+          "move",
+          "move_into",
+          "open",
+          "owner",
+          "read_bytes",
+          "read_text",
+          "readlink",
+          "relative_to",
+          "rename",
+          "replace",
+          "resolve",
+          "rglob",
+          "rmdir",
+          "samefile",
+          "stat",
+          "symlink_to",
+          "touch",
+          "unlink",
+          "walk",
+          "with_name",
+          "with_segments",
+          "with_stem",
+          "with_suffix",
+          "write_bytes",
+          "write_text"
+        ]
+      },
+      "PathOrRegex": {
+        "type": "class",
+        "methods": [
+          "convert",
+          "fail",
+          "get_metavar",
+          "get_missing_message",
+          "shell_complete",
+          "split_envvar_value",
+          "to_info_dict"
+        ]
+      },
+      "deepcopy": {
+        "type": "function"
+      },
+      "generate_report": {
+        "type": "function"
+      },
+      "upgrade_dataset_description": {
+        "type": "function"
+      },
+      "upgrade_filenames": {
+        "type": "function"
+      }
+    }
+  },
+  "entities": [
+    "acquisition",
+    "ceagent",
+    "chunk",
+    "datatype",
+    "direction",
+    "echo",
+    "extension",
+    "flip",
+    "fmap",
+    "inv",
+    "modality",
+    "mt",
+    "nucleus",
+    "part",
+    "proc",
+    "reconstruction",
+    "recording",
+    "run",
+    "sample",
+    "scans",
+    "session",
+    "space",
+    "staining",
+    "subject",
+    "suffix",
+    "task",
+    "tracer",
+    "tracksys",
+    "volume"
+  ],
+  "datatypes": [
+    "anat",
+    "beh",
+    "dwi",
+    "eeg",
+    "fmap",
+    "func",
+    "ieeg",
+    "meg",
+    "micr",
+    "motion",
+    "mrs",
+    "nirs",
+    "perf",
+    "pet"
+  ],
+  "transforms": [
+    "And_",
+    "Assign",
+    "Convolve",
+    "Copy",
+    "Delete",
+    "Demean",
+    "DropNA",
+    "Factor",
+    "Filter",
+    "Group",
+    "Lag",
+    "Not",
+    "Or_",
+    "Orthogonalize",
+    "Product",
+    "Rename",
+    "Replace",
+    "Resample",
+    "Scale",
+    "Select",
+    "Split",
+    "Sum",
+    "Threshold",
+    "ToDense",
+    "Transformation",
+    "Transformation"
+  ]
+}

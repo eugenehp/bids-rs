@@ -1,0 +1,19 @@
+[package]
+name = "bids-layout"
+description = "BIDS dataset indexing, querying, and database (BIDSLayout equivalent)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+bids-core = { workspace = true }
+bids-io = { workspace = true }
+bids-validate = { workspace = true }
+bids-schema = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+regex = { workspace = true }
+walkdir = { workspace = true }
+rusqlite = { workspace = true }
+indexmap = { workspace = true }
+log = { workspace = true }

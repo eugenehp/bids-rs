@@ -1,0 +1,12 @@
+[package]
+name = "bids-validate"
+description = "BIDS validation: filename patterns, dataset_description checks"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+bids-core = { workspace = true }
+bids-schema = { workspace = true }
+regex = { workspace = true }
+walkdir = { workspace = true }

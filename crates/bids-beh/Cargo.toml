@@ -1,0 +1,14 @@
+[package]
+name = "bids-beh"
+description = "BIDS beh domain support"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+bids-core = { workspace = true }
+bids-io = { workspace = true }
+bids-layout = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+

@@ -1,0 +1,105 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/bids-dataset",
+    "crates/bids-core",
+    "crates/bids-io",
+    "crates/bids-layout",
+    "crates/bids-variables",
+    "crates/bids-eeg",
+    "crates/bids-ieeg",
+    "crates/bids-meg",
+    "crates/bids-pet",
+    "crates/bids-perf",
+    "crates/bids-motion",
+    "crates/bids-nirs",
+    "crates/bids-mrs",
+    "crates/bids-micr",
+    "crates/bids-beh",
+    "crates/bids-nifti",
+    "crates/bids-filter",
+    "crates/bids-formula",
+    "crates/bids-schema",
+    "crates/bids-inflect",
+    "crates/bids-e2e-tests",
+    "crates/pybids-rs",
+    "crates/bids-validate",
+    "crates/bids-derive",
+    "crates/bids-modeling",
+    "crates/bids-reports",
+    "crates/bids",
+    "crates/bids-cli",
+]
+
+[workspace.package]
+version = "0.0.1"
+edition = "2024"
+authors = ["Eugene Hauptmann <eugene@hauptmann.me>"]
+license = "GPL-3.0-or-later"
+repository = "https://github.com/eugenehp/bids-rs"
+homepage = "https://github.com/eugenehp/bids-rs"
+
+[workspace.lints.clippy]
+# Correctness
+must_use_candidate = "warn"
+# Style
+cloned_instead_of_copied = "warn"
+redundant_closure_for_method_calls = "warn"
+# Suspicious
+large_futures = "warn"
+
+[workspace.dependencies]
+bids-dataset = { path = "crates/bids-dataset" }
+bids-core = { path = "crates/bids-core" }
+bids-io = { path = "crates/bids-io" }
+bids-layout = { path = "crates/bids-layout" }
+bids-variables = { path = "crates/bids-variables" }
+bids-eeg = { path = "crates/bids-eeg" }
+bids-validate = { path = "crates/bids-validate" }
+bids-derive = { path = "crates/bids-derive" }
+bids-ieeg = { path = "crates/bids-ieeg" }
+bids-meg = { path = "crates/bids-meg" }
+bids-pet = { path = "crates/bids-pet" }
+bids-perf = { path = "crates/bids-perf" }
+bids-motion = { path = "crates/bids-motion" }
+bids-nirs = { path = "crates/bids-nirs" }
+bids-mrs = { path = "crates/bids-mrs" }
+bids-micr = { path = "crates/bids-micr" }
+bids-beh = { path = "crates/bids-beh" }
+bids-nifti = { path = "crates/bids-nifti" }
+bids-filter = { path = "crates/bids-filter" }
+bids-formula = { path = "crates/bids-formula" }
+bids-schema = { path = "crates/bids-schema" }
+bids-inflect = { path = "crates/bids-inflect" }
+bids-modeling = { path = "crates/bids-modeling" }
+bids-reports = { path = "crates/bids-reports" }
+
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+regex = "1"
+thiserror = "2"
+walkdir = "2"
+csv = "1"
+indexmap = { version = "2", features = ["serde"] }
+rusqlite = { version = "0.32", features = ["bundled", "backup", "functions"] }
+clap = { version = "4", features = ["derive"] }
+flate2 = "1"
+log = "0.4"
+
+# HTTP / dataset downloading
+ureq = { version = "3", features = ["json"] }
+sha2 = "0.10"
+
+# Optional deps behind feature flags
+hdf5 = { package = "hdf5-metno", version = "0.12" }
+tiff = "0.11"
+fiff = "0.1"
+ndarray = "0.16"
+arrow = { package = "arrow-array", version = "54" }
+arrow-schema = "54"
+arrow-csv = "54"
+parquet = "54"
+memmap2 = "0.9"
+safetensors = "0.5"
+indicatif = "0.17"
+bytemuck = { version = "1", features = ["derive"] }

@@ -1,0 +1,28 @@
+# Build
+/target/
+
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Environment
+.env
+.env.*
+
+# Python (pybids-rs)
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+*.so
+*.dylib
+
+# Cargo lock for libraries (optional — keep if you want reproducible builds)
+# Cargo.lock

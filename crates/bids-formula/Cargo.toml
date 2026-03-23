@@ -1,0 +1,6 @@
+[package]
+name = "bids-formula"
+description = "Wilkinson formula parser for design matrix construction (y ~ a + b + a:b)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true

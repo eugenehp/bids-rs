@@ -1,0 +1,25 @@
+[package]
+name = "bids-cli"
+description = "Command-line interface for BIDS datasets"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "bids"
+path = "src/main.rs"
+
+[dependencies]
+bids = { path = "../bids" }
+bids-core = { workspace = true }
+bids-layout = { workspace = true }
+bids-eeg = { workspace = true }
+bids-io = { workspace = true }
+bids-modeling = { workspace = true }
+bids-reports = { workspace = true }
+bids-dataset = { workspace = true }
+clap = { workspace = true }
+serde_json = { workspace = true }
+indicatif = { workspace = true }
+regex = { workspace = true }
+globset = "0.4"

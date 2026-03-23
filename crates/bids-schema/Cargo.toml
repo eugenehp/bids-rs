@@ -1,0 +1,11 @@
+[package]
+name = "bids-schema"
+description = "BIDS specification schema loader — entity definitions, filename validation rules, datatypes"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+regex = { workspace = true }

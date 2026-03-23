@@ -1,0 +1,6 @@
+[package]
+name = "bids-filter"
+description = "Butterworth IIR low-pass filter with zero-phase (filtfilt) for signal resampling"
+version.workspace = true
+edition.workspace = true
+license.workspace = true

@@ -1,0 +1,285 @@
+{
+  "index_eeg_cbm": {
+    "rust_ms": 9.56,
+    "python_ms": 69.49,
+    "speedup": 7.3,
+    "match": true
+  },
+  "index_eeg_rishikesh": {
+    "rust_ms": 25.29,
+    "python_ms": 200.2,
+    "speedup": 7.9,
+    "match": true
+  },
+  "query_get_subjects": {
+    "rust_ms": 0.02,
+    "python_ms": 12.91,
+    "speedup": 722.6,
+    "match": true
+  },
+  "query_get_sessions": {
+    "rust_ms": 0.0,
+    "python_ms": 2.11,
+    "speedup": 1215.9,
+    "match": true
+  },
+  "query_get_tasks": {
+    "rust_ms": 0.01,
+    "python_ms": 10.85,
+    "speedup": 849.2,
+    "match": true
+  },
+  "query_get_runs": {
+    "rust_ms": 0.0,
+    "python_ms": 2.12,
+    "speedup": 1297.7,
+    "match": true
+  },
+  "query_get_datatypes": {
+    "rust_ms": 0.01,
+    "python_ms": 12.35,
+    "speedup": 1020.5,
+    "match": true
+  },
+  "query_eeg_files": {
+    "rust_ms": 0.29,
+    "python_ms": 1.04,
+    "speedup": 3.6,
+    "match": true
+  },
+  "query_filtered": {
+    "rust_ms": 0.09,
+    "python_ms": 1.22,
+    "speedup": 14.0,
+    "match": true
+  },
+  "query_events": {
+    "rust_ms": 0.15,
+    "python_ms": 1.08,
+    "speedup": 7.4,
+    "match": true
+  },
+  "get_metadata": {
+    "rust_ms": 0.01,
+    "python_ms": 0.12,
+    "speedup": 15.5,
+    "match": true
+  },
+  "spm_hrf": {
+    "rust_ms": 0.02,
+    "python_ms": 0.07,
+    "speedup": 3.4,
+    "match": true
+  },
+  "glover_hrf": {
+    "rust_ms": 0.02,
+    "python_ms": 0.07,
+    "speedup": 3.0,
+    "match": true
+  },
+  "butter_o1_c0.5": {
+    "rust_ms": 0.0,
+    "python_ms": 0.09,
+    "speedup": 372.2,
+    "max_err": "5.55e-17",
+    "match": true
+  },
+  "butter_o3_c0.3": {
+    "rust_ms": 0.0,
+    "python_ms": 0.1,
+    "speedup": 262.1,
+    "max_err": "0.00e+00",
+    "match": true
+  },
+  "butter_o5_c0.2": {
+    "rust_ms": 0.0,
+    "python_ms": 0.12,
+    "speedup": 207.1,
+    "max_err": "6.07e-17",
+    "match": true
+  },
+  "filtfilt": {
+    "rust_ms": 0.01,
+    "python_ms": 0.04,
+    "speedup": 5.2,
+    "rms_match": true
+  },
+  "schema_validate": {
+    "rust_ms": 2.13,
+    "python_ms": 0.0,
+    "speedup": 0.0
+  },
+  "inflect_singular": {
+    "rust_ms": 0.0,
+    "python_ms": 0.08,
+    "speedup": 95.9,
+    "match": true
+  },
+  "nifti_header": {
+    "rust_ms": 0.02,
+    "python_ms": 0.4,
+    "speedup": 22.4,
+    "match": true
+  },
+  "generate_report": {
+    "rust_ms": 9.85,
+    "python_ms": 0.0,
+    "speedup": 0.0
+  },
+  "e2e_eeg_eeg_cbm": {
+    "rust_ms": 9.3,
+    "python_ms": 64.52,
+    "speedup": 6.9,
+    "match": true
+  },
+  "e2e_eeg_eeg_rishikesh": {
+    "rust_ms": 26.9,
+    "python_ms": 200.63,
+    "speedup": 7.5,
+    "match": true
+  },
+  "e2e_eeg_eeg_face13": {
+    "rust_ms": 9.03,
+    "python_ms": 49.25,
+    "speedup": 5.5,
+    "match": true
+  },
+  "e2e_ieeg_ieeg_epilepsy": {
+    "rust_ms": 5.36,
+    "python_ms": 36.83,
+    "speedup": 6.9,
+    "match": true
+  },
+  "e2e_ieeg_ieeg_epilepsyNWB": {
+    "rust_ms": 3.63,
+    "python_ms": 28.08,
+    "speedup": 7.7,
+    "match": true
+  },
+  "e2e_ieeg_ieeg_visual_multimodal": {
+    "rust_ms": 40.63,
+    "python_ms": 226.2,
+    "speedup": 5.6,
+    "match": true
+  },
+  "e2e_meg_ds000246": {
+    "rust_ms": 7.86,
+    "python_ms": 49.84,
+    "speedup": 6.3,
+    "match": true
+  },
+  "e2e_meg_ds000247": {
+    "rust_ms": 26.91,
+    "python_ms": 118.6,
+    "speedup": 4.4,
+    "match": true
+  },
+  "e2e_meg_ds000248": {
+    "rust_ms": 4.74,
+    "python_ms": 33.13,
+    "speedup": 7.0,
+    "match": true
+  },
+  "e2e_pet_pet001": {
+    "rust_ms": 2.73,
+    "python_ms": 24.15,
+    "speedup": 8.8,
+    "match": true
+  },
+  "e2e_pet_pet006": {
+    "rust_ms": 1.63,
+    "python_ms": 18.79,
+    "speedup": 11.6,
+    "match": true
+  },
+  "e2e_perf_asl001": {
+    "rust_ms": 1.66,
+    "python_ms": 18.99,
+    "speedup": 11.4,
+    "match": true
+  },
+  "e2e_perf_asl002": {
+    "rust_ms": 1.66,
+    "python_ms": 19.97,
+    "speedup": 12.0,
+    "match": true
+  },
+  "e2e_perf_asl003": {
+    "rust_ms": 1.94,
+    "python_ms": 20.25,
+    "speedup": 10.5,
+    "match": true
+  },
+  "e2e_perf_asl004": {
+    "rust_ms": 1.74,
+    "python_ms": 20.8,
+    "speedup": 11.9,
+    "match": true
+  },
+  "e2e_perf_asl005": {
+    "rust_ms": 1.83,
+    "python_ms": 21.62,
+    "speedup": 11.8,
+    "match": true
+  },
+  "e2e_func_ds001": {
+    "rust_ms": 14.98,
+    "python_ms": 76.44,
+    "speedup": 5.1,
+    "match": true
+  },
+  "e2e_func_ds002": {
+    "rust_ms": 31.9,
+    "python_ms": 140.17,
+    "speedup": 4.4,
+    "match": true
+  },
+  "e2e_func_ds003": {
+    "rust_ms": 5.06,
+    "python_ms": 44.5,
+    "speedup": 8.8,
+    "match": true
+  },
+  "e2e_func_ds005": {
+    "rust_ms": 13.59,
+    "python_ms": 75.85,
+    "speedup": 5.6,
+    "match": true
+  },
+  "e2e_func_ds051": {
+    "rust_ms": 34.45,
+    "python_ms": 140.83,
+    "speedup": 4.1,
+    "match": true
+  },
+  "e2e_anat_ds004332": {
+    "rust_ms": 28.96,
+    "python_ms": 84.43,
+    "speedup": 2.9,
+    "match": true
+  },
+  "e2e_anat_qmri_mtsat": {
+    "rust_ms": 2.4,
+    "python_ms": 22.13,
+    "speedup": 9.2,
+    "match": true
+  },
+  "e2e_dwi_ds114": {
+    "rust_ms": 20.56,
+    "python_ms": 109.1,
+    "speedup": 5.3,
+    "match": true
+  },
+  "e2e_motion_motion_dualtask": {
+    "rust_ms": 124.17,
+    "python_ms": 423.42,
+    "speedup": 3.4,
+    "match": true
+  },
+  "e2e_micr_eeg_ds003645s_hed_demo": {
+    "rust_ms": 19.08,
+    "python_ms": 105.85,
+    "speedup": 5.5,
+    "match": true
+  }
+}

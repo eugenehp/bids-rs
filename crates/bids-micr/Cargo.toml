@@ -1,0 +1,20 @@
+[package]
+name = "bids-micr"
+description = "BIDS microscopy domain support — metadata, photos; optional TIFF/OME-TIFF image reading"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[features]
+default = []
+## Enable TIFF and OME-TIFF image reading. Pure Rust, no system dependencies.
+tiff = ["dep:tiff"]
+
+[dependencies]
+bids-core = { workspace = true }
+bids-io = { workspace = true }
+bids-layout = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tiff = { workspace = true, optional = true }
+

@@ -1,0 +1,31 @@
+[package]
+name = "bids-e2e-tests"
+description = "End-to-end tests comparing bids-rs against PyBIDS golden data"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+bids-core = { workspace = true }
+bids-layout = { workspace = true }
+bids-io = { workspace = true }
+bids-nifti = { workspace = true }
+bids-filter = { workspace = true }
+bids-formula = { workspace = true }
+bids-schema = { workspace = true }
+bids-inflect = { workspace = true }
+bids-modeling = { workspace = true }
+bids-validate = { workspace = true }
+bids-eeg = { workspace = true }
+bids-meg = { workspace = true }
+bids-pet = { workspace = true }
+bids-perf = { workspace = true }
+bids-ieeg = { workspace = true }
+bids-nirs = { workspace = true }
+bids-micr = { workspace = true }
+bids-mrs = { workspace = true }
+bids-motion = { workspace = true }
+bids-beh = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+walkdir = { workspace = true }

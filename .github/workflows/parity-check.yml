@@ -1,0 +1,103 @@
+name: PyBIDS Parity Check
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'  # Every Monday at 6am UTC
+  workflow_dispatch:      # Manual trigger
+  push:
+    branches: [main]
+    paths: ['crates/**', 'tests/**']
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  parity:
+    name: Parity & Benchmark
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install PyBIDS (latest)
+        run: |
+          pip install pybids scipy nibabel maturin
+          echo "PYBIDS_VERSION=$(python -c 'import bids; print(bids.__version__)')" >> $GITHUB_ENV
+
+      - name: Build pybids-rs wheel
+        working-directory: crates/pybids-rs
+        run: maturin develop --release
+
+      - name: Clone bids-examples
+        run: |
+          git clone --depth 1 https://github.com/bids-standard/bids-examples.git ../pybids/bids-examples
+
+      - name: Run Rust tests
+        run: cargo test --workspace --exclude bids-e2e-tests 2>&1 | tee /tmp/rust_tests.log
+
+      - name: Generate golden data
+        run: python tests/generate_golden.py
+
+      - name: Generate precision data
+        run: python tests/precision_test.py
+
+      - name: Run E2E tests
+        run: cargo test -p bids-e2e-tests -- --nocapture 2>&1 | tee /tmp/e2e_tests.log
+
+      - name: Run full benchmark
+        run: python tests/benchmark_all.py 2>&1 | tee /tmp/benchmark.log
+
+      - name: Detect new PyBIDS features
+        id: detect
+        run: python tests/detect_changes.py 2>&1 | tee /tmp/detect.log
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parity-results-${{ github.run_number }}
+          path: |
+            tests/golden/
+            /tmp/*.log
+
+      - name: Check for failures
+        if: failure()
+        run: |
+          echo "::error::Parity check failed — see logs for details"
+
+      - name: Post summary
+        if: always()
+        run: |
+          echo "## PyBIDS Parity Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**PyBIDS version:** ${{ env.PYBIDS_VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Rust Tests" >> $GITHUB_STEP_SUMMARY
+          grep "test result:" /tmp/rust_tests.log | tail -1 >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### E2E Tests" >> $GITHUB_STEP_SUMMARY
+          grep "test result:" /tmp/e2e_tests.log | tail -1 >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Benchmark Summary" >> $GITHUB_STEP_SUMMARY
+          grep -A20 "SUMMARY" /tmp/benchmark.log | head -25 >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Change Detection" >> $GITHUB_STEP_SUMMARY
+          cat /tmp/detect.log >> $GITHUB_STEP_SUMMARY

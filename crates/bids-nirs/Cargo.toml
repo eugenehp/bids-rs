@@ -1,0 +1,22 @@
+[package]
+name = "bids-nirs"
+description = "BIDS NIRS domain support — metadata, channels, events; optional SNIRF data reading"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[features]
+default = []
+## Enable SNIRF (Shared Near Infrared Spectroscopy Format) data reading.
+## Requires libhdf5 installed on the system. Adds the `hdf5` crate dependency.
+snirf = ["dep:hdf5"]
+
+[dependencies]
+bids-core = { workspace = true }
+bids-io = { workspace = true }
+bids-layout = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+bids-eeg = { workspace = true }
+hdf5 = { workspace = true, optional = true }
+

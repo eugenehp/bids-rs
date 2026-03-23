@@ -1,0 +1,6 @@
+[package]
+name = "bids-inflect"
+description = "English singular/plural inflection for BIDS entity names"
+version.workspace = true
+edition.workspace = true
+license.workspace = true

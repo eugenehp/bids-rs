@@ -1,0 +1,26 @@
+[package]
+name = "pybids-rs"
+version = "0.0.1"
+edition = "2024"
+license = "GPL-3.0-or-later"
+
+[lib]
+name = "pybids_rs"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.25", features = ["extension-module"] }
+bids-core = { path = "../bids-core" }
+bids-layout = { path = "../bids-layout" }
+bids-eeg = { path = "../bids-eeg" }
+bids-ieeg = { path = "../bids-ieeg" }
+bids-meg = { path = "../bids-meg" }
+bids-pet = { path = "../bids-pet" }
+bids-nifti = { path = "../bids-nifti" }
+bids-filter = { path = "../bids-filter" }
+bids-formula = { path = "../bids-formula" }
+bids-schema = { path = "../bids-schema" }
+bids-inflect = { path = "../bids-inflect" }
+bids-modeling = { path = "../bids-modeling" }
+bids-reports = { path = "../bids-reports" }
+serde_json = { workspace = true }

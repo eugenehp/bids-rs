@@ -1,0 +1,44 @@
+{
+  "edf_64ch_60s": {
+    "rust_ms": 4.004,
+    "python_ms": 12.372625000000248,
+    "speedup": 3.09,
+    "passed": true,
+    "file_mb": 15.7,
+    "n_channels": 64,
+    "n_samples": 122880
+  },
+  "edf_2ch_select": {
+    "rust_ms": 0.688,
+    "python_ms": 12.12616699999991,
+    "speedup": 17.63,
+    "passed": true
+  },
+  "edf_10s_window": {
+    "rust_ms": 0.656,
+    "python_ms": 12.150583999999576,
+    "speedup": 18.52,
+    "passed": true
+  },
+  "bdf_32ch_30s": {
+    "rust_ms": 1.528,
+    "python_ms": 8.124582999999852,
+    "speedup": 5.32,
+    "passed": true,
+    "file_mb": 5.9
+  },
+  "bv_64ch_60s": {
+    "rust_ms": 5.416,
+    "python_ms": 19.92645800000048,
+    "speedup": 3.68,
+    "passed": true,
+    "file_mb": 15.7
+  },
+  "edf_64ch_600s": {
+    "rust_ms": 53.56,
+    "python_ms": 103.6242910000027,
+    "speedup": 1.93,
+    "passed": true,
+    "file_mb": 157.3
+  }
+}

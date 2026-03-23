@@ -1,0 +1,43 @@
+[package]
+name = "bids"
+description = "Rust tools for BIDS (Brain Imaging Data Structure) datasets"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[features]
+default = []
+## Enable ndarray integration (EegData → Array2, NiftiImage → ArrayD).
+ndarray = ["bids-eeg/ndarray", "bids-nifti/ndarray"]
+## Enable safetensors export for ML frameworks (PyTorch, JAX, etc.).
+safetensors = ["bids-eeg/safetensors", "bids-nifti/safetensors"]
+## Enable memory-mapped NIfTI access (zero-copy via OS page cache).
+mmap = ["bids-nifti/mmap"]
+## Enable Apache Arrow + Parquet export for dataset manifests.
+arrow = ["bids-dataset/arrow"]
+
+[dependencies]
+bids-core = { workspace = true }
+bids-io = { workspace = true }
+bids-layout = { workspace = true }
+bids-variables = { workspace = true }
+bids-eeg = { workspace = true }
+bids-validate = { workspace = true }
+bids-derive = { workspace = true }
+bids-modeling = { workspace = true }
+bids-reports = { workspace = true }
+bids-ieeg = { workspace = true }
+bids-meg = { workspace = true }
+bids-pet = { workspace = true }
+bids-perf = { workspace = true }
+bids-motion = { workspace = true }
+bids-nirs = { workspace = true }
+bids-mrs = { workspace = true }
+bids-micr = { workspace = true }
+bids-beh = { workspace = true }
+bids-nifti = { workspace = true }
+bids-filter = { workspace = true }
+bids-formula = { workspace = true }
+bids-schema = { workspace = true }
+bids-inflect = { workspace = true }
+bids-dataset = { workspace = true }

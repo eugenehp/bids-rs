@@ -1,0 +1,15 @@
+[package]
+name = "bids-io"
+description = "File I/O for BIDS datasets: TSV, JSON, compressed files, path building"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+bids-core = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+csv = { workspace = true }
+flate2 = { workspace = true }
+regex = { workspace = true }
+indexmap = { workspace = true }
