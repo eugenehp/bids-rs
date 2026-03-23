@@ -70,7 +70,10 @@ fn parse_tsv_reader<R: Read>(reader: BufReader<R>) -> Result<Vec<TsvRow>> {
     let header_line = lines
         .next()
         .ok_or_else(|| BidsError::Csv("Empty TSV file".to_string()))??;
-    let headers: Vec<String> = header_line.split('\t').map(|s| s.trim().to_string()).collect();
+    let headers: Vec<String> = header_line
+        .split('\t')
+        .map(|s| s.trim().to_string())
+        .collect();
 
     let mut rows = Vec::new();
     for line in lines {
@@ -96,7 +99,10 @@ fn parse_tsv_raw_reader<R: Read>(reader: BufReader<R>) -> Result<(Vec<String>, V
     let header_line = lines
         .next()
         .ok_or_else(|| BidsError::Csv("Empty TSV file".to_string()))??;
-    let headers: Vec<String> = header_line.split('\t').map(|s| s.trim().to_string()).collect();
+    let headers: Vec<String> = header_line
+        .split('\t')
+        .map(|s| s.trim().to_string())
+        .collect();
 
     let mut rows = Vec::new();
     for line in lines {
@@ -104,10 +110,17 @@ fn parse_tsv_raw_reader<R: Read>(reader: BufReader<R>) -> Result<(Vec<String>, V
         if line.trim().is_empty() {
             continue;
         }
-        let values: Vec<String> = line.split('\t').map(|s| {
-            let v = s.trim();
-            if v == "n/a" { String::new() } else { v.to_string() }
-        }).collect();
+        let values: Vec<String> = line
+            .split('\t')
+            .map(|s| {
+                let v = s.trim();
+                if v == "n/a" {
+                    String::new()
+                } else {
+                    v.to_string()
+                }
+            })
+            .collect();
         rows.push(values);
     }
     Ok((headers, rows))

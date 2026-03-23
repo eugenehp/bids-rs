@@ -16,13 +16,17 @@ pub fn run(root: &Path) -> bids_core::error::Result<()> {
     let min_version = bids::MIN_COMPATIBLE_VERSION.to_string();
 
     // Update BIDSVersion if below minimum compatible version
-    let old_ver = desc.get("BIDSVersion").and_then(|v| v.as_str()).map(String::from);
+    let old_ver = desc
+        .get("BIDSVersion")
+        .and_then(|v| v.as_str())
+        .map(String::from);
     if let Some(ver) = old_ver
-        && ver.as_str() < min_version.as_str() {
-            desc["BIDSVersion"] = serde_json::json!(target_version);
-            changed = true;
-            println!("Updated BIDSVersion: {ver} -> {target_version}");
-        }
+        && ver.as_str() < min_version.as_str()
+    {
+        desc["BIDSVersion"] = serde_json::json!(target_version);
+        changed = true;
+        println!("Updated BIDSVersion: {ver} -> {target_version}");
+    }
 
     // Add DatasetType if missing
     if desc.get("DatasetType").is_none() {
@@ -35,7 +39,8 @@ pub fn run(root: &Path) -> bids_core::error::Result<()> {
     if desc.get("PipelineDescription").is_some() && desc.get("GeneratedBy").is_none() {
         let pd = desc["PipelineDescription"].take();
         desc["GeneratedBy"] = serde_json::json!([pd]);
-        desc.as_object_mut().map(|m| m.remove("PipelineDescription"));
+        desc.as_object_mut()
+            .map(|m| m.remove("PipelineDescription"));
         changed = true;
         println!("Converted PipelineDescription to GeneratedBy");
     }

@@ -17,10 +17,10 @@
 //! let ts = nii.read_timeseries(32, 32, 16).unwrap();
 //! ```
 
-use crate::{NiftiHeader, NiftiError, DataType};
-use std::path::Path;
+use crate::{DataType, NiftiError, NiftiHeader};
 use std::fs::File;
 use std::io::Read;
+use std::path::Path;
 
 /// A memory-mapped NIfTI file that decodes voxels on demand.
 pub struct MmapNifti {
@@ -69,7 +69,11 @@ impl MmapNifti {
         #[cfg(not(feature = "mmap"))]
         let mmap = std::fs::read(path)?;
 
-        Ok(Self { header, mmap, data_offset })
+        Ok(Self {
+            header,
+            mmap,
+            data_offset,
+        })
     }
 
     fn open_gz(path: &Path) -> Result<Self, NiftiError> {
@@ -91,24 +95,40 @@ impl MmapNifti {
         #[cfg(feature = "mmap")]
         {
             // Write decompressed data to a temp file, then mmap it
-            let tmp = std::env::temp_dir().join(format!("bids_nifti_{:x}.tmp",
-                std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_nanos()));
+            let tmp = std::env::temp_dir().join(format!(
+                "bids_nifti_{:x}.tmp",
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_nanos()
+            ));
             std::fs::write(&tmp, &buf)?;
             let file = File::open(&tmp)?;
             // SAFETY: read-only mmap, file not modified
             let mmap = unsafe { memmap2::Mmap::map(&file)? };
             let _ = std::fs::remove_file(&tmp); // cleanup (mmap keeps handle)
-            return Ok(Self { header, mmap, data_offset });
+            return Ok(Self {
+                header,
+                mmap,
+                data_offset,
+            });
         }
         #[cfg(not(feature = "mmap"))]
-        Ok(Self { header, mmap: buf, data_offset })
+        Ok(Self {
+            header,
+            mmap: buf,
+            data_offset,
+        })
     }
 
     /// Read a single 3D volume from a 4D image.
     pub fn read_volume(&self, t: usize) -> Result<Vec<f64>, NiftiError> {
         let n_vols = self.header.n_vols();
         if t >= n_vols {
-            return Err(NiftiError::VolumeOutOfRange { requested: t, available: n_vols });
+            return Err(NiftiError::VolumeOutOfRange {
+                requested: t,
+                available: n_vols,
+            });
         }
         let dt = self.header.data_type();
         let bpv = dt.bytes_per_voxel();
@@ -118,11 +138,17 @@ impl MmapNifti {
 
         if end > self.mmap.len() {
             return Err(NiftiError::Io(std::io::Error::new(
-                std::io::ErrorKind::UnexpectedEof, "Volume extends past end of file")));
+                std::io::ErrorKind::UnexpectedEof,
+                "Volume extends past end of file",
+            )));
         }
 
-        crate::decode_raw_to_f64(&self.mmap[start..end], dt,
-            self.header.scl_slope, self.header.scl_inter)
+        crate::decode_raw_to_f64(
+            &self.mmap[start..end],
+            dt,
+            self.header.scl_slope,
+            self.header.scl_inter,
+        )
     }
 
     /// Read a voxel's time series across all volumes.
@@ -130,7 +156,9 @@ impl MmapNifti {
         let (nx, ny, nz) = self.header.matrix_size();
         if x >= nx || y >= ny || z >= nz {
             return Err(NiftiError::Io(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput, "Voxel coordinates out of bounds")));
+                std::io::ErrorKind::InvalidInput,
+                "Voxel coordinates out of bounds",
+            )));
         }
 
         let dt = self.header.data_type();
@@ -139,7 +167,11 @@ impl MmapNifti {
         let n_vols = self.header.n_vols();
         let voxel_offset = x + nx * (y + ny * z);
 
-        let slope = if self.header.scl_slope == 0.0 { 1.0 } else { self.header.scl_slope };
+        let slope = if self.header.scl_slope == 0.0 {
+            1.0
+        } else {
+            self.header.scl_slope
+        };
         let inter = self.header.scl_inter;
         let apply_scaling = self.header.has_scaling();
 
@@ -149,11 +181,15 @@ impl MmapNifti {
             let byte_end = byte_offset + bpv;
             if byte_end > self.mmap.len() {
                 return Err(NiftiError::Io(std::io::Error::new(
-                    std::io::ErrorKind::UnexpectedEof, "Voxel data extends past end of file")));
+                    std::io::ErrorKind::UnexpectedEof,
+                    "Voxel data extends past end of file",
+                )));
             }
             let raw = &self.mmap[byte_offset..byte_end];
             let mut val = decode_single_voxel(raw, dt);
-            if apply_scaling { val = val * slope + inter; }
+            if apply_scaling {
+                val = val * slope + inter;
+            }
             ts.push(val);
         }
         Ok(ts)
@@ -169,7 +205,9 @@ impl MmapNifti {
             let dim = self.header.dim[i + 1] as usize;
             if ix >= dim {
                 return Err(NiftiError::Io(std::io::Error::new(
-                    std::io::ErrorKind::InvalidInput, "Index out of bounds")));
+                    std::io::ErrorKind::InvalidInput,
+                    "Index out of bounds",
+                )));
             }
             linear += ix * stride;
             stride *= dim;
@@ -178,12 +216,18 @@ impl MmapNifti {
         let byte_end = byte_offset + bpv;
         if byte_end > self.mmap.len() {
             return Err(NiftiError::Io(std::io::Error::new(
-                std::io::ErrorKind::UnexpectedEof, "Voxel data extends past end of file")));
+                std::io::ErrorKind::UnexpectedEof,
+                "Voxel data extends past end of file",
+            )));
         }
         let raw = &self.mmap[byte_offset..byte_end];
         let mut val = decode_single_voxel(raw, dt);
         if self.header.has_scaling() {
-            let slope = if self.header.scl_slope == 0.0 { 1.0 } else { self.header.scl_slope };
+            let slope = if self.header.scl_slope == 0.0 {
+                1.0
+            } else {
+                self.header.scl_slope
+            };
             val = val * slope + self.header.scl_inter;
         }
         Ok(val)
@@ -200,9 +244,15 @@ fn decode_single_voxel(raw: &[u8], dt: DataType) -> f64 {
         DataType::Int32 => i32::from_le_bytes([raw[0], raw[1], raw[2], raw[3]]) as f64,
         DataType::UInt32 => u32::from_le_bytes([raw[0], raw[1], raw[2], raw[3]]) as f64,
         DataType::Float32 => f32::from_le_bytes([raw[0], raw[1], raw[2], raw[3]]) as f64,
-        DataType::Float64 => f64::from_le_bytes([raw[0], raw[1], raw[2], raw[3], raw[4], raw[5], raw[6], raw[7]]),
-        DataType::Int64 => i64::from_le_bytes([raw[0], raw[1], raw[2], raw[3], raw[4], raw[5], raw[6], raw[7]]) as f64,
-        DataType::UInt64 => u64::from_le_bytes([raw[0], raw[1], raw[2], raw[3], raw[4], raw[5], raw[6], raw[7]]) as f64,
+        DataType::Float64 => f64::from_le_bytes([
+            raw[0], raw[1], raw[2], raw[3], raw[4], raw[5], raw[6], raw[7],
+        ]),
+        DataType::Int64 => i64::from_le_bytes([
+            raw[0], raw[1], raw[2], raw[3], raw[4], raw[5], raw[6], raw[7],
+        ]) as f64,
+        DataType::UInt64 => u64::from_le_bytes([
+            raw[0], raw[1], raw[2], raw[3], raw[4], raw[5], raw[6], raw[7],
+        ]) as f64,
         DataType::Unknown => 0.0,
     }
 }
@@ -218,7 +268,10 @@ mod tests {
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("bold.nii");
 
-        let nx = 8; let ny = 8; let nz = 4; let nt = 20;
+        let nx = 8;
+        let ny = 8;
+        let nz = 4;
+        let nt = 20;
         let vol_size = nx * ny * nz;
 
         // Build NIfTI-1 file
@@ -261,7 +314,13 @@ mod tests {
         let ts = nii.read_timeseries(0, 0, 0).unwrap();
         assert_eq!(ts.len(), nt);
         for (t, &v) in ts.iter().enumerate() {
-            assert!((v - t as f64).abs() < 0.01, "ts[{}] = {} expected {}", t, v, t);
+            assert!(
+                (v - t as f64).abs() < 0.01,
+                "ts[{}] = {} expected {}",
+                t,
+                v,
+                t
+            );
         }
 
         // Out of range

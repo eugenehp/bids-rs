@@ -92,7 +92,9 @@ impl OpenNeuro {
     ///
     /// Optionally filter to a subtree with `prefix` (e.g. `Some("sub-01/eeg")`).
     pub fn list_files(
-        &self, dataset_id: &str, prefix: Option<&str>,
+        &self,
+        dataset_id: &str,
+        prefix: Option<&str>,
     ) -> crate::Result<Vec<RemoteFile>> {
         let mut all = Vec::new();
         let mut marker = String::new();
@@ -107,9 +109,16 @@ impl OpenNeuro {
                 url.push_str(&format!("&marker={marker}"));
             }
 
-            let mut resp = http::get_with_retry_limited(&self.agent, &url, self.config.max_retries, Some(&self.s3_listing_limiter))?;
+            let mut resp = http::get_with_retry_limited(
+                &self.agent,
+                &url,
+                self.config.max_retries,
+                Some(&self.s3_listing_limiter),
+            )?;
 
-            let body = resp.body_mut().read_to_string()
+            let body = resp
+                .body_mut()
+                .read_to_string()
                 .map_err(|e| crate::Error::Network(e.to_string()))?;
 
             let (files, truncated, next) = parse_s3_listing(&body, dataset_id)?;
@@ -129,7 +138,10 @@ impl OpenNeuro {
     ///
     /// Skips if the file already exists with the expected size.
     pub fn download_file(
-        &self, dataset_id: &str, remote_path: &str, local_dir: &Path,
+        &self,
+        dataset_id: &str,
+        remote_path: &str,
+        local_dir: &Path,
     ) -> crate::Result<std::path::PathBuf> {
         let local_path = local_dir.join(dataset_id).join(remote_path);
         let url = format!("{}/{}/{}", self.s3_bucket, dataset_id, remote_path);
@@ -141,7 +153,12 @@ impl OpenNeuro {
             std::fs::create_dir_all(parent)?;
         }
 
-        let resp = http::get_with_retry_limited(&self.agent, &url, self.config.max_retries, Some(&self.s3_download_limiter))?;
+        let resp = http::get_with_retry_limited(
+            &self.agent,
+            &url,
+            self.config.max_retries,
+            Some(&self.s3_download_limiter),
+        )?;
 
         let mut file = std::fs::File::create(&local_path)?;
         std::io::copy(&mut resp.into_body().into_reader(), &mut file)?;
@@ -155,7 +172,10 @@ impl OpenNeuro {
     /// - Existing files with matching size are skipped (resume support).
     /// - Uses 8 parallel download threads for throughput.
     pub fn download_dataset<F>(
-        &self, dataset_id: &str, local_dir: &Path, filter: Option<F>,
+        &self,
+        dataset_id: &str,
+        local_dir: &Path,
+        filter: Option<F>,
     ) -> crate::Result<DownloadReport>
     where
         F: Fn(&RemoteFile) -> bool,
@@ -173,7 +193,10 @@ impl OpenNeuro {
             let local = local_dir.join(dataset_id).join(&rf.path);
             if local.exists() {
                 if let Ok(m) = std::fs::metadata(&local) {
-                    if m.len() == rf.size { skipped += 1; continue; }
+                    if m.len() == rf.size {
+                        skipped += 1;
+                        continue;
+                    }
                 }
             }
             to_download.push(rf.clone());
@@ -210,10 +233,19 @@ impl OpenNeuro {
                             Ok(resp) => {
                                 match std::fs::File::create(&local_path) {
                                     Ok(mut file) => {
-                                        match std::io::copy(&mut resp.into_body().into_reader(), &mut file) {
+                                        match std::io::copy(
+                                            &mut resp.into_body().into_reader(),
+                                            &mut file,
+                                        ) {
                                             Ok(_) => {
-                                                dl.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                                                dl_bytes.fetch_add(rf.size, std::sync::atomic::Ordering::Relaxed);
+                                                dl.fetch_add(
+                                                    1,
+                                                    std::sync::atomic::Ordering::Relaxed,
+                                                );
+                                                dl_bytes.fetch_add(
+                                                    rf.size,
+                                                    std::sync::atomic::Ordering::Relaxed,
+                                                );
                                             }
                                             Err(_) => {
                                                 // Remove partial file to prevent stale cache hits
@@ -222,10 +254,14 @@ impl OpenNeuro {
                                             }
                                         }
                                     }
-                                    Err(e) => { errs.lock().unwrap().push(format!("{}: {}", rf.path, e)); }
+                                    Err(e) => {
+                                        errs.lock().unwrap().push(format!("{}: {}", rf.path, e));
+                                    }
                                 }
                             }
-                            Err(e) => { errs.lock().unwrap().push(format!("{}: {}", rf.path, e)); }
+                            Err(e) => {
+                                errs.lock().unwrap().push(format!("{}: {}", rf.path, e));
+                            }
                         }
                     }
                 });
@@ -253,7 +289,11 @@ impl OpenNeuro {
     /// Downloads are parallelized across N threads (configured by
     /// `BIDS_DOWNLOAD_THREADS`, default 8).
     pub fn download_to_cache<F>(
-        &self, dataset_id: &str, version: &str, cache: &crate::Cache, filter: Option<F>,
+        &self,
+        dataset_id: &str,
+        version: &str,
+        cache: &crate::Cache,
+        filter: Option<F>,
     ) -> crate::Result<std::path::PathBuf>
     where
         F: Fn(&RemoteFile) -> bool + Send,
@@ -270,17 +310,22 @@ impl OpenNeuro {
         };
 
         // Filter out already-cached files with correct size
-        let to_download: Vec<&RemoteFile> = targets.iter().filter(|rf| {
-            let snap_path = cache.snapshot_dir(dataset_id, version).join(&rf.path);
-            if snap_path.exists() {
-                if let Ok(meta) = std::fs::metadata(&snap_path) {
-                    if meta.len() == rf.size { return false; }
-                    // Size mismatch — re-download
-                    let _ = std::fs::remove_file(&snap_path);
+        let to_download: Vec<&RemoteFile> = targets
+            .iter()
+            .filter(|rf| {
+                let snap_path = cache.snapshot_dir(dataset_id, version).join(&rf.path);
+                if snap_path.exists() {
+                    if let Ok(meta) = std::fs::metadata(&snap_path) {
+                        if meta.len() == rf.size {
+                            return false;
+                        }
+                        // Size mismatch — re-download
+                        let _ = std::fs::remove_file(&snap_path);
+                    }
                 }
-            }
-            true
-        }).collect();
+                true
+            })
+            .collect();
 
         // Parallel download with N threads
         let n_threads = self.config.download_threads.min(to_download.len().max(1));
@@ -289,8 +334,7 @@ impl OpenNeuro {
         let retries = self.config.max_retries;
 
         let tmp_dir = cache.root().join("tmp");
-        std::fs::create_dir_all(&tmp_dir)
-            .map_err(crate::Error::Io)?;
+        std::fs::create_dir_all(&tmp_dir).map_err(crate::Error::Io)?;
 
         let chunk_size = (to_download.len() + n_threads - 1) / n_threads.max(1);
         std::thread::scope(|scope| {
@@ -316,19 +360,31 @@ impl OpenNeuro {
                             Ok(resp) => {
                                 match std::fs::File::create(&tmp_file) {
                                     Ok(mut file) => {
-                                        let copy_ok = std::io::copy(&mut resp.into_body().into_reader(), &mut file).is_ok();
+                                        let copy_ok = std::io::copy(
+                                            &mut resp.into_body().into_reader(),
+                                            &mut file,
+                                        )
+                                        .is_ok();
                                         drop(file); // close before store/remove
                                         if copy_ok {
-                                            if let Err(e) = cache.store_file_from_disk(ds_id, ver, &rf.path, &tmp_file) {
-                                                errs.lock().unwrap().push(format!("{}: {}", rf.path, e));
+                                            if let Err(e) = cache.store_file_from_disk(
+                                                ds_id, ver, &rf.path, &tmp_file,
+                                            ) {
+                                                errs.lock()
+                                                    .unwrap()
+                                                    .push(format!("{}: {}", rf.path, e));
                                             }
                                         }
                                         let _ = std::fs::remove_file(&tmp_file);
                                     }
-                                    Err(e) => { errs.lock().unwrap().push(format!("{}: {}", rf.path, e)); }
+                                    Err(e) => {
+                                        errs.lock().unwrap().push(format!("{}: {}", rf.path, e));
+                                    }
                                 }
                             }
-                            Err(e) => { errs.lock().unwrap().push(format!("{}: {}", rf.path, e)); }
+                            Err(e) => {
+                                errs.lock().unwrap().push(format!("{}: {}", rf.path, e));
+                            }
                         }
                     }
                 });
@@ -337,11 +393,16 @@ impl OpenNeuro {
 
         let errs = errors.into_inner().unwrap();
         if !errs.is_empty() {
-            return Err(crate::Error::Network(format!("{} download errors: {}", errs.len(), errs[0])));
+            return Err(crate::Error::Network(format!(
+                "{} download errors: {}",
+                errs.len(),
+                errs[0]
+            )));
         }
 
         // Mark complete
-        cache.mark_complete(dataset_id, version)
+        cache
+            .mark_complete(dataset_id, version)
             .map_err(crate::Error::Io)?;
 
         Ok(cache.snapshot_dir(dataset_id, version))
@@ -350,7 +411,12 @@ impl OpenNeuro {
     /// Raw GraphQL query (rate-limited to 5 req/s).
     pub fn graphql(&self, query: &str) -> crate::Result<serde_json::Value> {
         let body = serde_json::json!({ "query": query });
-        let json = http::post_json_limited(&self.agent, &self.graphql_endpoint, &body, Some(&self.graphql_limiter))?;
+        let json = http::post_json_limited(
+            &self.agent,
+            &self.graphql_endpoint,
+            &body,
+            Some(&self.graphql_limiter),
+        )?;
 
         if let Some(errors) = json["errors"].as_array() {
             if !errors.is_empty() {
@@ -363,7 +429,9 @@ impl OpenNeuro {
 }
 
 impl Default for OpenNeuro {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 /// Report from a download operation.
@@ -381,9 +449,15 @@ pub struct DownloadReport {
 
 impl std::fmt::Display for DownloadReport {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}: {}/{} files ({} skipped, {:.1} MB)",
-            self.dataset_id, self.downloaded, self.total_files,
-            self.skipped, self.downloaded_bytes as f64 / 1e6)?;
+        write!(
+            f,
+            "{}: {}/{} files ({} skipped, {:.1} MB)",
+            self.dataset_id,
+            self.downloaded,
+            self.total_files,
+            self.skipped,
+            self.downloaded_bytes as f64 / 1e6
+        )?;
         if !self.errors.is_empty() {
             write!(f, ", {} errors", self.errors.len())?;
         }
@@ -402,21 +476,41 @@ pub struct SearchBuilder<'a> {
 
 impl<'a> SearchBuilder<'a> {
     fn new(client: &'a OpenNeuro) -> Self {
-        Self { client, modality: None, species: None, keyword: None, limit: 100 }
+        Self {
+            client,
+            modality: None,
+            species: None,
+            keyword: None,
+            limit: 100,
+        }
     }
 
     #[must_use]
-    pub fn modality(mut self, m: &str) -> Self { self.modality = Some(m.into()); self }
+    pub fn modality(mut self, m: &str) -> Self {
+        self.modality = Some(m.into());
+        self
+    }
     #[must_use]
-    pub fn species(mut self, s: &str) -> Self { self.species = Some(s.into()); self }
+    pub fn species(mut self, s: &str) -> Self {
+        self.species = Some(s.into());
+        self
+    }
     #[must_use]
-    pub fn keyword(mut self, k: &str) -> Self { self.keyword = Some(k.into()); self }
+    pub fn keyword(mut self, k: &str) -> Self {
+        self.keyword = Some(k.into());
+        self
+    }
     #[must_use]
-    pub fn limit(mut self, n: u32) -> Self { self.limit = n; self }
+    pub fn limit(mut self, n: u32) -> Self {
+        self.limit = n;
+        self
+    }
 
     pub fn execute(self) -> crate::Result<Vec<DatasetInfo>> {
         // Server-side modality filter (the only filter the API supports)
-        let modality_arg = self.modality.as_deref()
+        let modality_arg = self
+            .modality
+            .as_deref()
             .map(|m| format!(r#", modality: "{m}""#))
             .unwrap_or_default();
 
@@ -436,8 +530,13 @@ impl<'a> SearchBuilder<'a> {
             let md = &n["metadata"];
             let sn = &n["latestSnapshot"];
 
-            let modalities: Vec<String> = md["modalities"].as_array()
-                .map(|a| a.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+            let modalities: Vec<String> = md["modalities"]
+                .as_array()
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|v| v.as_str().map(String::from))
+                        .collect()
+                })
                 .unwrap_or_default();
 
             let info = DatasetInfo {
@@ -445,27 +544,43 @@ impl<'a> SearchBuilder<'a> {
                 name: n["name"].as_str().unwrap_or("").into(),
                 modalities,
                 species: md["species"].as_str().map(Into::into),
-                study_domain: md["studyDomain"].as_str()
-                    .filter(|s| !s.is_empty() && *s != "#").map(Into::into),
+                study_domain: md["studyDomain"]
+                    .as_str()
+                    .filter(|s| !s.is_empty() && *s != "#")
+                    .map(Into::into),
                 latest_version: sn["tag"].as_str().map(Into::into),
                 size_bytes: sn["size"].as_u64(),
-                doi: md["openneuroPaperDOI"].as_str()
-                    .filter(|s| !s.is_empty() && *s != "#").map(Into::into),
+                doi: md["openneuroPaperDOI"]
+                    .as_str()
+                    .filter(|s| !s.is_empty() && *s != "#")
+                    .map(Into::into),
             };
 
             if let Some(ref m) = self.modality {
-                if !info.modalities.iter().any(|mm| mm.eq_ignore_ascii_case(m)) { continue; }
+                if !info.modalities.iter().any(|mm| mm.eq_ignore_ascii_case(m)) {
+                    continue;
+                }
             }
             if let Some(ref s) = self.species {
-                if !info.species.as_ref().is_some_and(|sp| sp.eq_ignore_ascii_case(s)) { continue; }
+                if !info
+                    .species
+                    .as_ref()
+                    .is_some_and(|sp| sp.eq_ignore_ascii_case(s))
+                {
+                    continue;
+                }
             }
             // Client-side keyword filter (API doesn't support text search)
             if let Some(ref kw) = self.keyword {
                 let kw_lower = kw.to_lowercase();
                 let name_match = info.name.to_lowercase().contains(&kw_lower);
-                let domain_match = info.study_domain.as_ref()
+                let domain_match = info
+                    .study_domain
+                    .as_ref()
                     .is_some_and(|d| d.to_lowercase().contains(&kw_lower));
-                if !name_match && !domain_match { continue; }
+                if !name_match && !domain_match {
+                    continue;
+                }
             }
 
             out.push(info);
@@ -482,7 +597,10 @@ impl<'a> SearchBuilder<'a> {
 // If the S3 response format ever changes significantly, consider
 // switching to `quick-xml`.
 
-fn parse_s3_listing(xml: &str, dataset_id: &str) -> Result<(Vec<RemoteFile>, bool, String), crate::Error> {
+fn parse_s3_listing(
+    xml: &str,
+    dataset_id: &str,
+) -> Result<(Vec<RemoteFile>, bool, String), crate::Error> {
     let mut files = Vec::new();
     let prefix = format!("{dataset_id}/");
     let truncated = xml_tag_value(xml, "IsTruncated").as_deref() == Some("true");
@@ -494,12 +612,19 @@ fn parse_s3_listing(xml: &str, dataset_id: &str) -> Result<(Vec<RemoteFile>, boo
         if let Some(end) = xml[abs..].find("</Contents>") {
             let entry = &xml[abs..abs + end + 11];
             let key = xml_tag_value(entry, "Key").unwrap_or_default();
-            let size: u64 = xml_tag_value(entry, "Size").and_then(|s| s.parse().ok()).unwrap_or(0);
+            let size: u64 = xml_tag_value(entry, "Size")
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(0);
 
             if key.starts_with(&prefix) && size > 0 {
-                files.push(RemoteFile { path: key[prefix.len()..].into(), size });
+                files.push(RemoteFile {
+                    path: key[prefix.len()..].into(),
+                    size,
+                });
             }
-            if !key.is_empty() { last_key = key; }
+            if !key.is_empty() {
+                last_key = key;
+            }
             pos = abs + end + 11;
         } else {
             break;
@@ -539,10 +664,14 @@ mod tests {
     #[test]
     fn test_dataset_info_serde() {
         let info = DatasetInfo {
-            id: "ds000117".into(), name: "Test".into(),
-            modalities: vec!["eeg".into()], species: Some("Human".into()),
-            study_domain: None, latest_version: Some("1.0.0".into()),
-            size_bytes: Some(1000), doi: None,
+            id: "ds000117".into(),
+            name: "Test".into(),
+            modalities: vec!["eeg".into()],
+            species: Some("Human".into()),
+            study_domain: None,
+            latest_version: Some("1.0.0".into()),
+            size_bytes: Some(1000),
+            doi: None,
         };
         let json = serde_json::to_string(&info).unwrap();
         let back: DatasetInfo = serde_json::from_str(&json).unwrap();

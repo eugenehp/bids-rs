@@ -275,12 +275,20 @@ impl Paradigm {
 
 impl std::fmt::Display for Paradigm {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let filters: Vec<String> = self.filters.iter()
+        let filters: Vec<String> = self
+            .filters
+            .iter()
             .map(|(lo, hi)| format!("{lo}–{hi} Hz"))
             .collect();
         write!(f, "{} ({})", self.name, filters.join(", "))?;
         if let Some(dur) = self.epoch_duration() {
-            write!(f, " [{:.1}–{:.1}s = {:.1}s]", self.tmin, self.tmax.unwrap(), dur)?;
+            write!(
+                f,
+                " [{:.1}–{:.1}s = {:.1}s]",
+                self.tmin,
+                self.tmax.unwrap(),
+                dur
+            )?;
         }
         if let Some(sr) = self.resample_hz {
             write!(f, " @{sr:.0}Hz")?;
@@ -347,8 +355,12 @@ mod tests {
 
     #[test]
     fn test_filter_bank() {
-        let fb = Paradigm::motor_imagery()
-            .filter_bank(&[(8.0, 12.0), (12.0, 16.0), (16.0, 20.0), (20.0, 24.0)]);
+        let fb = Paradigm::motor_imagery().filter_bank(&[
+            (8.0, 12.0),
+            (12.0, 16.0),
+            (16.0, 20.0),
+            (20.0, 24.0),
+        ]);
         assert_eq!(fb.n_filters(), 4);
     }
 

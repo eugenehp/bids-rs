@@ -122,10 +122,14 @@ impl DatasetDescription {
     /// is empty.
     pub fn validate(&self) -> Result<()> {
         if self.name.is_empty() {
-            return Err(BidsError::MissingMandatoryField { field: "Name".into() });
+            return Err(BidsError::MissingMandatoryField {
+                field: "Name".into(),
+            });
         }
         if self.bids_version.is_empty() {
-            return Err(BidsError::MissingMandatoryField { field: "BIDSVersion".into() });
+            return Err(BidsError::MissingMandatoryField {
+                field: "BIDSVersion".into(),
+            });
         }
         Ok(())
     }
@@ -141,9 +145,10 @@ impl DatasetDescription {
     pub fn pipeline_name(&self) -> Option<&str> {
         // Try GeneratedBy first (BIDS >= 1.4.0)
         if let Some(generated_by) = &self.generated_by
-            && let Some(first) = generated_by.first() {
-                return Some(&first.name);
-            }
+            && let Some(first) = generated_by.first()
+        {
+            return Some(&first.name);
+        }
         // Fall back to PipelineDescription (deprecated)
         if let Some(pd) = &self.pipeline_description {
             return Some(&pd.name);

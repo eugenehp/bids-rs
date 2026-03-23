@@ -62,7 +62,10 @@ impl std::fmt::Debug for EegData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("EegData")
             .field("n_channels", &self.data.len())
-            .field("n_samples", &self.data.first().map_or(0, std::vec::Vec::len))
+            .field(
+                "n_samples",
+                &self.data.first().map_or(0, std::vec::Vec::len),
+            )
             .field("channel_labels", &self.channel_labels)
             .field("sampling_rates", &self.sampling_rates)
             .field("duration", &self.duration)
@@ -75,18 +78,23 @@ impl std::fmt::Debug for EegData {
 impl std::fmt::Display for EegData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let sr = self.sampling_rates.first().copied().unwrap_or(0.0);
-        write!(f, "EegData({} ch × {} samples @ {:.0} Hz, {:.1}s)",
+        write!(
+            f,
+            "EegData({} ch × {} samples @ {:.0} Hz, {:.1}s)",
             self.data.len(),
             self.data.first().map_or(0, std::vec::Vec::len),
             sr,
-            self.duration)
+            self.duration
+        )
     }
 }
 
 impl EegData {
     /// Number of channels.
     #[inline]
-    pub fn n_channels(&self) -> usize { self.data.len() }
+    pub fn n_channels(&self) -> usize {
+        self.data.len()
+    }
 
     /// Number of samples for the given channel index.
     #[inline]
@@ -111,7 +119,9 @@ impl EegData {
     /// Returns one f64 per sample: `[0.0, 1/sr, 2/sr, ...]`.
     pub fn times(&self, channel: usize) -> Option<Vec<f64>> {
         let n = self.n_samples(channel);
-        if n == 0 { return None; }
+        if n == 0 {
+            return None;
+        }
         let sr = self.sampling_rates.get(channel).copied().unwrap_or(1.0);
         Some((0..n).map(|i| i as f64 / sr).collect())
     }
@@ -140,16 +150,23 @@ impl EegData {
             }
         }
         EegData {
-            channel_labels: labels, data, sampling_rates: rates,
-            duration: self.duration, annotations: self.annotations.clone(),
-            stim_channel_indices: stim, is_discontinuous: false, record_onsets: Vec::new(),
+            channel_labels: labels,
+            data,
+            sampling_rates: rates,
+            duration: self.duration,
+            annotations: self.annotations.clone(),
+            stim_channel_indices: stim,
+            is_discontinuous: false,
+            record_onsets: Vec::new(),
         }
     }
 
     /// Exclude channels by name, returning a new `EegData` with all other channels.
     #[must_use]
     pub fn exclude_channels(&self, names: &[&str]) -> EegData {
-        let keep: Vec<&str> = self.channel_labels.iter()
+        let keep: Vec<&str> = self
+            .channel_labels
+            .iter()
             .filter(|l| !names.contains(&l.as_str()))
             .map(std::string::String::as_str)
             .collect();
@@ -169,7 +186,9 @@ impl EegData {
             rates.push(sr);
         }
         // Filter annotations to the time window
-        let anns = self.annotations.iter()
+        let anns = self
+            .annotations
+            .iter()
             .filter(|a| a.onset + a.duration >= start_sec && a.onset < end_sec)
             .map(|a| Annotation {
                 onset: (a.onset - start_sec).max(0.0),
@@ -179,10 +198,13 @@ impl EegData {
             .collect();
         EegData {
             channel_labels: self.channel_labels.clone(),
-            data, sampling_rates: rates,
+            data,
+            sampling_rates: rates,
             duration: end_sec - start_sec,
             annotations: anns,
-            stim_channel_indices: self.stim_channel_indices.clone(), is_discontinuous: self.is_discontinuous, record_onsets: self.record_onsets.clone(),
+            stim_channel_indices: self.stim_channel_indices.clone(),
+            is_discontinuous: self.is_discontinuous,
+            record_onsets: self.record_onsets.clone(),
         }
     }
 
@@ -205,8 +227,15 @@ impl EegData {
     /// `types` should be a list of `ChannelType` variants to keep. Requires
     /// that `channel_types` is available (from channels.tsv).
     #[must_use]
-    pub fn pick_types(&self, types: &[crate::ChannelType], channel_types: &[crate::ChannelType]) -> EegData {
-        let names: Vec<&str> = self.channel_labels.iter().enumerate()
+    pub fn pick_types(
+        &self,
+        types: &[crate::ChannelType],
+        channel_types: &[crate::ChannelType],
+    ) -> EegData {
+        let names: Vec<&str> = self
+            .channel_labels
+            .iter()
+            .enumerate()
             .filter(|(i, _)| channel_types.get(*i).is_some_and(|ct| types.contains(ct)))
             .map(|(_, name)| name.as_str())
             .collect();
@@ -271,7 +300,9 @@ impl EegData {
             sampling_rates: self.sampling_rates.clone(),
             duration: self.duration,
             annotations: self.annotations.clone(),
-            stim_channel_indices: self.stim_channel_indices.clone(), is_discontinuous: self.is_discontinuous, record_onsets: self.record_onsets.clone(),
+            stim_channel_indices: self.stim_channel_indices.clone(),
+            is_discontinuous: self.is_discontinuous,
+            record_onsets: self.record_onsets.clone(),
         }
     }
 }
@@ -301,11 +332,13 @@ impl EegData {
                     bids_filter::filtfilt(&b, &a, ch_data)
                 }
                 (Some(lo), None) => {
-                    let (b, a) = bids_filter::butter_highpass(order, (lo / nyquist).clamp(0.001, 0.999));
+                    let (b, a) =
+                        bids_filter::butter_highpass(order, (lo / nyquist).clamp(0.001, 0.999));
                     bids_filter::filtfilt(&b, &a, ch_data)
                 }
                 (None, Some(hi)) => {
-                    let (b, a) = bids_filter::butter_lowpass(order, (hi / nyquist).clamp(0.001, 0.999));
+                    let (b, a) =
+                        bids_filter::butter_lowpass(order, (hi / nyquist).clamp(0.001, 0.999));
                     bids_filter::filtfilt(&b, &a, ch_data)
                 }
                 (None, None) => continue,
@@ -347,7 +380,9 @@ impl EegData {
     #[must_use]
     pub fn resample(&self, new_sr: f64) -> EegData {
         let old_sr = self.sampling_rates.first().copied().unwrap_or(1.0);
-        let new_data: Vec<Vec<f64>> = self.data.iter()
+        let new_data: Vec<Vec<f64>> = self
+            .data
+            .iter()
             .map(|ch| bids_filter::resample(ch, old_sr, new_sr))
             .collect();
         let new_duration = new_data.first().map_or(0.0, |ch| ch.len() as f64 / new_sr);
@@ -371,7 +406,9 @@ impl EegData {
     pub fn set_average_reference(&self) -> EegData {
         let n_ch = self.data.len();
         let n_s = self.data.first().map_or(0, std::vec::Vec::len);
-        if n_ch == 0 || n_s == 0 { return self.clone(); }
+        if n_ch == 0 || n_s == 0 {
+            return self.clone();
+        }
 
         let mut new_data = self.data.clone();
 
@@ -382,7 +419,10 @@ impl EegData {
             }
         }
 
-        EegData { data: new_data, ..self.clone() }
+        EegData {
+            data: new_data,
+            ..self.clone()
+        }
     }
 
     /// Re-reference to a specific channel (like MNE's `raw.set_eeg_reference([ch_name])`).
@@ -403,7 +443,10 @@ impl EegData {
             }
         }
 
-        EegData { data: new_data, ..self.clone() }
+        EegData {
+            data: new_data,
+            ..self.clone()
+        }
     }
 
     /// Extract epochs around events (like MNE's `mne.Epochs(raw, events, tmin, tmax)`).
@@ -411,11 +454,11 @@ impl EegData {
     /// Returns a Vec of `EegData`, one per event matching `event_desc`.
     /// `tmin` and `tmax` are relative to event onset in seconds.
     /// If `event_desc` is `None`, epochs around all annotations.
-    pub fn epoch(
-        &self, tmin: f64, tmax: f64, event_desc: Option<&str>,
-    ) -> Vec<EegData> {
+    pub fn epoch(&self, tmin: f64, tmax: f64, event_desc: Option<&str>) -> Vec<EegData> {
         let sr = self.sampling_rates.first().copied().unwrap_or(1.0);
-        let events: Vec<&Annotation> = self.annotations.iter()
+        let events: Vec<&Annotation> = self
+            .annotations
+            .iter()
             .filter(|a| event_desc.is_none_or(|d| a.description == d))
             .collect();
 
@@ -431,10 +474,14 @@ impl EegData {
 
             // Skip if epoch would go out of bounds
             let n_samples = self.data.first().map_or(0, std::vec::Vec::len) as isize;
-            if start < 0 || end > n_samples { continue; }
+            if start < 0 || end > n_samples {
+                continue;
+            }
 
             let start = start as usize;
-            let data: Vec<Vec<f64>> = self.data.iter()
+            let data: Vec<Vec<f64>> = self
+                .data
+                .iter()
                 .map(|ch| ch[start..start + epoch_len].to_vec())
                 .collect();
 
@@ -460,7 +507,9 @@ impl EegData {
     ///
     /// All epochs must have the same shape. Like MNE's `epochs.average()`.
     pub fn average_epochs(epochs: &[EegData]) -> Option<EegData> {
-        if epochs.is_empty() { return None; }
+        if epochs.is_empty() {
+            return None;
+        }
         let n_ch = epochs[0].data.len();
         let n_s = epochs[0].data.first().map_or(0, std::vec::Vec::len);
         let n_epochs = epochs.len() as f64;
@@ -504,7 +553,9 @@ impl EegData {
 
         let freqs: Vec<f64> = (0..n_freqs).map(|i| i as f64 * sr / n_fft as f64).collect();
 
-        let psd: Vec<Vec<f64>> = self.data.iter()
+        let psd: Vec<Vec<f64>> = self
+            .data
+            .iter()
             .map(|ch| welch_psd(ch, n_fft, sr))
             .collect();
 
@@ -550,7 +601,9 @@ fn welch_psd(x: &[f64], n_fft: usize, _fs: f64) -> Vec<f64> {
 
     // Average over segments and scale
     let scale = 1.0 / n_segments as f64;
-    for v in &mut psd { *v *= scale; }
+    for v in &mut psd {
+        *v *= scale;
+    }
 
     psd
 }
@@ -576,19 +629,25 @@ impl EegData {
 
         let flat_bytes: &[u8] = bytemuck::cast_slice(&flat);
 
-        let tensor = TensorView::new(
-            Dtype::F64,
-            vec![n_ch, n_s],
-            flat_bytes,
-        ).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+        let tensor = TensorView::new(Dtype::F64, vec![n_ch, n_s], flat_bytes)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
 
         let mut tensors = HashMap::new();
         tensors.insert("data".to_string(), tensor);
 
         // Store metadata as JSON in the safetensors header
         let mut metadata = HashMap::new();
-        metadata.insert("channel_names".to_string(), serde_json::to_string(&self.channel_labels).unwrap_or_default());
-        metadata.insert("sampling_rate".to_string(), self.sampling_rates.first().map(|r| r.to_string()).unwrap_or_default());
+        metadata.insert(
+            "channel_names".to_string(),
+            serde_json::to_string(&self.channel_labels).unwrap_or_default(),
+        );
+        metadata.insert(
+            "sampling_rate".to_string(),
+            self.sampling_rates
+                .first()
+                .map(|r| r.to_string())
+                .unwrap_or_default(),
+        );
         metadata.insert("duration".to_string(), self.duration.to_string());
         metadata.insert("n_channels".to_string(), n_ch.to_string());
         metadata.insert("n_samples".to_string(), n_s.to_string());
@@ -617,31 +676,45 @@ impl EegData {
 
     /// Create from an ndarray Array2<f64> (n_channels × n_samples).
     pub fn from_ndarray(
-        arr: &ndarray::Array2<f64>, channel_labels: Vec<String>, sampling_rate: f64,
+        arr: &ndarray::Array2<f64>,
+        channel_labels: Vec<String>,
+        sampling_rate: f64,
     ) -> Self {
         let n_ch = arr.nrows();
         let n_s = arr.ncols();
-        let data: Vec<Vec<f64>> = (0..n_ch)
-            .map(|i| arr.row(i).to_vec())
-            .collect();
+        let data: Vec<Vec<f64>> = (0..n_ch).map(|i| arr.row(i).to_vec()).collect();
         Self {
             channel_labels,
             data,
             sampling_rates: vec![sampling_rate; n_ch],
             duration: n_s as f64 / sampling_rate,
             annotations: Vec::new(),
-            stim_channel_indices: Vec::new(), is_discontinuous: false, record_onsets: Vec::new(),
+            stim_channel_indices: Vec::new(),
+            is_discontinuous: false,
+            record_onsets: Vec::new(),
         }
     }
 }
 
 impl bids_core::timeseries::TimeSeries for EegData {
-    fn n_channels(&self) -> usize { self.data.len() }
-    fn n_samples(&self) -> usize { self.data.first().map_or(0, std::vec::Vec::len) }
-    fn channel_names(&self) -> &[String] { &self.channel_labels }
-    fn sampling_rate(&self) -> f64 { self.sampling_rates.first().copied().unwrap_or(1.0) }
-    fn channel_data(&self, index: usize) -> Option<&[f64]> { self.data.get(index).map(std::vec::Vec::as_slice) }
-    fn duration(&self) -> f64 { self.duration }
+    fn n_channels(&self) -> usize {
+        self.data.len()
+    }
+    fn n_samples(&self) -> usize {
+        self.data.first().map_or(0, std::vec::Vec::len)
+    }
+    fn channel_names(&self) -> &[String] {
+        &self.channel_labels
+    }
+    fn sampling_rate(&self) -> f64 {
+        self.sampling_rates.first().copied().unwrap_or(1.0)
+    }
+    fn channel_data(&self, index: usize) -> Option<&[f64]> {
+        self.data.get(index).map(std::vec::Vec::as_slice)
+    }
+    fn duration(&self) -> f64 {
+        self.duration
+    }
 }
 
 // ─── ReadOptions ───────────────────────────────────────────────────────────────
@@ -665,16 +738,20 @@ pub struct ReadOptions {
 }
 
 impl ReadOptions {
-    pub fn new() -> Self { Self::default() }
+    pub fn new() -> Self {
+        Self::default()
+    }
 
     /// Include only these channels (like MNE's `include` / `picks`).
     pub fn with_channels(mut self, channels: Vec<String>) -> Self {
-        self.channels = Some(channels); self
+        self.channels = Some(channels);
+        self
     }
 
     /// Exclude these channels (like MNE's `exclude`).
     pub fn with_exclude(mut self, exclude: Vec<String>) -> Self {
-        self.exclude = Some(exclude); self
+        self.exclude = Some(exclude);
+        self
     }
 
     pub fn with_time_range(mut self, start: f64, end: f64) -> Self {
@@ -685,7 +762,8 @@ impl ReadOptions {
 
     /// Override stim channel names. Pass empty vec to disable auto-detection.
     pub fn with_stim_channel(mut self, names: Vec<String>) -> Self {
-        self.stim_channel = Some(names); self
+        self.stim_channel = Some(names);
+        self
     }
 }
 
@@ -723,11 +801,14 @@ pub fn read_edf(path: &Path, opts: &ReadOptions) -> Result<EegData> {
     }
     if n_channels > 10_000 {
         return Err(BidsError::DataFormat(format!(
-            "EDF/BDF file claims {n_channels} channels — likely corrupt header")));
+            "EDF/BDF file claims {n_channels} channels — likely corrupt header"
+        )));
     }
 
     // Detect EDF+ / BDF+ from the reserved field
-    let reserved = String::from_utf8_lossy(&hdr_buf[192..236]).trim().to_string();
+    let reserved = String::from_utf8_lossy(&hdr_buf[192..236])
+        .trim()
+        .to_string();
     let is_edf_plus = reserved.starts_with("EDF+");
     let is_edf_plus_discontinuous = reserved.contains("EDF+D") || reserved.contains("BDF+D");
 
@@ -753,12 +834,21 @@ pub fn read_edf(path: &Path, opts: &ReadOptions) -> Result<EegData> {
         samples_per_record.push(read_field_int(&ext, i, 8, n_channels * 216)?);
     }
 
-    let sampling_rates: Vec<f64> = samples_per_record.iter()
-        .map(|&s| if record_duration > 0.0 { s as f64 / record_duration } else { s as f64 })
+    let sampling_rates: Vec<f64> = samples_per_record
+        .iter()
+        .map(|&s| {
+            if record_duration > 0.0 {
+                s as f64 / record_duration
+            } else {
+                s as f64
+            }
+        })
         .collect();
 
     // Identify EDF+ annotation channels and BDF status channels
-    let annotation_channel_indices: Vec<usize> = labels.iter().enumerate()
+    let annotation_channel_indices: Vec<usize> = labels
+        .iter()
+        .enumerate()
         .filter(|(_, l)| l.as_str() == "EDF Annotations" || l.as_str() == "BDF Status")
         .map(|(i, _)| i)
         .collect();
@@ -768,10 +858,13 @@ pub fn read_edf(path: &Path, opts: &ReadOptions) -> Result<EegData> {
         names.clone()
     } else {
         // Auto-detect: channels named "status", "trigger", "sti *" (case insensitive)
-        labels.iter()
+        labels
+            .iter()
             .filter(|l| {
                 let lower = l.to_lowercase();
-                lower == "status" || lower == "trigger" || lower.starts_with("sti ")
+                lower == "status"
+                    || lower == "trigger"
+                    || lower.starts_with("sti ")
                     || lower.starts_with("sti\t")
             })
             .cloned()
@@ -780,7 +873,10 @@ pub fn read_edf(path: &Path, opts: &ReadOptions) -> Result<EegData> {
 
     // Determine which channels to read (include then exclude)
     let mut channel_indices: Vec<usize> = if let Some(ref wanted) = opts.channels {
-        wanted.iter().filter_map(|name| labels.iter().position(|l| l == name)).collect()
+        wanted
+            .iter()
+            .filter_map(|name| labels.iter().position(|l| l == name))
+            .collect()
     } else {
         // By default, exclude annotation channels from signal data
         (0..n_channels)
@@ -790,14 +886,17 @@ pub fn read_edf(path: &Path, opts: &ReadOptions) -> Result<EegData> {
 
     // Apply exclude
     if let Some(ref excl) = opts.exclude {
-        let excl_indices: Vec<usize> = excl.iter()
+        let excl_indices: Vec<usize> = excl
+            .iter()
             .filter_map(|name| labels.iter().position(|l| l == name))
             .collect();
         channel_indices.retain(|i| !excl_indices.contains(i));
     }
 
     // Map stim channel names to output indices
-    let stim_channel_indices: Vec<usize> = channel_indices.iter().enumerate()
+    let stim_channel_indices: Vec<usize> = channel_indices
+        .iter()
+        .enumerate()
         .filter(|(_, ch)| stim_names.iter().any(|n| n == &labels[**ch]))
         .map(|(out_idx, _)| out_idx)
         .collect();
@@ -809,8 +908,11 @@ pub fn read_edf(path: &Path, opts: &ReadOptions) -> Result<EegData> {
     }
 
     // Also need to read annotation channels even if excluded from output
-    let need_annotation_read = is_edf_plus || is_bdf
-        || annotation_channel_indices.iter().any(|i| labels[*i] == "BDF Status");
+    let need_annotation_read = is_edf_plus
+        || is_bdf
+        || annotation_channel_indices
+            .iter()
+            .any(|i| labels[*i] == "BDF Status");
     let mut ann_ch_to_out: Vec<usize> = vec![usize::MAX; n_channels];
     if need_annotation_read {
         for (ann_idx, &ch) in annotation_channel_indices.iter().enumerate() {
@@ -820,7 +922,8 @@ pub fn read_edf(path: &Path, opts: &ReadOptions) -> Result<EegData> {
 
     // EDF spec: n_records == -1 means "unknown" — compute from file size.
     let n_records = if n_records < 0 {
-        let record_bytes: usize = samples_per_record.iter()
+        let record_bytes: usize = samples_per_record
+            .iter()
             .map(|&s| s * bytes_per_sample)
             .sum();
         let file_len = reader.seek(SeekFrom::End(0))? as usize;
@@ -835,10 +938,12 @@ pub fn read_edf(path: &Path, opts: &ReadOptions) -> Result<EegData> {
     };
     let total_duration = n_records as f64 * record_duration;
 
-    let start_record = opts.start_time
+    let start_record = opts
+        .start_time
         .map(|t| ((t / record_duration).floor() as i64).clamp(0, n_records) as usize)
         .unwrap_or(0);
-    let end_record = opts.end_time
+    let end_record = opts
+        .end_time
         .map(|t| ((t / record_duration).ceil() as i64).clamp(0, n_records) as usize)
         .unwrap_or(n_records as usize);
 
@@ -849,7 +954,9 @@ pub fn read_edf(path: &Path, opts: &ReadOptions) -> Result<EegData> {
             sampling_rates: channel_indices.iter().map(|&i| sampling_rates[i]).collect(),
             duration: 0.0,
             annotations: Vec::new(),
-            stim_channel_indices: stim_channel_indices.clone(), is_discontinuous: false, record_onsets: Vec::new(),
+            stim_channel_indices: stim_channel_indices.clone(),
+            is_discontinuous: false,
+            record_onsets: Vec::new(),
         });
     }
 
@@ -860,16 +967,20 @@ pub fn read_edf(path: &Path, opts: &ReadOptions) -> Result<EegData> {
     let mut offset = 0usize;
     for (ch, &spr) in samples_per_record.iter().enumerate() {
         ch_byte_offsets.push(offset);
-        let ch_bytes = spr.checked_mul(bytes_per_sample)
-            .ok_or_else(|| BidsError::DataFormat(format!(
-                "Channel {ch} samples_per_record ({spr}) overflows byte calculation")))?;
-        offset = offset.checked_add(ch_bytes)
+        let ch_bytes = spr.checked_mul(bytes_per_sample).ok_or_else(|| {
+            BidsError::DataFormat(format!(
+                "Channel {ch} samples_per_record ({spr}) overflows byte calculation"
+            ))
+        })?;
+        offset = offset
+            .checked_add(ch_bytes)
             .ok_or_else(|| BidsError::DataFormat("Record size overflow".into()))?;
     }
     let record_byte_size = offset;
 
     // Pre-allocate output with exact sizes
-    let mut out_data: Vec<Vec<f64>> = channel_indices.iter()
+    let mut out_data: Vec<Vec<f64>> = channel_indices
+        .iter()
         .map(|&i| vec![0.0f64; samples_per_record[i] as usize * records_to_read])
         .collect();
 
@@ -881,7 +992,11 @@ pub fn read_edf(path: &Path, opts: &ReadOptions) -> Result<EegData> {
     for i in 0..n_channels {
         let dd = dig_max[i] - dig_min[i];
         let pd = phys_max[i] - phys_min[i];
-        let g = if dd.abs() > f64::EPSILON { pd / dd } else { 1.0 };
+        let g = if dd.abs() > f64::EPSILON {
+            pd / dd
+        } else {
+            1.0
+        };
         gains[i] = g;
         cal_offsets[i] = phys_min[i] - dig_min[i] * g;
     }
@@ -896,9 +1011,14 @@ pub fn read_edf(path: &Path, opts: &ReadOptions) -> Result<EegData> {
 
     // Decode — split by format to avoid branch in inner loop
     let params = DecodeParams {
-        all_data: &all_data, records_to_read, n_channels,
-        samples_per_record: &samples_per_record, ch_byte_offsets: &ch_byte_offsets,
-        ch_to_out: &ch_to_out, gains: &gains, cal_offsets: &cal_offsets,
+        all_data: &all_data,
+        records_to_read,
+        n_channels,
+        samples_per_record: &samples_per_record,
+        ch_byte_offsets: &ch_byte_offsets,
+        ch_to_out: &ch_to_out,
+        gains: &gains,
+        cal_offsets: &cal_offsets,
         record_byte_size,
     };
     if is_bdf {
@@ -962,11 +1082,18 @@ pub fn read_edf(path: &Path, opts: &ReadOptions) -> Result<EegData> {
     }
 
     // Sub-record precision trimming
-    trim_time_range(&mut out_data, &channel_indices, &sampling_rates,
-                    record_duration, start_record, opts);
+    trim_time_range(
+        &mut out_data,
+        &channel_indices,
+        &sampling_rates,
+        record_duration,
+        start_record,
+        opts,
+    );
 
     let actual_duration = (opts.end_time.unwrap_or(total_duration)
-        - opts.start_time.unwrap_or(0.0)).min(total_duration);
+        - opts.start_time.unwrap_or(0.0))
+    .min(total_duration);
 
     Ok(EegData {
         channel_labels: channel_indices.iter().map(|&i| labels[i].clone()).collect(),
@@ -974,7 +1101,9 @@ pub fn read_edf(path: &Path, opts: &ReadOptions) -> Result<EegData> {
         sampling_rates: channel_indices.iter().map(|&i| sampling_rates[i]).collect(),
         duration: actual_duration,
         annotations,
-        stim_channel_indices, is_discontinuous: is_edf_plus_discontinuous, record_onsets,
+        stim_channel_indices,
+        is_discontinuous: is_edf_plus_discontinuous,
+        record_onsets,
     })
 }
 
@@ -1002,7 +1131,9 @@ struct DecodeParams<'a> {
 fn decode_records_edf(p: &DecodeParams, out_data: &mut [Vec<f64>]) {
     for ch in 0..p.n_channels {
         let out_idx = p.ch_to_out[ch];
-        if out_idx == usize::MAX { continue; }
+        if out_idx == usize::MAX {
+            continue;
+        }
 
         let n_samples = p.samples_per_record[ch];
         let gain = p.gains[ch];
@@ -1030,7 +1161,9 @@ fn decode_records_edf(p: &DecodeParams, out_data: &mut [Vec<f64>]) {
 fn decode_records_bdf(p: &DecodeParams, out_data: &mut [Vec<f64>]) {
     for ch in 0..p.n_channels {
         let out_idx = p.ch_to_out[ch];
-        if out_idx == usize::MAX { continue; }
+        if out_idx == usize::MAX {
+            continue;
+        }
 
         let n_samples = p.samples_per_record[ch];
         let gain = p.gains[ch];
@@ -1107,15 +1240,21 @@ fn parse_edf_tal(data: &[u8], annotations: &mut Vec<Annotation>) -> Option<f64> 
     let mut record_onset = None;
     // Split on \x00 to get individual TAL entries
     for entry in data.split(|&b| b == 0) {
-        if entry.is_empty() { continue; }
+        if entry.is_empty() {
+            continue;
+        }
 
         let s = String::from_utf8_lossy(entry);
         let s = s.trim_matches(|c: char| c == '\x14' || c == '\x00' || c == '\x15');
-        if s.is_empty() { continue; }
+        if s.is_empty() {
+            continue;
+        }
 
         // Split on \x14 (annotation separator)
         let parts: Vec<&str> = s.split('\x14').collect();
-        if parts.is_empty() { continue; }
+        if parts.is_empty() {
+            continue;
+        }
 
         // First part: onset and optional duration
         let onset_dur = parts[0];
@@ -1123,11 +1262,20 @@ fn parse_edf_tal(data: &[u8], annotations: &mut Vec<Annotation>) -> Option<f64> 
             let onset_str = &onset_dur[..dur_sep];
             let dur_str = &onset_dur[dur_sep + 1..];
             (
-                onset_str.trim_start_matches('+').parse::<f64>().unwrap_or(0.0),
+                onset_str
+                    .trim_start_matches('+')
+                    .parse::<f64>()
+                    .unwrap_or(0.0),
                 dur_str.parse::<f64>().unwrap_or(0.0),
             )
         } else {
-            (onset_dur.trim_start_matches('+').parse::<f64>().unwrap_or(0.0), 0.0)
+            (
+                onset_dur
+                    .trim_start_matches('+')
+                    .parse::<f64>()
+                    .unwrap_or(0.0),
+                0.0,
+            )
         };
 
         // Remaining parts are descriptions
@@ -1138,7 +1286,9 @@ fn parse_edf_tal(data: &[u8], annotations: &mut Vec<Annotation>) -> Option<f64> 
         }
         for desc in &parts[1..] {
             let desc = desc.trim();
-            if desc.is_empty() { continue; }
+            if desc.is_empty() {
+                continue;
+            }
             annotations.push(Annotation {
                 onset,
                 duration,
@@ -1178,17 +1328,24 @@ pub fn read_brainvision(vhdr_path: &Path, opts: &ReadOptions) -> Result<EegData>
     let bps = bv.bytes_per_sample();
     let raw_data = std::fs::read(&data_path)?;
     let total_samples = raw_data.len() / bps / n_channels;
-    let sampling_rate = bv.sampling_interval_us.map(|us| 1_000_000.0 / us).unwrap_or(1.0);
+    let sampling_rate = bv
+        .sampling_interval_us
+        .map(|us| 1_000_000.0 / us)
+        .unwrap_or(1.0);
 
     // Channel selection: include then exclude
     let mut channel_indices: Vec<usize> = if let Some(ref wanted) = opts.channels {
-        wanted.iter().filter_map(|name| bv.channels.iter().position(|c| c.name == *name)).collect()
+        wanted
+            .iter()
+            .filter_map(|name| bv.channels.iter().position(|c| c.name == *name))
+            .collect()
     } else {
         (0..n_channels).collect()
     };
 
     if let Some(ref excl) = opts.exclude {
-        let excl_indices: Vec<usize> = excl.iter()
+        let excl_indices: Vec<usize> = excl
+            .iter()
             .filter_map(|name| bv.channels.iter().position(|c| c.name == *name))
             .collect();
         channel_indices.retain(|i| !excl_indices.contains(i));
@@ -1198,7 +1355,8 @@ pub fn read_brainvision(vhdr_path: &Path, opts: &ReadOptions) -> Result<EegData>
     let stim_names: Vec<String> = if let Some(ref names) = opts.stim_channel {
         names.clone()
     } else {
-        bv.channels.iter()
+        bv.channels
+            .iter()
             .filter(|c| {
                 let lower = c.name.to_lowercase();
                 lower == "status" || lower == "trigger" || lower.starts_with("sti ")
@@ -1206,16 +1364,20 @@ pub fn read_brainvision(vhdr_path: &Path, opts: &ReadOptions) -> Result<EegData>
             .map(|c| c.name.clone())
             .collect()
     };
-    let stim_channel_indices: Vec<usize> = channel_indices.iter().enumerate()
+    let stim_channel_indices: Vec<usize> = channel_indices
+        .iter()
+        .enumerate()
         .filter(|(_, ch)| stim_names.iter().any(|n| n == &bv.channels[**ch].name))
         .map(|(out_idx, _)| out_idx)
         .collect();
 
-    let start_sample = opts.start_time
+    let start_sample = opts
+        .start_time
         .map(|t| (t * sampling_rate).round() as usize)
         .unwrap_or(0)
         .min(total_samples);
-    let end_sample = opts.end_time
+    let end_sample = opts
+        .end_time
         .map(|t| (t * sampling_rate).round() as usize)
         .unwrap_or(total_samples)
         .min(total_samples);
@@ -1223,9 +1385,26 @@ pub fn read_brainvision(vhdr_path: &Path, opts: &ReadOptions) -> Result<EegData>
     let n_out = end_sample.saturating_sub(start_sample);
 
     let out_data = if bv.data_orientation == BvOrientation::Multiplexed {
-        decode_bv_multiplexed(&raw_data, &bv, &channel_indices, start_sample, n_out, n_channels, bps)
+        decode_bv_multiplexed(
+            &raw_data,
+            &bv,
+            &channel_indices,
+            start_sample,
+            n_out,
+            n_channels,
+            bps,
+        )
     } else {
-        decode_bv_vectorized(&raw_data, &bv, &channel_indices, start_sample, n_out, total_samples, n_channels, bps)
+        decode_bv_vectorized(
+            &raw_data,
+            &bv,
+            &channel_indices,
+            start_sample,
+            n_out,
+            total_samples,
+            n_channels,
+            bps,
+        )
     };
 
     // Read .vmrk marker file if it exists
@@ -1249,12 +1428,17 @@ pub fn read_brainvision(vhdr_path: &Path, opts: &ReadOptions) -> Result<EegData>
     };
 
     Ok(EegData {
-        channel_labels: channel_indices.iter().map(|&i| bv.channels[i].name.clone()).collect(),
+        channel_labels: channel_indices
+            .iter()
+            .map(|&i| bv.channels[i].name.clone())
+            .collect(),
         data: out_data,
         sampling_rates: vec![sampling_rate; channel_indices.len()],
         duration: n_out as f64 / sampling_rate,
         annotations,
-        stim_channel_indices, is_discontinuous: false, record_onsets: Vec::new(),
+        stim_channel_indices,
+        is_discontinuous: false,
+        record_onsets: Vec::new(),
     })
 }
 
@@ -1270,12 +1454,15 @@ pub fn read_brainvision(vhdr_path: &Path, opts: &ReadOptions) -> Result<EegData>
 /// for both reads and writes.
 #[inline(never)]
 fn decode_bv_multiplexed(
-    raw: &[u8], bv: &BvHeader, indices: &[usize],
-    start: usize, count: usize, n_ch: usize, bps: usize,
+    raw: &[u8],
+    bv: &BvHeader,
+    indices: &[usize],
+    start: usize,
+    count: usize,
+    n_ch: usize,
+    bps: usize,
 ) -> Vec<Vec<f64>> {
-    let mut out: Vec<Vec<f64>> = indices.iter()
-        .map(|_| vec![0.0f64; count])
-        .collect();
+    let mut out: Vec<Vec<f64>> = indices.iter().map(|_| vec![0.0f64; count]).collect();
 
     // Build ch→(out_idx, resolution) lookup
     let mut ch_map: Vec<(usize, f64)> = vec![(usize::MAX, 0.0); n_ch];
@@ -1320,7 +1507,13 @@ fn decode_bv_multiplexed(
                     let dst = &mut out[oi][s..tile_end];
                     let mut base = (start + s) * frame_bytes + ch * 4;
                     for d in dst.iter_mut() {
-                        *d = f32::from_le_bytes([raw[base], raw[base+1], raw[base+2], raw[base+3]]) as f64 * res;
+                        *d = f32::from_le_bytes([
+                            raw[base],
+                            raw[base + 1],
+                            raw[base + 2],
+                            raw[base + 3],
+                        ]) as f64
+                            * res;
                         base += frame_bytes;
                     }
                 }
@@ -1337,7 +1530,13 @@ fn decode_bv_multiplexed(
                     let dst = &mut out[oi][s..tile_end];
                     let mut base = (start + s) * frame_bytes + ch * 4;
                     for d in dst.iter_mut() {
-                        *d = i32::from_le_bytes([raw[base], raw[base+1], raw[base+2], raw[base+3]]) as f64 * res;
+                        *d = i32::from_le_bytes([
+                            raw[base],
+                            raw[base + 1],
+                            raw[base + 2],
+                            raw[base + 3],
+                        ]) as f64
+                            * res;
                         base += frame_bytes;
                     }
                 }
@@ -1352,12 +1551,16 @@ fn decode_bv_multiplexed(
 /// Layout: [ch0_s0, ch0_s1, ..., ch0_sN, ch1_s0, ch1_s1, ...]
 #[inline(never)]
 fn decode_bv_vectorized(
-    raw: &[u8], bv: &BvHeader, indices: &[usize],
-    start: usize, count: usize, total: usize, _n_ch: usize, bps: usize,
+    raw: &[u8],
+    bv: &BvHeader,
+    indices: &[usize],
+    start: usize,
+    count: usize,
+    total: usize,
+    _n_ch: usize,
+    bps: usize,
 ) -> Vec<Vec<f64>> {
-    let mut out: Vec<Vec<f64>> = indices.iter()
-        .map(|_| vec![0.0f64; count])
-        .collect();
+    let mut out: Vec<Vec<f64>> = indices.iter().map(|_| vec![0.0f64; count]).collect();
 
     let ch_stride = total * bps; // bytes per channel's contiguous block
 
@@ -1380,7 +1583,9 @@ fn decode_bv_vectorized(
                 let src = &raw[ch_base..];
                 for (s, d) in out[out_idx].iter_mut().enumerate() {
                     let off = s * 4;
-                    *d = f32::from_le_bytes([src[off], src[off+1], src[off+2], src[off+3]]) as f64 * res;
+                    *d = f32::from_le_bytes([src[off], src[off + 1], src[off + 2], src[off + 3]])
+                        as f64
+                        * res;
                 }
             }
         }
@@ -1391,7 +1596,9 @@ fn decode_bv_vectorized(
                 let src = &raw[ch_base..];
                 for (s, d) in out[out_idx].iter_mut().enumerate() {
                     let off = s * 4;
-                    *d = i32::from_le_bytes([src[off], src[off+1], src[off+2], src[off+3]]) as f64 * res;
+                    *d = i32::from_le_bytes([src[off], src[off + 1], src[off + 2], src[off + 3]])
+                        as f64
+                        * res;
                 }
             }
         }
@@ -1408,7 +1615,8 @@ fn decode_bv_vectorized(
 /// - `.bdf` — BioSemi Data Format
 /// - `.vhdr` — BrainVision (reads companion `.eeg`/`.dat` file)
 pub fn read_eeg_data(path: &Path, opts: &ReadOptions) -> Result<EegData> {
-    let ext = path.extension()
+    let ext = path
+        .extension()
         .and_then(|e| e.to_str())
         .unwrap_or("")
         .to_lowercase();
@@ -1429,18 +1637,24 @@ fn parse_header_int<T: std::str::FromStr>(bytes: &[u8]) -> Result<T> {
     String::from_utf8_lossy(bytes)
         .trim()
         .parse::<T>()
-        .map_err(|_| BidsError::Csv(format!(
-            "Failed to parse header field: '{}'",
-            String::from_utf8_lossy(bytes).trim()
-        )))
+        .map_err(|_| {
+            BidsError::Csv(format!(
+                "Failed to parse header field: '{}'",
+                String::from_utf8_lossy(bytes).trim()
+            ))
+        })
 }
 
-fn parse_header_f64(bytes: &[u8]) -> Result<f64> { parse_header_int(bytes) }
+fn parse_header_f64(bytes: &[u8]) -> Result<f64> {
+    parse_header_int(bytes)
+}
 
 fn read_field(ext: &[u8], ch: usize, width: usize, base_offset: usize) -> String {
     let offset = base_offset + ch * width;
     if offset + width <= ext.len() {
-        String::from_utf8_lossy(&ext[offset..offset + width]).trim().to_string()
+        String::from_utf8_lossy(&ext[offset..offset + width])
+            .trim()
+            .to_string()
     } else {
         String::new()
     }
@@ -1448,28 +1662,42 @@ fn read_field(ext: &[u8], ch: usize, width: usize, base_offset: usize) -> String
 
 fn read_field_f64(ext: &[u8], ch: usize, width: usize, base_offset: usize) -> Result<f64> {
     let s = read_field(ext, ch, width, base_offset);
-    s.parse::<f64>().map_err(|_| BidsError::Csv(format!(
-        "Failed to parse channel {ch} field at offset {base_offset}: '{s}'"
-    )))
+    s.parse::<f64>().map_err(|_| {
+        BidsError::Csv(format!(
+            "Failed to parse channel {ch} field at offset {base_offset}: '{s}'"
+        ))
+    })
 }
 
 fn read_field_int(ext: &[u8], ch: usize, width: usize, base_offset: usize) -> Result<usize> {
     let s = read_field(ext, ch, width, base_offset);
-    s.parse::<usize>().map_err(|_| BidsError::Csv(format!(
-        "Failed to parse channel {ch} field at offset {base_offset}: '{s}'"
-    )))
+    s.parse::<usize>().map_err(|_| {
+        BidsError::Csv(format!(
+            "Failed to parse channel {ch} field at offset {base_offset}: '{s}'"
+        ))
+    })
 }
 
 // ─── BrainVision header parsing ────────────────────────────────────────────────
 
 #[derive(Debug, Clone, PartialEq)]
-enum BvOrientation { Multiplexed, Vectorized }
+enum BvOrientation {
+    Multiplexed,
+    Vectorized,
+}
 
 #[derive(Debug, Clone, PartialEq)]
-enum BvDataFormat { Int16, Float32, Int32 }
+enum BvDataFormat {
+    Int16,
+    Float32,
+    Int32,
+}
 
 #[derive(Debug, Clone)]
-struct BvChannel { name: String, resolution: f64 }
+struct BvChannel {
+    name: String,
+    resolution: f64,
+}
 
 #[derive(Debug, Clone)]
 struct BvHeader {
@@ -1501,7 +1729,9 @@ fn parse_vhdr(text: &str) -> Result<BvHeader> {
 
     for line in text.lines() {
         let line = line.trim();
-        if line.is_empty() || line.starts_with(';') { continue; }
+        if line.is_empty() || line.starts_with(';') {
+            continue;
+        }
         if line.starts_with('[') && line.ends_with(']') {
             section = line[1..line.len() - 1].to_lowercase();
             continue;
@@ -1517,24 +1747,38 @@ fn parse_vhdr(text: &str) -> Result<BvHeader> {
                     "DataOrientation" => {
                         orientation = if value.to_uppercase().contains("VECTORIZED") {
                             BvOrientation::Vectorized
-                        } else { BvOrientation::Multiplexed };
+                        } else {
+                            BvOrientation::Multiplexed
+                        };
                     }
-                    "SamplingInterval" => { sampling_interval = value.parse().ok(); }
+                    "SamplingInterval" => {
+                        sampling_interval = value.parse().ok();
+                    }
                     _ => {}
                 },
-                "binary infos" => if key == "BinaryFormat" {
-                    data_format = match value.to_uppercase().as_str() {
-                        "IEEE_FLOAT_32" => BvDataFormat::Float32,
-                        "INT_32" => BvDataFormat::Int32,
-                        _ => BvDataFormat::Int16,
-                    };
-                },
-                "channel infos" => if key.starts_with("Ch") || key.starts_with("ch") {
-                    let parts: Vec<&str> = value.splitn(4, ',').collect();
-                    let name = parts.first().map(|s| s.trim().to_string()).unwrap_or_default();
-                    let resolution = parts.get(2).and_then(|s| s.trim().parse::<f64>().ok()).unwrap_or(1.0);
-                    channels.push(BvChannel { name, resolution });
-                },
+                "binary infos" => {
+                    if key == "BinaryFormat" {
+                        data_format = match value.to_uppercase().as_str() {
+                            "IEEE_FLOAT_32" => BvDataFormat::Float32,
+                            "INT_32" => BvDataFormat::Int32,
+                            _ => BvDataFormat::Int16,
+                        };
+                    }
+                }
+                "channel infos" => {
+                    if key.starts_with("Ch") || key.starts_with("ch") {
+                        let parts: Vec<&str> = value.splitn(4, ',').collect();
+                        let name = parts
+                            .first()
+                            .map(|s| s.trim().to_string())
+                            .unwrap_or_default();
+                        let resolution = parts
+                            .get(2)
+                            .and_then(|s| s.trim().parse::<f64>().ok())
+                            .unwrap_or(1.0);
+                        channels.push(BvChannel { name, resolution });
+                    }
+                }
                 _ => {}
             }
         }
@@ -1547,7 +1791,14 @@ fn parse_vhdr(text: &str) -> Result<BvHeader> {
         return Err(BidsError::Csv("BrainVision header has no channels".into()));
     }
 
-    Ok(BvHeader { data_file, marker_file, data_format, data_orientation: orientation, channels, sampling_interval_us: sampling_interval })
+    Ok(BvHeader {
+        data_file,
+        marker_file,
+        data_format,
+        data_orientation: orientation,
+        channels,
+        sampling_interval_us: sampling_interval,
+    })
 }
 
 // ─── BrainVision .vmrk marker parser ───────────────────────────────────────────
@@ -1562,7 +1813,9 @@ fn parse_vmrk(text: &str, sampling_rate: f64) -> Vec<Annotation> {
 
     for line in text.lines() {
         let line = line.trim();
-        if line.is_empty() || line.starts_with(';') { continue; }
+        if line.is_empty() || line.starts_with(';') {
+            continue;
+        }
         if line.starts_with('[') && line.ends_with(']') {
             section = line[1..line.len() - 1].to_lowercase();
             continue;
@@ -1579,7 +1832,8 @@ fn parse_vmrk(text: &str, sampling_rate: f64) -> Vec<Annotation> {
                         let marker_type = parts[0].trim();
                         let description = parts[1].trim();
                         let position: usize = parts[2].trim().parse().unwrap_or(1);
-                        let size: usize = parts.get(3)
+                        let size: usize = parts
+                            .get(3)
                             .and_then(|s| s.trim().parse().ok())
                             .unwrap_or(1);
 
@@ -1603,7 +1857,11 @@ fn parse_vmrk(text: &str, sampling_rate: f64) -> Vec<Annotation> {
                         };
 
                         if !desc.is_empty() {
-                            annotations.push(Annotation { onset, duration, description: desc });
+                            annotations.push(Annotation {
+                                onset,
+                                duration,
+                                description: desc,
+                            });
                         }
                     }
                 }
@@ -1666,7 +1924,10 @@ pub fn read_eeglab_set(path: &Path, opts: &ReadOptions) -> Result<EegData> {
     if fdt_bytes.len() < expected_size {
         return Err(BidsError::DataFormat(format!(
             ".fdt file too small: expected {} bytes ({} ch × {} samp × 4), got {}",
-            expected_size, n_channels, n_samples, fdt_bytes.len()
+            expected_size,
+            n_channels,
+            n_samples,
+            fdt_bytes.len()
         )));
     }
 
@@ -1711,7 +1972,11 @@ pub fn read_eeglab_set(path: &Path, opts: &ReadOptions) -> Result<EegData> {
     };
 
     let n_ch = data.len();
-    let duration = if srate > 0.0 { n_samples as f64 / srate } else { 0.0 };
+    let duration = if srate > 0.0 {
+        n_samples as f64 / srate
+    } else {
+        0.0
+    };
 
     Ok(EegData {
         channel_labels,
@@ -1736,7 +2001,8 @@ fn parse_set_metadata(bytes: &[u8], path: &Path) -> Result<(usize, usize, f64, V
     // MAT v5 files start with a 128-byte header: 116 bytes text + 8 reserved + 4 version + 2 endian
     if bytes.len() < 128 {
         return Err(BidsError::DataFormat(format!(
-            "{}: File too small to be a valid MAT v5 file", path.display()
+            "{}: File too small to be a valid MAT v5 file",
+            path.display()
         )));
     }
 
@@ -1767,17 +2033,29 @@ fn parse_set_metadata(bytes: &[u8], path: &Path) -> Result<(usize, usize, f64, V
     for window in bytes.windows(6) {
         if window == b"nbchan" {
             // Look for a double value in the next ~50 bytes
-            if let Some(v) = find_next_double(bytes, bytes.len().min(offset_of(bytes, window) + 100), offset_of(bytes, window)) {
+            if let Some(v) = find_next_double(
+                bytes,
+                bytes.len().min(offset_of(bytes, window) + 100),
+                offset_of(bytes, window),
+            ) {
                 n_channels = v as usize;
             }
         }
         if window[..4] == *b"pnts" {
-            if let Some(v) = find_next_double(bytes, bytes.len().min(offset_of(bytes, window) + 100), offset_of(bytes, window)) {
+            if let Some(v) = find_next_double(
+                bytes,
+                bytes.len().min(offset_of(bytes, window) + 100),
+                offset_of(bytes, window),
+            ) {
                 n_samples = v as usize;
             }
         }
         if window[..5] == *b"srate" {
-            if let Some(v) = find_next_double(bytes, bytes.len().min(offset_of(bytes, window) + 100), offset_of(bytes, window)) {
+            if let Some(v) = find_next_double(
+                bytes,
+                bytes.len().min(offset_of(bytes, window) + 100),
+                offset_of(bytes, window),
+            ) {
                 srate = v;
             }
         }
@@ -1785,7 +2063,9 @@ fn parse_set_metadata(bytes: &[u8], path: &Path) -> Result<(usize, usize, f64, V
 
     // Generate default channel labels if we couldn't parse them from chanlocs
     if channel_labels.is_empty() && n_channels > 0 {
-        channel_labels = (0..n_channels).map(|i| format!("EEG{:03}", i + 1)).collect();
+        channel_labels = (0..n_channels)
+            .map(|i| format!("EEG{:03}", i + 1))
+            .collect();
     }
 
     // Try to extract channel labels from chanlocs.labels
@@ -1798,7 +2078,10 @@ fn parse_set_metadata(bytes: &[u8], path: &Path) -> Result<(usize, usize, f64, V
             // Look for runs of printable ASCII that could be channel names
             if search_region[i].is_ascii_alphanumeric() {
                 let start = i;
-                while i < search_region.len() && search_region[i].is_ascii_graphic() && search_region[i] != 0 {
+                while i < search_region.len()
+                    && search_region[i].is_ascii_graphic()
+                    && search_region[i] != 0
+                {
                     i += 1;
                 }
                 let candidate = String::from_utf8_lossy(&search_region[start..i]).to_string();
@@ -1819,7 +2102,10 @@ fn parse_set_metadata(bytes: &[u8], path: &Path) -> Result<(usize, usize, f64, V
             "{}: Could not extract EEG metadata from .set file \
              (nbchan={}, pnts={}, srate={}). The file may use an unsupported \
              MAT format. Convert with EEGLAB: pop_saveset(EEG, 'savemode', 'onefile')",
-            path.display(), n_channels, n_samples, srate
+            path.display(),
+            n_channels,
+            n_samples,
+            srate
         )));
     }
 
@@ -1836,8 +2122,14 @@ fn find_next_double(bytes: &[u8], end: usize, start: usize) -> Option<f64> {
     let search = &bytes[start..end.min(bytes.len())];
     for offset in (0..search.len().saturating_sub(7)).step_by(8) {
         let val = f64::from_le_bytes([
-            search[offset], search[offset + 1], search[offset + 2], search[offset + 3],
-            search[offset + 4], search[offset + 5], search[offset + 6], search[offset + 7],
+            search[offset],
+            search[offset + 1],
+            search[offset + 2],
+            search[offset + 3],
+            search[offset + 4],
+            search[offset + 5],
+            search[offset + 6],
+            search[offset + 7],
         ]);
         if val.is_finite() && val > 0.0 && val < 1e9 {
             return Some(val);
@@ -1851,7 +2143,12 @@ mod tests {
     use super::*;
     use std::io::Write;
 
-    fn create_test_edf(path: &Path, n_channels: usize, n_records: usize, samples_per_record: usize) {
+    fn create_test_edf(
+        path: &Path,
+        n_channels: usize,
+        n_records: usize,
+        samples_per_record: usize,
+    ) {
         let mut file = std::fs::File::create(path).unwrap();
         let mut hdr = [b' '; 256];
         hdr[0..1].copy_from_slice(b"0");
@@ -1873,15 +2170,20 @@ mod tests {
             let o = n_channels * 96 + i * 8;
             ext[o..o + 2].copy_from_slice(b"uV");
             let s = format!("{:<8}", "-3200");
-            ext[n_channels * 104 + i * 8..n_channels * 104 + i * 8 + 8].copy_from_slice(s.as_bytes());
+            ext[n_channels * 104 + i * 8..n_channels * 104 + i * 8 + 8]
+                .copy_from_slice(s.as_bytes());
             let s = format!("{:<8}", "3200");
-            ext[n_channels * 112 + i * 8..n_channels * 112 + i * 8 + 8].copy_from_slice(s.as_bytes());
+            ext[n_channels * 112 + i * 8..n_channels * 112 + i * 8 + 8]
+                .copy_from_slice(s.as_bytes());
             let s = format!("{:<8}", "-32768");
-            ext[n_channels * 120 + i * 8..n_channels * 120 + i * 8 + 8].copy_from_slice(s.as_bytes());
+            ext[n_channels * 120 + i * 8..n_channels * 120 + i * 8 + 8]
+                .copy_from_slice(s.as_bytes());
             let s = format!("{:<8}", "32767");
-            ext[n_channels * 128 + i * 8..n_channels * 128 + i * 8 + 8].copy_from_slice(s.as_bytes());
+            ext[n_channels * 128 + i * 8..n_channels * 128 + i * 8 + 8]
+                .copy_from_slice(s.as_bytes());
             let s = format!("{:<8}", samples_per_record);
-            ext[n_channels * 216 + i * 8..n_channels * 216 + i * 8 + 8].copy_from_slice(s.as_bytes());
+            ext[n_channels * 216 + i * 8..n_channels * 216 + i * 8 + 8]
+                .copy_from_slice(s.as_bytes());
         }
         file.write_all(&ext).unwrap();
 
@@ -1892,7 +2194,9 @@ mod tests {
             for ch in 0..n_channels {
                 for s in 0..samples_per_record {
                     let t = rec as f64 + s as f64 / samples_per_record as f64;
-                    let value = (1000.0 * (2.0 * std::f64::consts::PI * (ch as f64 + 1.0) * t).sin()) as i16;
+                    let value = (1000.0
+                        * (2.0 * std::f64::consts::PI * (ch as f64 + 1.0) * t).sin())
+                        as i16;
                     let off = (ch * samples_per_record + s) * 2;
                     buf[off..off + 2].copy_from_slice(&value.to_le_bytes());
                 }
@@ -1983,7 +2287,10 @@ mod tests {
             data: vec![vec![1.0, 2.0], vec![3.0, 4.0], vec![5.0, 6.0]],
             sampling_rates: vec![256.0; 3],
             duration: 0.0078125,
-            annotations: Vec::new(), stim_channel_indices: Vec::new(), is_discontinuous: false, record_onsets: Vec::new(),
+            annotations: Vec::new(),
+            stim_channel_indices: Vec::new(),
+            is_discontinuous: false,
+            record_onsets: Vec::new(),
         };
         let subset = data.select_channels(&["Fp1", "Cz"]);
         assert_eq!(subset.n_channels(), 2);
@@ -1999,7 +2306,10 @@ mod tests {
             data: vec![(0..256).map(|i| i as f64).collect()],
             sampling_rates: vec![256.0],
             duration: 1.0,
-            annotations: Vec::new(), stim_channel_indices: Vec::new(), is_discontinuous: false, record_onsets: Vec::new(),
+            annotations: Vec::new(),
+            stim_channel_indices: Vec::new(),
+            is_discontinuous: false,
+            record_onsets: Vec::new(),
         };
         let slice = data.time_slice(0.0, 0.5);
         assert_eq!(slice.n_samples(0), 128);
@@ -2057,7 +2367,9 @@ Ch3=Cz,,0.1
         std::fs::create_dir_all(&dir).unwrap();
 
         let vhdr_path = dir.join("test.vhdr");
-        std::fs::write(&vhdr_path, r#"Brain Vision Data Exchange Header File Version 1.0
+        std::fs::write(
+            &vhdr_path,
+            r#"Brain Vision Data Exchange Header File Version 1.0
 
 [Common Infos]
 DataFile=test.eeg
@@ -2070,7 +2382,9 @@ BinaryFormat=INT_16
 [Channel Infos]
 Ch1=Fp1,,0.1
 Ch2=Fp2,,0.1
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
         let eeg_path = dir.join("test.eeg");
         let mut eeg_data = Vec::with_capacity(256 * 4);
@@ -2098,7 +2412,10 @@ Ch2=Fp2,,0.1
             data: vec![vec![1.0, 2.0, 3.0], vec![4.0, 5.0, 6.0]],
             sampling_rates: vec![256.0; 2],
             duration: 0.01171875,
-            annotations: Vec::new(), stim_channel_indices: Vec::new(), is_discontinuous: false, record_onsets: Vec::new(),
+            annotations: Vec::new(),
+            stim_channel_indices: Vec::new(),
+            is_discontinuous: false,
+            record_onsets: Vec::new(),
         };
         assert_eq!(data.channel_by_name("Fp1"), Some(&[1.0, 2.0, 3.0][..]));
         assert_eq!(data.channel_by_name("Fp2"), Some(&[4.0, 5.0, 6.0][..]));
@@ -2126,16 +2443,25 @@ Ch2=Fp2,,0.1
         assert_eq!(data.n_samples(0), n_rec * spr);
 
         // Should be well under 1 second for 60s × 64ch × 2048Hz (~15MB)
-        assert!(elapsed.as_millis() < 1000,
-            "Reading took {}ms, expected < 1000ms", elapsed.as_millis());
+        assert!(
+            elapsed.as_millis() < 1000,
+            "Reading took {}ms, expected < 1000ms",
+            elapsed.as_millis()
+        );
 
         // Channel selection should be faster
         let start = std::time::Instant::now();
-        let _data = read_edf(&path, &ReadOptions::new()
-            .with_channels(vec!["EEG1".into(), "EEG32".into()])).unwrap();
+        let _data = read_edf(
+            &path,
+            &ReadOptions::new().with_channels(vec!["EEG1".into(), "EEG32".into()]),
+        )
+        .unwrap();
         let elapsed2 = start.elapsed();
-        assert!(elapsed2 <= elapsed || elapsed2.as_millis() < 500,
-            "Channel-select took {}ms", elapsed2.as_millis());
+        assert!(
+            elapsed2 <= elapsed || elapsed2.as_millis() < 500,
+            "Channel-select took {}ms",
+            elapsed2.as_millis()
+        );
 
         std::fs::remove_dir_all(&dir).unwrap();
     }
@@ -2147,7 +2473,10 @@ Ch2=Fp2,,0.1
             data: vec![vec![0.0; 512]],
             sampling_rates: vec![256.0],
             duration: 2.0,
-            annotations: Vec::new(), stim_channel_indices: Vec::new(), is_discontinuous: false, record_onsets: Vec::new(),
+            annotations: Vec::new(),
+            stim_channel_indices: Vec::new(),
+            is_discontinuous: false,
+            record_onsets: Vec::new(),
         };
         let times = data.times(0).unwrap();
         assert_eq!(times.len(), 512);
@@ -2163,7 +2492,10 @@ Ch2=Fp2,,0.1
             data: vec![vec![1.0], vec![2.0], vec![3.0]],
             sampling_rates: vec![256.0; 3],
             duration: 0.00390625,
-            annotations: Vec::new(), stim_channel_indices: Vec::new(), is_discontinuous: false, record_onsets: Vec::new(),
+            annotations: Vec::new(),
+            stim_channel_indices: Vec::new(),
+            is_discontinuous: false,
+            record_onsets: Vec::new(),
         };
         let excl = data.exclude_channels(&["Fp2"]);
         assert_eq!(excl.n_channels(), 2);
@@ -2177,7 +2509,10 @@ Ch2=Fp2,,0.1
             data: vec![vec![100.0, 200.0]],
             sampling_rates: vec![256.0],
             duration: 0.0078125,
-            annotations: Vec::new(), stim_channel_indices: Vec::new(), is_discontinuous: false, record_onsets: Vec::new(),
+            annotations: Vec::new(),
+            stim_channel_indices: Vec::new(),
+            is_discontinuous: false,
+            record_onsets: Vec::new(),
         };
         let mut map = std::collections::HashMap::new();
         map.insert("Fp1".into(), 1e-6);
@@ -2193,10 +2528,14 @@ Ch2=Fp2,,0.1
             data: vec![(0..256).map(|i| i as f64).collect()],
             sampling_rates: vec![256.0],
             duration: 1.0,
-            annotations: vec![
-                Annotation { onset: 0.25, duration: 0.25, description: "BAD_segment".into() },
-            ],
-            stim_channel_indices: Vec::new(), is_discontinuous: false, record_onsets: Vec::new(),
+            annotations: vec![Annotation {
+                onset: 0.25,
+                duration: 0.25,
+                description: "BAD_segment".into(),
+            }],
+            stim_channel_indices: Vec::new(),
+            is_discontinuous: false,
+            record_onsets: Vec::new(),
         };
         let rejected = data.reject_by_annotation("BAD");
         // Samples from 0.25s to 0.5s (64..128) should be NAN
@@ -2252,7 +2591,9 @@ Mk4=Comment,hello world,3072,1,0
         let dir = std::env::temp_dir().join("bids_eeg_data_test_bv_vmrk");
         std::fs::create_dir_all(&dir).unwrap();
 
-        std::fs::write(dir.join("test.vhdr"), r#"Brain Vision Data Exchange Header File Version 1.0
+        std::fs::write(
+            dir.join("test.vhdr"),
+            r#"Brain Vision Data Exchange Header File Version 1.0
 
 [Common Infos]
 DataFile=test.eeg
@@ -2266,14 +2607,20 @@ BinaryFormat=INT_16
 [Channel Infos]
 Ch1=Fp1,,0.1
 Ch2=Fp2,,0.1
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
-        std::fs::write(dir.join("test.vmrk"), r#"Brain Vision Data Exchange Marker File Version 1.0
+        std::fs::write(
+            dir.join("test.vmrk"),
+            r#"Brain Vision Data Exchange Marker File Version 1.0
 
 [Marker Infos]
 Mk1=Stimulus,S1,50,1,0
 Mk2=Stimulus,S2,150,1,0
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
         // Create binary data (2 ch × 256 samples × INT_16)
         let mut buf = Vec::with_capacity(256 * 2 * 2);
@@ -2335,13 +2682,18 @@ Mk2=Stimulus,S2,150,1,0
         let ch_labels = ["EEG1", "EEG2", "Status"];
         for i in 0..n_ch {
             let label = format!("{:<16}", ch_labels[i]);
-            ext[i*16..i*16+16].copy_from_slice(label.as_bytes());
-            ext[n_ch*96+i*8..n_ch*96+i*8+2].copy_from_slice(b"uV");
-            let s = format!("{:<8}", "-3200"); ext[n_ch*104+i*8..n_ch*104+i*8+8].copy_from_slice(s.as_bytes());
-            let s = format!("{:<8}", "3200"); ext[n_ch*112+i*8..n_ch*112+i*8+8].copy_from_slice(s.as_bytes());
-            let s = format!("{:<8}", "-32768"); ext[n_ch*120+i*8..n_ch*120+i*8+8].copy_from_slice(s.as_bytes());
-            let s = format!("{:<8}", "32767"); ext[n_ch*128+i*8..n_ch*128+i*8+8].copy_from_slice(s.as_bytes());
-            let s = format!("{:<8}", spr); ext[n_ch*216+i*8..n_ch*216+i*8+8].copy_from_slice(s.as_bytes());
+            ext[i * 16..i * 16 + 16].copy_from_slice(label.as_bytes());
+            ext[n_ch * 96 + i * 8..n_ch * 96 + i * 8 + 2].copy_from_slice(b"uV");
+            let s = format!("{:<8}", "-3200");
+            ext[n_ch * 104 + i * 8..n_ch * 104 + i * 8 + 8].copy_from_slice(s.as_bytes());
+            let s = format!("{:<8}", "3200");
+            ext[n_ch * 112 + i * 8..n_ch * 112 + i * 8 + 8].copy_from_slice(s.as_bytes());
+            let s = format!("{:<8}", "-32768");
+            ext[n_ch * 120 + i * 8..n_ch * 120 + i * 8 + 8].copy_from_slice(s.as_bytes());
+            let s = format!("{:<8}", "32767");
+            ext[n_ch * 128 + i * 8..n_ch * 128 + i * 8 + 8].copy_from_slice(s.as_bytes());
+            let s = format!("{:<8}", spr);
+            ext[n_ch * 216 + i * 8..n_ch * 216 + i * 8 + 8].copy_from_slice(s.as_bytes());
         }
         file.write_all(&ext).unwrap();
 
@@ -2361,10 +2713,14 @@ Mk2=Stimulus,S2,150,1,0
     fn make_sine_data(freq: f64, sr: f64, duration: f64, n_ch: usize) -> EegData {
         let n = (duration * sr) as usize;
         let data: Vec<Vec<f64>> = (0..n_ch)
-            .map(|_| (0..n).map(|i| {
-                let t = i as f64 / sr;
-                (2.0 * std::f64::consts::PI * freq * t).sin()
-            }).collect())
+            .map(|_| {
+                (0..n)
+                    .map(|i| {
+                        let t = i as f64 / sr;
+                        (2.0 * std::f64::consts::PI * freq * t).sin()
+                    })
+                    .collect()
+            })
             .collect();
         EegData {
             channel_labels: (0..n_ch).map(|i| format!("Ch{}", i + 1)).collect(),
@@ -2385,22 +2741,28 @@ Mk2=Stimulus,S2,150,1,0
         let n = 1000;
         let data = EegData {
             channel_labels: vec!["Ch1".into()],
-            data: vec![(0..n).map(|i| {
-                let t = i as f64 / sr;
-                (2.0 * std::f64::consts::PI * 10.0 * t).sin()
-                    + (2.0 * std::f64::consts::PI * 100.0 * t).sin()
-            }).collect()],
+            data: vec![
+                (0..n)
+                    .map(|i| {
+                        let t = i as f64 / sr;
+                        (2.0 * std::f64::consts::PI * 10.0 * t).sin()
+                            + (2.0 * std::f64::consts::PI * 100.0 * t).sin()
+                    })
+                    .collect(),
+            ],
             sampling_rates: vec![sr],
             duration: n as f64 / sr,
-            annotations: Vec::new(), stim_channel_indices: Vec::new(),
-            is_discontinuous: false, record_onsets: Vec::new(),
+            annotations: Vec::new(),
+            stim_channel_indices: Vec::new(),
+            is_discontinuous: false,
+            record_onsets: Vec::new(),
         };
 
         let filtered = data.filter(None, Some(30.0), 5);
         assert_eq!(filtered.data[0].len(), n);
         // High-freq noise should be greatly reduced
-        let orig_energy: f64 = data.data[0][n/2..].iter().map(|v| v*v).sum::<f64>();
-        let filt_energy: f64 = filtered.data[0][n/2..].iter().map(|v| v*v).sum::<f64>();
+        let orig_energy: f64 = data.data[0][n / 2..].iter().map(|v| v * v).sum::<f64>();
+        let filt_energy: f64 = filtered.data[0][n / 2..].iter().map(|v| v * v).sum::<f64>();
         assert!(filt_energy < orig_energy * 0.7);
     }
 
@@ -2410,15 +2772,21 @@ Mk2=Stimulus,S2,150,1,0
         let n = 2000;
         let data = EegData {
             channel_labels: vec!["Ch1".into()],
-            data: vec![(0..n).map(|i| {
-                let t = i as f64 / sr;
-                (2.0 * std::f64::consts::PI * 10.0 * t).sin()
-                    + 0.5 * (2.0 * std::f64::consts::PI * 50.0 * t).sin()
-            }).collect()],
+            data: vec![
+                (0..n)
+                    .map(|i| {
+                        let t = i as f64 / sr;
+                        (2.0 * std::f64::consts::PI * 10.0 * t).sin()
+                            + 0.5 * (2.0 * std::f64::consts::PI * 50.0 * t).sin()
+                    })
+                    .collect(),
+            ],
             sampling_rates: vec![sr],
             duration: n as f64 / sr,
-            annotations: Vec::new(), stim_channel_indices: Vec::new(),
-            is_discontinuous: false, record_onsets: Vec::new(),
+            annotations: Vec::new(),
+            stim_channel_indices: Vec::new(),
+            is_discontinuous: false,
+            record_onsets: Vec::new(),
         };
 
         let filtered = data.notch_filter(50.0, 30.0);
@@ -2443,8 +2811,10 @@ Mk2=Stimulus,S2,150,1,0
             data: vec![vec![3.0, 6.0], vec![1.0, 2.0], vec![2.0, 4.0]],
             sampling_rates: vec![256.0; 3],
             duration: 2.0 / 256.0,
-            annotations: Vec::new(), stim_channel_indices: Vec::new(),
-            is_discontinuous: false, record_onsets: Vec::new(),
+            annotations: Vec::new(),
+            stim_channel_indices: Vec::new(),
+            is_discontinuous: false,
+            record_onsets: Vec::new(),
         };
         let reref = data.set_average_reference();
         // Mean at t=0: (3+1+2)/3 = 2.0
@@ -2460,8 +2830,10 @@ Mk2=Stimulus,S2,150,1,0
             data: vec![vec![10.0, 20.0], vec![5.0, 10.0], vec![8.0, 16.0]],
             sampling_rates: vec![256.0; 3],
             duration: 2.0 / 256.0,
-            annotations: Vec::new(), stim_channel_indices: Vec::new(),
-            is_discontinuous: false, record_onsets: Vec::new(),
+            annotations: Vec::new(),
+            stim_channel_indices: Vec::new(),
+            is_discontinuous: false,
+            record_onsets: Vec::new(),
         };
         let reref = data.set_reference("Cz");
         assert!((reref.data[0][0] - 5.0).abs() < 1e-10); // 10 - 5
@@ -2475,15 +2847,33 @@ Mk2=Stimulus,S2,150,1,0
         let n = 500;
         let data = EegData {
             channel_labels: vec!["Ch1".into()],
-            data: vec![(0..n).map(|i| (i as f64 / sr * 2.0 * std::f64::consts::PI).sin()).collect()],
+            data: vec![
+                (0..n)
+                    .map(|i| (i as f64 / sr * 2.0 * std::f64::consts::PI).sin())
+                    .collect(),
+            ],
             sampling_rates: vec![sr],
             duration: n as f64 / sr,
             annotations: vec![
-                Annotation { onset: 1.0, duration: 0.0, description: "stim".into() },
-                Annotation { onset: 2.0, duration: 0.0, description: "stim".into() },
-                Annotation { onset: 3.0, duration: 0.0, description: "stim".into() },
+                Annotation {
+                    onset: 1.0,
+                    duration: 0.0,
+                    description: "stim".into(),
+                },
+                Annotation {
+                    onset: 2.0,
+                    duration: 0.0,
+                    description: "stim".into(),
+                },
+                Annotation {
+                    onset: 3.0,
+                    duration: 0.0,
+                    description: "stim".into(),
+                },
             ],
-            stim_channel_indices: Vec::new(), is_discontinuous: false, record_onsets: Vec::new(),
+            stim_channel_indices: Vec::new(),
+            is_discontinuous: false,
+            record_onsets: Vec::new(),
         };
 
         let epochs = data.epoch(-0.2, 0.5, Some("stim"));
@@ -2504,12 +2894,18 @@ Mk2=Stimulus,S2,150,1,0
         assert_eq!(psd.len(), 1);
         assert_eq!(psd[0].len(), 129);
         // Peak should be at ~10 Hz
-        let peak_idx = psd[0].iter().enumerate()
+        let peak_idx = psd[0]
+            .iter()
+            .enumerate()
             .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
-            .unwrap().0;
+            .unwrap()
+            .0;
         let peak_freq = freqs[peak_idx];
-        assert!((peak_freq - 10.0).abs() < 2.0,
-            "PSD peak at {:.1} Hz, expected ~10 Hz", peak_freq);
+        assert!(
+            (peak_freq - 10.0).abs() < 2.0,
+            "PSD peak at {:.1} Hz, expected ~10 Hz",
+            peak_freq
+        );
     }
 
     #[test]
@@ -2521,7 +2917,11 @@ Mk2=Stimulus,S2,150,1,0
         let debug = format!("{:?}", data);
         assert!(debug.contains("n_channels: 4"), "Debug: {}", debug);
         // Should NOT contain raw sample data
-        assert!(!debug.contains("0."), "Debug should not dump samples: {}", &debug[..100.min(debug.len())]);
+        assert!(
+            !debug.contains("0."),
+            "Debug should not dump samples: {}",
+            &debug[..100.min(debug.len())]
+        );
     }
 
     #[test]
@@ -2531,7 +2931,10 @@ Mk2=Stimulus,S2,150,1,0
             data: vec![vec![1.0, 2.0, 3.0, 4.0]],
             sampling_rates: vec![256.0],
             duration: 4.0 / 256.0,
-            annotations: Vec::new(), stim_channel_indices: Vec::new(), is_discontinuous: false, record_onsets: Vec::new(),
+            annotations: Vec::new(),
+            stim_channel_indices: Vec::new(),
+            is_discontinuous: false,
+            record_onsets: Vec::new(),
         };
         let (d, t) = data.get_data_with_times();
         assert_eq!(d.len(), 1);
@@ -2548,9 +2951,17 @@ Mk2=Stimulus,S2,150,1,0
             data: vec![vec![1.0], vec![2.0], vec![3.0], vec![4.0]],
             sampling_rates: vec![256.0; 4],
             duration: 1.0 / 256.0,
-            annotations: Vec::new(), stim_channel_indices: Vec::new(), is_discontinuous: false, record_onsets: Vec::new(),
+            annotations: Vec::new(),
+            stim_channel_indices: Vec::new(),
+            is_discontinuous: false,
+            record_onsets: Vec::new(),
         };
-        let types = vec![ChannelType::EEG, ChannelType::EEG, ChannelType::EEG, ChannelType::ECG];
+        let types = vec![
+            ChannelType::EEG,
+            ChannelType::EEG,
+            ChannelType::EEG,
+            ChannelType::ECG,
+        ];
         let picked = data.pick_types(&[ChannelType::EEG], &types);
         assert_eq!(picked.n_channels(), 3);
         assert_eq!(picked.channel_labels, vec!["Fp1", "EOG1", "Cz"]);
@@ -2563,16 +2974,28 @@ Mk2=Stimulus,S2,150,1,0
             data: vec![vec![1.0, 2.0], vec![3.0, 4.0]],
             sampling_rates: vec![256.0; 2],
             duration: 2.0 / 256.0,
-            annotations: vec![Annotation { onset: 0.0, duration: 0.0, description: "A".into() }],
-            stim_channel_indices: Vec::new(), is_discontinuous: false, record_onsets: Vec::new(),
+            annotations: vec![Annotation {
+                onset: 0.0,
+                duration: 0.0,
+                description: "A".into(),
+            }],
+            stim_channel_indices: Vec::new(),
+            is_discontinuous: false,
+            record_onsets: Vec::new(),
         };
         let data2 = EegData {
             channel_labels: vec!["Fp1".into(), "Fp2".into()],
             data: vec![vec![5.0, 6.0], vec![7.0, 8.0]],
             sampling_rates: vec![256.0; 2],
             duration: 2.0 / 256.0,
-            annotations: vec![Annotation { onset: 0.0, duration: 0.0, description: "B".into() }],
-            stim_channel_indices: Vec::new(), is_discontinuous: false, record_onsets: Vec::new(),
+            annotations: vec![Annotation {
+                onset: 0.0,
+                duration: 0.0,
+                description: "B".into(),
+            }],
+            stim_channel_indices: Vec::new(),
+            is_discontinuous: false,
+            record_onsets: Vec::new(),
         };
         data1.concatenate(&data2).unwrap();
         assert_eq!(data1.n_samples(0), 4);
@@ -2588,7 +3011,10 @@ Mk2=Stimulus,S2,150,1,0
             data: vec![vec![9.0]],
             sampling_rates: vec![256.0],
             duration: 1.0 / 256.0,
-            annotations: Vec::new(), stim_channel_indices: Vec::new(), is_discontinuous: false, record_onsets: Vec::new(),
+            annotations: Vec::new(),
+            stim_channel_indices: Vec::new(),
+            is_discontinuous: false,
+            record_onsets: Vec::new(),
         };
         assert!(data1.concatenate(&data3).is_err());
     }

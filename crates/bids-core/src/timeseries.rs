@@ -41,7 +41,11 @@ pub trait TimeSeries {
         (0..self.n_channels())
             .map(|ch| {
                 let d = self.channel_data(ch).unwrap_or(&[]);
-                if d.is_empty() { 0.0 } else { d.iter().sum::<f64>() / d.len() as f64 }
+                if d.is_empty() {
+                    0.0
+                } else {
+                    d.iter().sum::<f64>() / d.len() as f64
+                }
             })
             .collect()
     }
@@ -51,7 +55,9 @@ pub trait TimeSeries {
         (0..self.n_channels())
             .map(|ch| {
                 let d = self.channel_data(ch).unwrap_or(&[]);
-                if d.len() < 2 { return 0.0; }
+                if d.len() < 2 {
+                    return 0.0;
+                }
                 let m = means[ch];
                 let var = d.iter().map(|v| (v - m).powi(2)).sum::<f64>() / (d.len() - 1) as f64;
                 var.sqrt()
@@ -75,7 +81,11 @@ pub trait TimeSeries {
             .map(|ch| {
                 let d = self.channel_data(ch).unwrap_or(&[]);
                 let m = means[ch];
-                let s = if stds[ch] > f64::EPSILON { stds[ch] } else { 1.0 };
+                let s = if stds[ch] > f64::EPSILON {
+                    stds[ch]
+                } else {
+                    1.0
+                };
                 d.iter().map(|v| (v - m) / s).collect()
             })
             .collect()
@@ -132,12 +142,16 @@ pub trait TimeSeries {
     #[must_use]
     fn epochs_with_stride(&self, window_sec: f64, stride_sec: f64) -> Vec<Vec<Vec<f64>>> {
         let dur = self.duration();
-        if dur < window_sec { return vec![]; }
+        if dur < window_sec {
+            return vec![];
+        }
         let n = ((dur - window_sec) / stride_sec).floor() as usize + 1;
-        (0..n).map(|i| {
-            let start = i as f64 * stride_sec;
-            self.window(start, start + window_sec)
-        }).collect()
+        (0..n)
+            .map(|i| {
+                let start = i as f64 * stride_sec;
+                self.window(start, start + window_sec)
+            })
+            .collect()
     }
 
     /// Flatten channels × samples into a single contiguous `Vec<f64>` (row-major).
@@ -166,7 +180,8 @@ pub trait TimeSeries {
         let mut out = Vec::with_capacity(nc * ns);
         for s in 0..ns {
             for ch in 0..nc {
-                let val = self.channel_data(ch)
+                let val = self
+                    .channel_data(ch)
                     .and_then(|d| d.get(s))
                     .copied()
                     .unwrap_or(0.0);
@@ -194,10 +209,16 @@ pub trait TimeSeries {
         (0..self.n_channels())
             .map(|ch| {
                 let d = self.channel_data(ch).unwrap_or(&[]);
-                if d.len() < 2 { return f64::NEG_INFINITY; }
+                if d.len() < 2 {
+                    return f64::NEG_INFINITY;
+                }
                 let m = means[ch];
                 let var = d.iter().map(|v| (v - m).powi(2)).sum::<f64>() / d.len() as f64;
-                if var > 0.0 { var.ln() } else { f64::NEG_INFINITY }
+                if var > 0.0 {
+                    var.ln()
+                } else {
+                    f64::NEG_INFINITY
+                }
             })
             .collect()
     }
@@ -210,7 +231,9 @@ pub trait TimeSeries {
         (0..self.n_channels())
             .map(|ch| {
                 let d = self.channel_data(ch).unwrap_or(&[]);
-                if d.is_empty() { return 0.0; }
+                if d.is_empty() {
+                    return 0.0;
+                }
                 d.iter().map(|v| v * v).sum::<f64>() / d.len() as f64
             })
             .collect()
@@ -228,7 +251,9 @@ pub trait TimeSeries {
         (0..self.n_channels())
             .map(|ch| {
                 let d = self.channel_data(ch).unwrap_or(&[]);
-                if d.is_empty() { return 0.0; }
+                if d.is_empty() {
+                    return 0.0;
+                }
                 let min = d.iter().copied().fold(f64::INFINITY, f64::min);
                 let max = d.iter().copied().fold(f64::NEG_INFINITY, f64::max);
                 max - min
@@ -247,13 +272,17 @@ pub trait TimeSeries {
         let means = self.channel_means();
         let mut cov = vec![0.0; nc * nc];
 
-        if ns < 2 { return cov; }
+        if ns < 2 {
+            return cov;
+        }
 
         for i in 0..nc {
             let di = self.channel_data(i).unwrap_or(&[]);
             for j in i..nc {
                 let dj = self.channel_data(j).unwrap_or(&[]);
-                let sum: f64 = di.iter().zip(dj.iter())
+                let sum: f64 = di
+                    .iter()
+                    .zip(dj.iter())
                     .map(|(a, b)| (a - means[i]) * (b - means[j]))
                     .sum();
                 let val = sum / (ns - 1) as f64;
@@ -277,14 +306,24 @@ mod tests {
     }
 
     impl TimeSeries for TestSeries {
-        fn n_channels(&self) -> usize { self.channels.len() }
-        fn n_samples(&self) -> usize { self.channels.first().map_or(0, |v| v.len()) }
-        fn channel_names(&self) -> &[String] { &self.names }
-        fn sampling_rate(&self) -> f64 { self.sr }
+        fn n_channels(&self) -> usize {
+            self.channels.len()
+        }
+        fn n_samples(&self) -> usize {
+            self.channels.first().map_or(0, |v| v.len())
+        }
+        fn channel_names(&self) -> &[String] {
+            &self.names
+        }
+        fn sampling_rate(&self) -> f64 {
+            self.sr
+        }
         fn channel_data(&self, index: usize) -> Option<&[f64]> {
             self.channels.get(index).map(|v| v.as_slice())
         }
-        fn duration(&self) -> f64 { self.n_samples() as f64 / self.sr }
+        fn duration(&self) -> f64 {
+            self.n_samples() as f64 / self.sr
+        }
     }
 
     fn make_test_series() -> TestSeries {
@@ -334,7 +373,8 @@ mod tests {
         // After z-score: mean ≈ 0, std ≈ 1
         let mean: f64 = z[0].iter().sum::<f64>() / z[0].len() as f64;
         assert!(mean.abs() < 1e-10, "z-score mean = {}", mean);
-        let var: f64 = z[0].iter().map(|v| (v - mean).powi(2)).sum::<f64>() / (z[0].len() - 1) as f64;
+        let var: f64 =
+            z[0].iter().map(|v| (v - mean).powi(2)).sum::<f64>() / (z[0].len() - 1) as f64;
         assert!((var - 1.0).abs() < 1e-10, "z-score variance = {}", var);
     }
 
@@ -350,8 +390,14 @@ mod tests {
     #[test]
     fn test_channel_data_by_name() {
         let ts = make_test_series();
-        assert_eq!(ts.channel_data_by_name("Ch1"), Some(&[1.0, 2.0, 3.0, 4.0, 5.0][..]));
-        assert_eq!(ts.channel_data_by_name("Ch2"), Some(&[10.0, 20.0, 30.0, 40.0, 50.0][..]));
+        assert_eq!(
+            ts.channel_data_by_name("Ch1"),
+            Some(&[1.0, 2.0, 3.0, 4.0, 5.0][..])
+        );
+        assert_eq!(
+            ts.channel_data_by_name("Ch2"),
+            Some(&[10.0, 20.0, 30.0, 40.0, 50.0][..])
+        );
         assert_eq!(ts.channel_data_by_name("Missing"), None);
     }
 

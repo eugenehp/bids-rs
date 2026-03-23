@@ -50,12 +50,12 @@
 //! [`RunVariableCollection`] groups sparse and dense run variables. Collections
 //! can be merged across runs using [`merge_collections()`].
 
-pub mod variables;
 pub mod collections;
 pub mod io;
 pub mod node;
+pub mod variables;
 
-pub use variables::{SimpleVariable, SparseRunVariable, DenseRunVariable};
-pub use collections::{VariableCollection, RunVariableCollection, merge_collections};
-pub use node::{Node, RunNode, RunInfo, NodeIndex};
+pub use collections::{RunVariableCollection, VariableCollection, merge_collections};
 pub use io::load_variables;
+pub use node::{Node, NodeIndex, RunInfo, RunNode};
+pub use variables::{DenseRunVariable, SimpleVariable, SparseRunVariable};

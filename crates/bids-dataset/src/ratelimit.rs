@@ -3,8 +3,8 @@
 //! Implements a token-bucket rate limiter shared across all download threads.
 //! Also parses `Retry-After` headers from 429 responses for server-directed backoff.
 
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 /// A thread-safe token-bucket rate limiter.
@@ -67,7 +67,9 @@ impl RateLimiter {
             }
         }
 
-        if self.min_interval_us == 0 { return; }
+        if self.min_interval_us == 0 {
+            return;
+        }
 
         loop {
             let now_us = self.epoch.elapsed().as_micros() as u64;
@@ -76,7 +78,8 @@ impl RateLimiter {
 
             if now_us >= earliest {
                 // Try to claim this slot
-                if self.last_request_us
+                if self
+                    .last_request_us
                     .compare_exchange(last, now_us, Ordering::Relaxed, Ordering::Relaxed)
                     .is_ok()
                 {
@@ -104,7 +107,9 @@ impl RateLimiter {
             // Only extend the cooldown, never shorten it
             match *guard {
                 Some(existing) if existing > until => {}
-                _ => { *guard = Some(until); }
+                _ => {
+                    *guard = Some(until);
+                }
             }
         }
     }
@@ -176,19 +181,47 @@ impl RateLimitConfig {
     }
 
     /// Builder: set S3 download rate.
-    #[must_use] pub fn s3_download_rps(mut self, rps: f64) -> Self { self.s3_download_rps = rps; self }
+    #[must_use]
+    pub fn s3_download_rps(mut self, rps: f64) -> Self {
+        self.s3_download_rps = rps;
+        self
+    }
     /// Builder: set S3 listing rate.
-    #[must_use] pub fn s3_listing_rps(mut self, rps: f64) -> Self { self.s3_listing_rps = rps; self }
+    #[must_use]
+    pub fn s3_listing_rps(mut self, rps: f64) -> Self {
+        self.s3_listing_rps = rps;
+        self
+    }
     /// Builder: set GraphQL rate.
-    #[must_use] pub fn graphql_rps(mut self, rps: f64) -> Self { self.graphql_rps = rps; self }
+    #[must_use]
+    pub fn graphql_rps(mut self, rps: f64) -> Self {
+        self.graphql_rps = rps;
+        self
+    }
     /// Builder: set max retries.
-    #[must_use] pub fn max_retries(mut self, n: u32) -> Self { self.max_retries = n; self }
+    #[must_use]
+    pub fn max_retries(mut self, n: u32) -> Self {
+        self.max_retries = n;
+        self
+    }
     /// Builder: set retry base delay.
-    #[must_use] pub fn retry_base_ms(mut self, ms: u64) -> Self { self.retry_base_ms = ms; self }
+    #[must_use]
+    pub fn retry_base_ms(mut self, ms: u64) -> Self {
+        self.retry_base_ms = ms;
+        self
+    }
     /// Builder: set 429 cooldown.
-    #[must_use] pub fn default_429_cooldown_secs(mut self, secs: u64) -> Self { self.default_429_cooldown_secs = secs; self }
+    #[must_use]
+    pub fn default_429_cooldown_secs(mut self, secs: u64) -> Self {
+        self.default_429_cooldown_secs = secs;
+        self
+    }
     /// Builder: set download thread count.
-    #[must_use] pub fn download_threads(mut self, n: usize) -> Self { self.download_threads = n; self }
+    #[must_use]
+    pub fn download_threads(mut self, n: usize) -> Self {
+        self.download_threads = n;
+        self
+    }
 
     /// Create the S3 download rate limiter from this config.
     pub fn s3_download_limiter(&self) -> RateLimiter {
@@ -205,20 +238,34 @@ impl RateLimitConfig {
 }
 
 impl Default for RateLimitConfig {
-    fn default() -> Self { Self::from_env() }
+    fn default() -> Self {
+        Self::from_env()
+    }
 }
 
 fn env_f64(key: &str, default: f64) -> f64 {
-    std::env::var(key).ok().and_then(|v| v.parse().ok()).unwrap_or(default)
+    std::env::var(key)
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(default)
 }
 fn env_u32(key: &str, default: u32) -> u32 {
-    std::env::var(key).ok().and_then(|v| v.parse().ok()).unwrap_or(default)
+    std::env::var(key)
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(default)
 }
 fn env_u64(key: &str, default: u64) -> u64 {
-    std::env::var(key).ok().and_then(|v| v.parse().ok()).unwrap_or(default)
+    std::env::var(key)
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(default)
 }
 fn env_usize(key: &str, default: usize) -> usize {
-    std::env::var(key).ok().and_then(|v| v.parse().ok()).unwrap_or(default)
+    std::env::var(key)
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(default)
 }
 
 /// Default rate limits (reads from env vars, falls back to safe defaults).
@@ -261,8 +308,11 @@ mod tests {
         let elapsed = start.elapsed();
 
         // 5 requests at 100 req/s should take at least ~40ms (4 intervals)
-        assert!(elapsed >= Duration::from_millis(30),
-            "5 requests took {:?}, expected >= 30ms", elapsed);
+        assert!(
+            elapsed >= Duration::from_millis(30),
+            "5 requests took {:?}, expected >= 30ms",
+            elapsed
+        );
     }
 
     #[test]
@@ -287,8 +337,11 @@ mod tests {
         limiter.acquire();
         let elapsed = start.elapsed();
 
-        assert!(elapsed >= Duration::from_millis(80),
-            "Cooldown acquire took {:?}, expected >= 80ms", elapsed);
+        assert!(
+            elapsed >= Duration::from_millis(80),
+            "Cooldown acquire took {:?}, expected >= 80ms",
+            elapsed
+        );
 
         // Clear and verify
         limiter.clear_cooldown();

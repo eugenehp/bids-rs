@@ -53,7 +53,9 @@ impl CSP {
     /// Each epoch is `[n_channels][n_samples]`. All epochs must have the
     /// same number of channels.
     pub fn fit(&mut self, class1: &[Vec<Vec<f64>>], class2: &[Vec<Vec<f64>>]) {
-        if class1.is_empty() || class2.is_empty() { return; }
+        if class1.is_empty() || class2.is_empty() {
+            return;
+        }
 
         let n_ch = class1[0].len();
 
@@ -94,13 +96,19 @@ impl CSP {
 
         // Sort eigenvalues (descending)
         let mut indices: Vec<usize> = (0..n_ch).collect();
-        indices.sort_by(|&a, &b| eig_vals_s[b].partial_cmp(&eig_vals_s[a]).unwrap_or(std::cmp::Ordering::Equal));
+        indices.sort_by(|&a, &b| {
+            eig_vals_s[b]
+                .partial_cmp(&eig_vals_s[a])
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         // Select top and bottom n_components
         let n = self.n_components.min(n_ch / 2);
-        let selected: Vec<usize> = indices[..n].iter()
+        let selected: Vec<usize> = indices[..n]
+            .iter()
             .chain(indices[n_ch - n..].iter())
-            .copied().collect();
+            .copied()
+            .collect();
 
         // Compute spatial filters: W = eigvecs_S^T * P
         let mut filters = Vec::with_capacity(selected.len());
@@ -118,7 +126,9 @@ impl CSP {
             // Normalize
             let norm: f64 = w.iter().map(|v| v * v).sum::<f64>().sqrt();
             if norm > 1e-12 {
-                for v in &mut w { *v /= norm; }
+                for v in &mut w {
+                    *v /= norm;
+                }
             }
             filters.push(w);
             eigenvalues.push(eig_vals_s[idx]);
@@ -142,19 +152,32 @@ impl CSP {
         let n_ch = epoch.len();
         let n_s = epoch.first().map_or(0, |ch| ch.len());
 
-        filters.iter().map(|w| {
-            // Project: z[t] = sum_c w[c] * x[c][t]
-            let nc = n_ch.min(w.len());
-            let projected: Vec<f64> = (0..n_s).map(|t| {
-                (0..nc).map(|c| w[c] * epoch[c][t]).sum::<f64>()
-            }).collect();
+        filters
+            .iter()
+            .map(|w| {
+                // Project: z[t] = sum_c w[c] * x[c][t]
+                let nc = n_ch.min(w.len());
+                let projected: Vec<f64> = (0..n_s)
+                    .map(|t| (0..nc).map(|c| w[c] * epoch[c][t]).sum::<f64>())
+                    .collect();
 
-            let mean = if n_s > 0 { projected.iter().sum::<f64>() / n_s as f64 } else { 0.0 };
-            let var = if n_s > 1 {
-                projected.iter().map(|z| (z - mean).powi(2)).sum::<f64>() / (n_s - 1) as f64
-            } else { 0.0 };
-            if var > 0.0 { var.ln() } else { f64::NEG_INFINITY }
-        }).collect()
+                let mean = if n_s > 0 {
+                    projected.iter().sum::<f64>() / n_s as f64
+                } else {
+                    0.0
+                };
+                let var = if n_s > 1 {
+                    projected.iter().map(|z| (z - mean).powi(2)).sum::<f64>() / (n_s - 1) as f64
+                } else {
+                    0.0
+                };
+                if var > 0.0 {
+                    var.ln()
+                } else {
+                    f64::NEG_INFINITY
+                }
+            })
+            .collect()
     }
 
     /// Transform multiple epochs into a feature matrix.
@@ -194,19 +217,21 @@ fn mean_covariance(epochs: &[Vec<Vec<f64>>], n_ch: usize) -> Vec<f64> {
     for epoch in epochs {
         let nc = epoch.len().min(n_ch);
         let ns = epoch.first().map_or(0, |ch| ch.len());
-        if ns < 2 { continue; }
+        if ns < 2 {
+            continue;
+        }
 
         // Compute means
-        let means: Vec<f64> = (0..nc).map(|c| {
-            epoch[c].iter().sum::<f64>() / ns as f64
-        }).collect();
+        let means: Vec<f64> = (0..nc)
+            .map(|c| epoch[c].iter().sum::<f64>() / ns as f64)
+            .collect();
 
         // Accumulate covariance
         for i in 0..nc {
             for j in i..nc {
-                let sum: f64 = (0..ns).map(|t| {
-                    (epoch[i][t] - means[i]) * (epoch[j][t] - means[j])
-                }).sum();
+                let sum: f64 = (0..ns)
+                    .map(|t| (epoch[i][t] - means[i]) * (epoch[j][t] - means[j]))
+                    .sum();
                 let val = sum / (ns - 1) as f64;
                 cov[i * n_ch + j] += val / n_epochs;
                 if i != j {
@@ -219,7 +244,9 @@ fn mean_covariance(epochs: &[Vec<Vec<f64>>], n_ch: usize) -> Vec<f64> {
     // Normalize by trace
     let trace: f64 = (0..n_ch).map(|i| cov[i * n_ch + i]).sum();
     if trace > 1e-12 {
-        for v in &mut cov { *v /= trace; }
+        for v in &mut cov {
+            *v /= trace;
+        }
     }
 
     cov
@@ -232,7 +259,9 @@ fn mean_covariance(epochs: &[Vec<Vec<f64>>], n_ch: usize) -> Vec<f64> {
 fn symmetric_eigen(n: usize, a: &[f64]) -> (Vec<f64>, Vec<f64>) {
     let mut d = a.to_vec(); // working copy
     let mut v = vec![0.0; n * n]; // eigenvectors (identity initially)
-    for i in 0..n { v[i * n + i] = 1.0; }
+    for i in 0..n {
+        v[i * n + i] = 1.0;
+    }
 
     let max_iter = 100 * n * n;
     for _ in 0..max_iter {
@@ -251,7 +280,9 @@ fn symmetric_eigen(n: usize, a: &[f64]) -> (Vec<f64>, Vec<f64>) {
             }
         }
 
-        if max_val < 1e-14 { break; }
+        if max_val < 1e-14 {
+            break;
+        }
 
         // Compute rotation
         let app = d[p * n + p];
@@ -305,7 +336,9 @@ fn mat_mul(n: usize, a: &[f64], b: &[f64]) -> Vec<f64> {
     for i in 0..n {
         for k in 0..n {
             let aik = a[i * n + k];
-            if aik.abs() < 1e-15 { continue; }
+            if aik.abs() < 1e-15 {
+                continue;
+            }
             for j in 0..n {
                 c[i * n + j] += aik * b[k * n + j];
             }
@@ -331,15 +364,22 @@ mod tests {
 
     fn make_epochs(n_epochs: usize, n_ch: usize, n_s: usize, class: usize) -> Vec<Vec<Vec<f64>>> {
         // Generate deterministic pseudo-random data with class-dependent variance
-        (0..n_epochs).map(|epoch_idx| {
-            (0..n_ch).map(|ch| {
-                (0..n_s).map(|s| {
-                    let seed = (epoch_idx * 1000 + ch * 100 + s + class * 50000) as f64;
-                    let val = (seed * 0.1).sin() * (1.0 + class as f64 * ch as f64 * 0.5);
-                    val
-                }).collect()
-            }).collect()
-        }).collect()
+        (0..n_epochs)
+            .map(|epoch_idx| {
+                (0..n_ch)
+                    .map(|ch| {
+                        (0..n_s)
+                            .map(|s| {
+                                let seed = (epoch_idx * 1000 + ch * 100 + s + class * 50000) as f64;
+                                let val =
+                                    (seed * 0.1).sin() * (1.0 + class as f64 * ch as f64 * 0.5);
+                                val
+                            })
+                            .collect()
+                    })
+                    .collect()
+            })
+            .collect()
     }
 
     #[test]
@@ -377,7 +417,10 @@ mod tests {
         // CSP should separate the classes: mean features should differ
         let mean1: f64 = features1.iter().map(|f| f[0]).sum::<f64>() / 10.0;
         let mean2: f64 = features2.iter().map(|f| f[0]).sum::<f64>() / 10.0;
-        assert!((mean1 - mean2).abs() > 1e-6, "CSP should separate classes: {mean1} vs {mean2}");
+        assert!(
+            (mean1 - mean2).abs() > 1e-6,
+            "CSP should separate classes: {mean1} vs {mean2}"
+        );
     }
 
     #[test]

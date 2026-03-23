@@ -34,14 +34,18 @@ impl MicrImage {
 
     /// Get a single pixel value at (x, y) for single-channel images.
     pub fn get_pixel(&self, x: u32, y: u32) -> Option<f64> {
-        if x >= self.width || y >= self.height { return None; }
+        if x >= self.width || y >= self.height {
+            return None;
+        }
         let idx = (y as usize * self.width as usize + x as usize) * self.channels;
         self.data.get(idx).copied()
     }
 
     /// Get all channel values at (x, y).
     pub fn get_pixel_channels(&self, x: u32, y: u32) -> Option<Vec<f64>> {
-        if x >= self.width || y >= self.height { return None; }
+        if x >= self.width || y >= self.height {
+            return None;
+        }
         let idx = (y as usize * self.width as usize + x as usize) * self.channels;
         if idx + self.channels <= self.data.len() {
             Some(self.data[idx..idx + self.channels].to_vec())
@@ -52,7 +56,9 @@ impl MicrImage {
 
     /// Compute the mean pixel intensity (across all channels and pixels).
     pub fn mean(&self) -> f64 {
-        if self.data.is_empty() { return 0.0; }
+        if self.data.is_empty() {
+            return 0.0;
+        }
         self.data.iter().sum::<f64>() / self.data.len() as f64
     }
 }
@@ -64,19 +70,23 @@ impl MicrImage {
 ///
 /// Supports: 8-bit, 16-bit, 32-bit grayscale and RGB images.
 pub fn read_tiff(path: &Path) -> Result<MicrImage> {
-    use tiff::decoder::{Decoder, DecodingResult};
     use tiff::ColorType;
+    use tiff::decoder::{Decoder, DecodingResult};
 
     let file = std::fs::File::open(path)?;
-    let mut decoder = Decoder::new(std::io::BufReader::new(file))
-        .map_err(|e| BidsError::Io(std::io::Error::new(
-            std::io::ErrorKind::Other, format!("TIFF error: {}", e)
-        )))?;
+    let mut decoder = Decoder::new(std::io::BufReader::new(file)).map_err(|e| {
+        BidsError::Io(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!("TIFF error: {}", e),
+        ))
+    })?;
 
-    let (width, height) = decoder.dimensions()
+    let (width, height) = decoder
+        .dimensions()
         .map_err(|e| BidsError::Csv(format!("TIFF dimensions error: {}", e)))?;
 
-    let color_type = decoder.colortype()
+    let color_type = decoder
+        .colortype()
         .map_err(|e| BidsError::Csv(format!("TIFF colortype error: {}", e)))?;
 
     let (channels, bits_per_sample) = match color_type {
@@ -84,28 +94,24 @@ pub fn read_tiff(path: &Path) -> Result<MicrImage> {
         ColorType::RGB(bps) => (3, bps as u16),
         ColorType::RGBA(bps) => (4, bps as u16),
         ColorType::GrayA(bps) => (2, bps as u16),
-        _ => return Err(BidsError::FileType(format!("Unsupported TIFF color type: {:?}", color_type))),
+        _ => {
+            return Err(BidsError::FileType(format!(
+                "Unsupported TIFF color type: {:?}",
+                color_type
+            )));
+        }
     };
 
-    let image = decoder.read_image()
+    let image = decoder
+        .read_image()
         .map_err(|e| BidsError::Csv(format!("TIFF read error: {}", e)))?;
 
     let data: Vec<f64> = match image {
-        DecodingResult::U8(buf) => {
-            buf.iter().map(|&v| v as f64 / 255.0).collect()
-        }
-        DecodingResult::U16(buf) => {
-            buf.iter().map(|&v| v as f64 / 65535.0).collect()
-        }
-        DecodingResult::U32(buf) => {
-            buf.iter().map(|&v| v as f64 / 4294967295.0).collect()
-        }
-        DecodingResult::F32(buf) => {
-            buf.iter().map(|&v| v as f64).collect()
-        }
-        DecodingResult::F64(buf) => {
-            buf.to_vec()
-        }
+        DecodingResult::U8(buf) => buf.iter().map(|&v| v as f64 / 255.0).collect(),
+        DecodingResult::U16(buf) => buf.iter().map(|&v| v as f64 / 65535.0).collect(),
+        DecodingResult::U32(buf) => buf.iter().map(|&v| v as f64 / 4294967295.0).collect(),
+        DecodingResult::F32(buf) => buf.iter().map(|&v| v as f64).collect(),
+        DecodingResult::F64(buf) => buf.to_vec(),
         _ => return Err(BidsError::FileType("Unsupported TIFF sample format".into())),
     };
 
@@ -120,28 +126,37 @@ pub fn read_tiff(path: &Path) -> Result<MicrImage> {
     }
 
     Ok(MicrImage {
-        width, height, channels, bits_per_sample, data, n_pages,
+        width,
+        height,
+        channels,
+        bits_per_sample,
+        data,
+        n_pages,
     })
 }
 
 /// Read all pages (slices) from a multi-page TIFF as separate images.
 pub fn read_tiff_stack(path: &Path) -> Result<Vec<MicrImage>> {
-    use tiff::decoder::{Decoder, DecodingResult};
     use tiff::ColorType;
+    use tiff::decoder::{Decoder, DecodingResult};
 
     let file = std::fs::File::open(path)?;
-    let mut decoder = Decoder::new(std::io::BufReader::new(file))
-        .map_err(|e| BidsError::Io(std::io::Error::new(
-            std::io::ErrorKind::Other, format!("TIFF error: {}", e)
-        )))?;
+    let mut decoder = Decoder::new(std::io::BufReader::new(file)).map_err(|e| {
+        BidsError::Io(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!("TIFF error: {}", e),
+        ))
+    })?;
 
     let mut pages = Vec::new();
 
     loop {
-        let (width, height) = decoder.dimensions()
+        let (width, height) = decoder
+            .dimensions()
             .map_err(|e| BidsError::Csv(format!("TIFF dimensions error: {}", e)))?;
 
-        let color_type = decoder.colortype()
+        let color_type = decoder
+            .colortype()
             .map_err(|e| BidsError::Csv(format!("TIFF colortype error: {}", e)))?;
 
         let (channels, bits_per_sample) = match color_type {
@@ -149,10 +164,16 @@ pub fn read_tiff_stack(path: &Path) -> Result<Vec<MicrImage>> {
             ColorType::RGB(bps) => (3, bps as u16),
             ColorType::RGBA(bps) => (4, bps as u16),
             ColorType::GrayA(bps) => (2, bps as u16),
-            _ => return Err(BidsError::FileType(format!("Unsupported TIFF color type: {:?}", color_type))),
+            _ => {
+                return Err(BidsError::FileType(format!(
+                    "Unsupported TIFF color type: {:?}",
+                    color_type
+                )));
+            }
         };
 
-        let image = decoder.read_image()
+        let image = decoder
+            .read_image()
             .map_err(|e| BidsError::Csv(format!("TIFF read error: {}", e)))?;
 
         let data: Vec<f64> = match image {
@@ -165,11 +186,18 @@ pub fn read_tiff_stack(path: &Path) -> Result<Vec<MicrImage>> {
         };
 
         pages.push(MicrImage {
-            width, height, channels, bits_per_sample, data, n_pages: 0,
+            width,
+            height,
+            channels,
+            bits_per_sample,
+            data,
+            n_pages: 0,
         });
 
         if decoder.more_images() {
-            if decoder.next_image().is_err() { break; }
+            if decoder.next_image().is_err() {
+                break;
+            }
         } else {
             break;
         }
@@ -177,7 +205,9 @@ pub fn read_tiff_stack(path: &Path) -> Result<Vec<MicrImage>> {
 
     // Set n_pages on all entries
     let total = pages.len();
-    for p in &mut pages { p.n_pages = total; }
+    for p in &mut pages {
+        p.n_pages = total;
+    }
 
     Ok(pages)
 }
@@ -198,7 +228,9 @@ mod tests {
             .map(|i| (i % 256) as u8)
             .collect();
 
-        encoder.write_image::<Gray8>(width, height, &pixels).unwrap();
+        encoder
+            .write_image::<Gray8>(width, height, &pixels)
+            .unwrap();
     }
 
     #[test]

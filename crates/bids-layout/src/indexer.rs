@@ -9,7 +9,7 @@ use bids_core::entities::Entity;
 use bids_core::error::Result;
 use bids_core::file::BidsFile;
 use bids_io::json::read_json_sidecar;
-use bids_validate::{should_ignore, should_force_index};
+use bids_validate::{should_force_index, should_ignore};
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -32,11 +32,7 @@ fn collect_unique_entities(configs: &[Config]) -> Vec<Entity> {
 }
 
 /// Extract entities from a path and insert the file + tags into the database.
-fn index_single_file(
-    path: &Path,
-    db: &Database,
-    entities: &[Entity],
-) -> Result<()> {
+fn index_single_file(path: &Path, db: &Database, entities: &[Entity]) -> Result<()> {
     let mut bf = BidsFile::new(path);
     let path_str = path.to_string_lossy();
     for entity in entities {
@@ -107,7 +103,13 @@ pub fn index_dataset(
     }
 
     // Index .zarr directories as single files
-    index_zarr_dirs(root, db, &all_entities, &options.ignore, &options.force_index)?;
+    index_zarr_dirs(
+        root,
+        db,
+        &all_entities,
+        &options.ignore,
+        &options.force_index,
+    )?;
 
     db.commit_transaction()?;
 
@@ -145,7 +147,8 @@ fn index_files(
                 }
             }
             // Skip ignored directories early
-            if e.file_type().is_dir() && should_ignore(e.path(), root, &options.ignore)
+            if e.file_type().is_dir()
+                && should_ignore(e.path(), root, &options.ignore)
                 && !should_force_index(e.path(), root, &options.force_index)
             {
                 return false;
@@ -161,18 +164,22 @@ fn index_files(
             // Check for per-directory config files
             let config_file = path.join(&options.config_filename);
             if config_file.exists()
-                && let Ok(cfg) = Config::from_file(&config_file) {
-                    for entity in &cfg.entities {
-                        if !all_entities.iter().any(|e| e.name == entity.name) {
-                            all_entities.push(entity.clone());
-                        }
+                && let Ok(cfg) = Config::from_file(&config_file)
+            {
+                for entity in &cfg.entities {
+                    if !all_entities.iter().any(|e| e.name == entity.name) {
+                        all_entities.push(entity.clone());
                     }
                 }
+            }
             continue;
         }
 
         // Skip the config filename itself
-        if path.file_name().is_some_and(|n| n.to_str() == Some(&options.config_filename)) {
+        if path
+            .file_name()
+            .is_some_and(|n| n.to_str() == Some(&options.config_filename))
+        {
             continue;
         }
 
@@ -222,9 +229,10 @@ fn index_zarr_dirs(
         let path = entry.path();
         if entry.file_type().is_dir()
             && let Some(ext) = path.extension()
-                && ext == "zarr" {
-                    index_single_file(path, db, entities)?;
-                }
+            && ext == "zarr"
+        {
+            index_single_file(path, db, entities)?;
+        }
     }
     Ok(())
 }
@@ -243,7 +251,9 @@ fn is_bids_valid(path: &Path, root: &Path) -> bool {
     }
 
     // Must be inside a sub-* directory
-    let first_component = rel.components().next()
+    let first_component = rel
+        .components()
+        .next()
         .and_then(|c| c.as_os_str().to_str())
         .unwrap_or("");
     first_component.starts_with("sub-")
@@ -281,10 +291,12 @@ fn index_metadata(root: &Path, db: &Database) -> Result<()> {
         let data_path = PathBuf::from(data_path_str);
         let data_tags = db.get_tags(data_path_str)?;
 
-        let suffix = data_tags.iter()
+        let suffix = data_tags
+            .iter()
             .find(|(n, _, _, _)| n == "suffix")
             .map(|(_, v, _, _)| v.clone());
-        let extension = data_tags.iter()
+        let extension = data_tags
+            .iter()
             .find(|(n, _, _, _)| n == "extension")
             .map(|(_, v, _, _)| v.clone());
 
@@ -293,7 +305,8 @@ fn index_metadata(root: &Path, db: &Database) -> Result<()> {
             None => continue,
         };
 
-        let data_entities: HashMap<String, String> = data_tags.iter()
+        let data_entities: HashMap<String, String> = data_tags
+            .iter()
             .filter(|(n, _, _, _)| n != "suffix" && n != "extension")
             .map(|(n, v, _, _)| (n.clone(), v.clone()))
             .collect();
@@ -304,32 +317,39 @@ fn index_metadata(root: &Path, db: &Database) -> Result<()> {
 
         while let Some(current_dir) = dir {
             for json_path in &json_files {
-                if json_path.parent() != Some(current_dir) { continue; }
+                if json_path.parent() != Some(current_dir) {
+                    continue;
+                }
 
-                let json_stem = json_path.file_stem()
-                    .and_then(|s| s.to_str())
-                    .unwrap_or("");
+                let json_stem = json_path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
                 let json_suffix = json_stem.rsplit('_').next().unwrap_or("");
-                if json_suffix != suffix { continue; }
+                if json_suffix != suffix {
+                    continue;
+                }
 
                 let json_entities = extract_kv_pairs(json_stem);
-                let all_match = json_entities.iter().all(|(k, v)| {
-                    data_entities.get(k).is_none_or(|dv| dv == v)
-                });
+                let all_match = json_entities
+                    .iter()
+                    .all(|(k, v)| data_entities.get(k).is_none_or(|dv| dv == v));
 
                 if all_match {
                     sidecar_stack.push(json_path.clone());
 
-                    let assoc_key = format!("{}#{}#Metadata",
-                        json_path.to_string_lossy(), data_path_str);
+                    let assoc_key =
+                        format!("{}#{}#Metadata", json_path.to_string_lossy(), data_path_str);
                     if seen_assocs.insert(assoc_key) {
                         db.insert_association(
-                            &json_path.to_string_lossy(), data_path_str, "Metadata")?;
+                            &json_path.to_string_lossy(),
+                            data_path_str,
+                            "Metadata",
+                        )?;
                     }
                 }
             }
 
-            if current_dir == root { break; }
+            if current_dir == root {
+                break;
+            }
             dir = current_dir.parent();
         }
 
@@ -348,7 +368,8 @@ fn index_metadata(root: &Path, db: &Database) -> Result<()> {
 
         // Merge sidecars: least specific first
         sidecar_stack.reverse();
-        let mut merged_metadata: indexmap::IndexMap<String, serde_json::Value> = indexmap::IndexMap::new();
+        let mut merged_metadata: indexmap::IndexMap<String, serde_json::Value> =
+            indexmap::IndexMap::new();
         for sidecar_path in &sidecar_stack {
             if let Ok(md) = read_json_sidecar(sidecar_path) {
                 for (k, v) in md {
@@ -359,7 +380,9 @@ fn index_metadata(root: &Path, db: &Database) -> Result<()> {
 
         // Write metadata tags, checking for conflicts
         for (key, value) in &merged_metadata {
-            if value.is_null() { continue; }
+            if value.is_null() {
+                continue;
+            }
 
             let tag_key = format!("{data_path_str}_{key}");
             let val_str = match value {
@@ -385,7 +408,13 @@ fn index_metadata(root: &Path, db: &Database) -> Result<()> {
         }
 
         // Link companion files (events↔bold, bvec/bval↔DWI)
-        index_companion_associations(db, data_path_str, &suffix, extension.as_deref(), &data_entities)?;
+        index_companion_associations(
+            db,
+            data_path_str,
+            &suffix,
+            extension.as_deref(),
+            &data_entities,
+        )?;
     }
 
     Ok(())
@@ -423,10 +452,13 @@ fn index_companion_associations(
     extension: Option<&str>,
     data_entities: &HashMap<String, String>,
 ) -> Result<()> {
-    if extension.is_none() { return Ok(()); }
+    if extension.is_none() {
+        return Ok(());
+    }
 
     if matches!(suffix, "events" | "physio" | "stim" | "sbref") {
-        let mut filters: Vec<(String, Vec<String>, bool)> = data_entities.iter()
+        let mut filters: Vec<(String, Vec<String>, bool)> = data_entities
+            .iter()
             .filter(|(k, _)| matches!(k.as_str(), "subject" | "session" | "task" | "run"))
             .map(|(k, v)| (k.clone(), vec![v.clone()], false))
             .collect();
@@ -441,12 +473,17 @@ fn index_companion_associations(
     }
 
     if suffix == "dwi" && matches!(extension, Some(".bvec" | ".bval")) {
-        let mut filters: Vec<(String, Vec<String>, bool)> = data_entities.iter()
+        let mut filters: Vec<(String, Vec<String>, bool)> = data_entities
+            .iter()
             .filter(|(k, _)| matches!(k.as_str(), "subject" | "session" | "run" | "acquisition"))
             .map(|(k, v)| (k.clone(), vec![v.clone()], false))
             .collect();
         filters.push(("suffix".into(), vec!["dwi".into()], false));
-        filters.push(("extension".into(), vec![".nii".into(), ".nii.gz".into()], false));
+        filters.push((
+            "extension".into(),
+            vec![".nii".into(), ".nii.gz".into()],
+            false,
+        ));
 
         if let Ok(images) = db.query_files(&filters) {
             for img in &images {

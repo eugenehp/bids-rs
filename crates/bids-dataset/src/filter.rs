@@ -29,28 +29,55 @@ pub struct DatasetFilter {
 }
 
 impl DatasetFilter {
-    pub fn new() -> Self { Self::default() }
+    pub fn new() -> Self {
+        Self::default()
+    }
 
     #[must_use]
-    pub fn modality(mut self, m: &str) -> Self { self.modality = Some(m.into()); self }
-    #[must_use]
-    pub fn suffix(mut self, s: &str) -> Self { self.suffix = Some(s.into()); self }
-    #[must_use]
-    pub fn subjects(mut self, s: Vec<String>) -> Self { self.subjects = Some(s); self }
-    #[must_use]
-    pub fn exclude_subjects(mut self, s: Vec<String>) -> Self { self.exclude_subjects = Some(s); self }
-    #[must_use]
-    pub fn tasks(mut self, t: Vec<String>) -> Self { self.tasks = Some(t); self }
-    #[must_use]
-    pub fn sessions(mut self, s: Vec<String>) -> Self { self.sessions = Some(s); self }
-    #[must_use]
-    pub fn runs(mut self, r: Vec<String>) -> Self { self.runs = Some(r); self }
-    #[must_use]
-    pub fn extension(mut self, e: &str) -> Self {
-        self.extensions.get_or_insert_with(Vec::new).push(e.into()); self
+    pub fn modality(mut self, m: &str) -> Self {
+        self.modality = Some(m.into());
+        self
     }
     #[must_use]
-    pub fn min_size(mut self, bytes: u64) -> Self { self.min_size = Some(bytes); self }
+    pub fn suffix(mut self, s: &str) -> Self {
+        self.suffix = Some(s.into());
+        self
+    }
+    #[must_use]
+    pub fn subjects(mut self, s: Vec<String>) -> Self {
+        self.subjects = Some(s);
+        self
+    }
+    #[must_use]
+    pub fn exclude_subjects(mut self, s: Vec<String>) -> Self {
+        self.exclude_subjects = Some(s);
+        self
+    }
+    #[must_use]
+    pub fn tasks(mut self, t: Vec<String>) -> Self {
+        self.tasks = Some(t);
+        self
+    }
+    #[must_use]
+    pub fn sessions(mut self, s: Vec<String>) -> Self {
+        self.sessions = Some(s);
+        self
+    }
+    #[must_use]
+    pub fn runs(mut self, r: Vec<String>) -> Self {
+        self.runs = Some(r);
+        self
+    }
+    #[must_use]
+    pub fn extension(mut self, e: &str) -> Self {
+        self.extensions.get_or_insert_with(Vec::new).push(e.into());
+        self
+    }
+    #[must_use]
+    pub fn min_size(mut self, bytes: u64) -> Self {
+        self.min_size = Some(bytes);
+        self
+    }
 
     /// Test whether a BidsFile matches this filter.
     pub fn matches(&self, f: &BidsFile) -> bool {
@@ -69,27 +96,42 @@ impl DatasetFilter {
             }
         }
         if let Some(ref subs) = self.subjects {
-            if !ent_str("subject").as_ref().is_some_and(|d| subs.iter().any(|s| s == d)) {
+            if !ent_str("subject")
+                .as_ref()
+                .is_some_and(|d| subs.iter().any(|s| s == d))
+            {
                 return false;
             }
         }
         if let Some(ref excl) = self.exclude_subjects {
-            if ent_str("subject").as_ref().is_some_and(|d| excl.iter().any(|s| s == d)) {
+            if ent_str("subject")
+                .as_ref()
+                .is_some_and(|d| excl.iter().any(|s| s == d))
+            {
                 return false;
             }
         }
         if let Some(ref tasks) = self.tasks {
-            if !ent_str("task").as_ref().is_some_and(|d| tasks.iter().any(|t| t == d)) {
+            if !ent_str("task")
+                .as_ref()
+                .is_some_and(|d| tasks.iter().any(|t| t == d))
+            {
                 return false;
             }
         }
         if let Some(ref sess) = self.sessions {
-            if !ent_str("session").as_ref().is_some_and(|d| sess.iter().any(|s| s == d)) {
+            if !ent_str("session")
+                .as_ref()
+                .is_some_and(|d| sess.iter().any(|s| s == d))
+            {
                 return false;
             }
         }
         if let Some(ref runs) = self.runs {
-            if !ent_str("run").as_ref().is_some_and(|d| runs.iter().any(|r| r == d)) {
+            if !ent_str("run")
+                .as_ref()
+                .is_some_and(|d| runs.iter().any(|r| r == d))
+            {
                 return false;
             }
         }
@@ -119,12 +161,17 @@ impl DatasetFilter {
         }
         if let Some(ref subs) = self.subjects {
             // Check sub-XX in path
-            if !subs.iter().any(|s| path.contains(&format!("sub-{s}/")) || path.contains(&format!("sub-{s}_"))) {
+            if !subs
+                .iter()
+                .any(|s| path.contains(&format!("sub-{s}/")) || path.contains(&format!("sub-{s}_")))
+            {
                 return false;
             }
         }
         if let Some(ref tasks) = self.tasks {
-            if !tasks.iter().any(|t| path.contains(&format!("task-{t}_")) || path.contains(&format!("task-{t}."))) {
+            if !tasks.iter().any(|t| {
+                path.contains(&format!("task-{t}_")) || path.contains(&format!("task-{t}."))
+            }) {
                 return false;
             }
         }
@@ -133,12 +180,17 @@ impl DatasetFilter {
 
     /// Filter a remote file list for selective download.
     pub fn filter_remote<'a>(&self, files: &'a [crate::RemoteFile]) -> Vec<&'a crate::RemoteFile> {
-        files.iter().filter(|f| {
-            if let Some(min) = self.min_size {
-                if f.size < min { return false; }
-            }
-            self.matches_path(&f.path)
-        }).collect()
+        files
+            .iter()
+            .filter(|f| {
+                if let Some(min) = self.min_size {
+                    if f.size < min {
+                        return false;
+                    }
+                }
+                self.matches_path(&f.path)
+            })
+            .collect()
     }
 }
 
@@ -152,7 +204,10 @@ pub fn filter_local(root: &Path, filter: &DatasetFilter) -> crate::Result<Vec<Bi
 }
 
 fn walk_dir(
-    base: &Path, dir: &Path, filter: &DatasetFilter, out: &mut Vec<BidsFile>,
+    base: &Path,
+    dir: &Path,
+    filter: &DatasetFilter,
+    out: &mut Vec<BidsFile>,
 ) -> crate::Result<()> {
     let entries = std::fs::read_dir(dir)?;
     for entry in entries {
@@ -168,7 +223,9 @@ fn walk_dir(
             if filter.matches(&bf) {
                 if let Some(min) = filter.min_size {
                     if let Ok(meta) = std::fs::metadata(&path) {
-                        if meta.len() < min { continue; }
+                        if meta.len() < min {
+                            continue;
+                        }
                     }
                 }
                 out.push(bf);
@@ -183,9 +240,7 @@ fn populate_entities_from_path(bf: &mut BidsFile, root: &Path) {
     use bids_core::entities::EntityValue;
 
     let rel = bf.path.strip_prefix(root).unwrap_or(&bf.path);
-    let components: Vec<&str> = rel.iter()
-        .filter_map(|c| c.to_str())
-        .collect();
+    let components: Vec<&str> = rel.iter().filter_map(|c| c.to_str()).collect();
 
     // Datatype = directory containing the file if it's a known BIDS datatype.
     // Uses the schema's datatype list so it stays in sync with spec updates.
@@ -193,7 +248,8 @@ fn populate_entities_from_path(bf: &mut BidsFile, root: &Path) {
     if components.len() >= 2 {
         let parent_dir = components[components.len() - 2];
         if schema.is_valid_datatype(parent_dir) {
-            bf.entities.insert("datatype".into(), EntityValue::Str(parent_dir.into()));
+            bf.entities
+                .insert("datatype".into(), EntityValue::Str(parent_dir.into()));
         }
     }
 
@@ -203,21 +259,27 @@ fn populate_entities_from_path(bf: &mut BidsFile, root: &Path) {
     let parts: Vec<&str> = stem.split('_').collect();
     for part in &parts {
         if let Some(val) = part.strip_prefix("sub-") {
-            bf.entities.insert("subject".into(), EntityValue::Str(val.into()));
+            bf.entities
+                .insert("subject".into(), EntityValue::Str(val.into()));
         } else if let Some(val) = part.strip_prefix("ses-") {
-            bf.entities.insert("session".into(), EntityValue::Str(val.into()));
+            bf.entities
+                .insert("session".into(), EntityValue::Str(val.into()));
         } else if let Some(val) = part.strip_prefix("task-") {
-            bf.entities.insert("task".into(), EntityValue::Str(val.into()));
+            bf.entities
+                .insert("task".into(), EntityValue::Str(val.into()));
         } else if let Some(val) = part.strip_prefix("run-") {
-            bf.entities.insert("run".into(), EntityValue::Str(val.into()));
+            bf.entities
+                .insert("run".into(), EntityValue::Str(val.into()));
         } else if let Some(val) = part.strip_prefix("acq-") {
-            bf.entities.insert("acquisition".into(), EntityValue::Str(val.into()));
+            bf.entities
+                .insert("acquisition".into(), EntityValue::Str(val.into()));
         }
     }
     // Last part before extension is the suffix
     if let Some(last) = parts.last() {
         if !last.contains('-') {
-            bf.entities.insert("suffix".into(), EntityValue::Str((*last).into()));
+            bf.entities
+                .insert("suffix".into(), EntityValue::Str((*last).into()));
         }
     }
 }
@@ -252,9 +314,18 @@ mod tests {
     #[test]
     fn test_filter_remote() {
         let files = vec![
-            crate::RemoteFile { path: "sub-01/eeg/sub-01_eeg.edf".into(), size: 1000 },
-            crate::RemoteFile { path: "sub-01/eeg/sub-01_eeg.json".into(), size: 500 },
-            crate::RemoteFile { path: "sub-01/anat/sub-01_T1w.nii.gz".into(), size: 5000 },
+            crate::RemoteFile {
+                path: "sub-01/eeg/sub-01_eeg.edf".into(),
+                size: 1000,
+            },
+            crate::RemoteFile {
+                path: "sub-01/eeg/sub-01_eeg.json".into(),
+                size: 500,
+            },
+            crate::RemoteFile {
+                path: "sub-01/anat/sub-01_T1w.nii.gz".into(),
+                size: 5000,
+            },
         ];
         let f = DatasetFilter::new().modality("eeg").extension(".edf");
         let matched = f.filter_remote(&files);

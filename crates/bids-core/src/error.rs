@@ -130,6 +130,9 @@ impl BidsError {
     /// Returns `true` if this is a "not found" type error.
     #[must_use]
     pub fn is_not_found(&self) -> bool {
-        matches!(self, Self::RootNotFound(_) | Self::MissingDatasetDescription | Self::NoMatch(_))
+        matches!(
+            self,
+            Self::RootNotFound(_) | Self::MissingDatasetDescription | Self::NoMatch(_)
+        )
     }
 }

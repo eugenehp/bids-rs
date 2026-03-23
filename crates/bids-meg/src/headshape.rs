@@ -56,22 +56,40 @@ pub fn read_headshape_pos(path: &Path) -> Result<Vec<DigPoint>> {
 
         let (label, x, y, z) = if parts.len() >= 4 {
             // label x y z
-            let x = parts[1].parse::<f64>().map_err(|_| parse_err(path, line_no))?;
-            let y = parts[2].parse::<f64>().map_err(|_| parse_err(path, line_no))?;
-            let z = parts[3].parse::<f64>().map_err(|_| parse_err(path, line_no))?;
+            let x = parts[1]
+                .parse::<f64>()
+                .map_err(|_| parse_err(path, line_no))?;
+            let y = parts[2]
+                .parse::<f64>()
+                .map_err(|_| parse_err(path, line_no))?;
+            let z = parts[3]
+                .parse::<f64>()
+                .map_err(|_| parse_err(path, line_no))?;
             (parts[0].to_string(), x, y, z)
         } else if parts.len() == 3 {
             // x y z (no label)
-            let x = parts[0].parse::<f64>().map_err(|_| parse_err(path, line_no))?;
-            let y = parts[1].parse::<f64>().map_err(|_| parse_err(path, line_no))?;
-            let z = parts[2].parse::<f64>().map_err(|_| parse_err(path, line_no))?;
+            let x = parts[0]
+                .parse::<f64>()
+                .map_err(|_| parse_err(path, line_no))?;
+            let y = parts[1]
+                .parse::<f64>()
+                .map_err(|_| parse_err(path, line_no))?;
+            let z = parts[2]
+                .parse::<f64>()
+                .map_err(|_| parse_err(path, line_no))?;
             (format!("{}", points.len() + 1), x, y, z)
         } else {
             continue; // skip malformed lines
         };
 
         let kind = classify_point(&label);
-        points.push(DigPoint { label, x, y, z, kind });
+        points.push(DigPoint {
+            label,
+            x,
+            y,
+            z,
+            kind,
+        });
     }
 
     Ok(points)
@@ -79,8 +97,13 @@ pub fn read_headshape_pos(path: &Path) -> Result<Vec<DigPoint>> {
 
 fn classify_point(label: &str) -> PointKind {
     let lower = label.to_lowercase();
-    if lower == "nasion" || lower == "nas" || lower == "lpa" || lower == "rpa"
-        || lower == "nz" || lower == "left" || lower == "right"
+    if lower == "nasion"
+        || lower == "nas"
+        || lower == "lpa"
+        || lower == "rpa"
+        || lower == "nz"
+        || lower == "left"
+        || lower == "right"
     {
         PointKind::Fiducial
     } else if lower.starts_with("hpi") || lower.starts_with("coil") {

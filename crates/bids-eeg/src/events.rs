@@ -33,33 +33,37 @@ pub fn read_events_tsv(path: &Path) -> Result<Vec<EegEvent>> {
     let rows = read_tsv(path)?;
     let mut events = Vec::with_capacity(rows.len());
 
-    let known_cols = ["onset", "duration", "trial_type", "value", "sample", "response_time"];
+    let known_cols = [
+        "onset",
+        "duration",
+        "trial_type",
+        "value",
+        "sample",
+        "response_time",
+    ];
 
     for row in &rows {
-        let onset: f64 = row.get("onset")
+        let onset: f64 = row
+            .get("onset")
             .ok_or_else(|| BidsError::Csv("Missing 'onset' column in events.tsv".into()))?
             .parse()
             .map_err(|_| BidsError::Csv("Invalid onset value".into()))?;
 
-        let duration: f64 = row.get("duration")
+        let duration: f64 = row
+            .get("duration")
             .and_then(|s| if s.is_empty() { None } else { s.parse().ok() })
             .unwrap_or(0.0);
 
-        let trial_type = row.get("trial_type")
-            .filter(|s| !s.is_empty())
-            .cloned();
+        let trial_type = row.get("trial_type").filter(|s| !s.is_empty()).cloned();
 
-        let value = row.get("value")
-            .filter(|s| !s.is_empty())
-            .cloned();
+        let value = row.get("value").filter(|s| !s.is_empty()).cloned();
 
-        let sample = row.get("sample")
-            .and_then(|s| s.parse().ok());
+        let sample = row.get("sample").and_then(|s| s.parse().ok());
 
-        let response_time = row.get("response_time")
-            .and_then(|s| s.parse().ok());
+        let response_time = row.get("response_time").and_then(|s| s.parse().ok());
 
-        let extra: HashMap<String, String> = row.iter()
+        let extra: HashMap<String, String> = row
+            .iter()
             .filter(|(k, v)| !known_cols.contains(&k.as_str()) && !v.is_empty())
             .map(|(k, v)| (k.clone(), v.clone()))
             .collect();
@@ -80,7 +84,8 @@ pub fn read_events_tsv(path: &Path) -> Result<Vec<EegEvent>> {
 
 /// Get unique trial types from events.
 pub fn unique_trial_types(events: &[EegEvent]) -> Vec<String> {
-    let mut types: Vec<String> = events.iter()
+    let mut types: Vec<String> = events
+        .iter()
         .filter_map(|e| e.trial_type.clone())
         .collect::<std::collections::HashSet<_>>()
         .into_iter()
@@ -91,7 +96,8 @@ pub fn unique_trial_types(events: &[EegEvent]) -> Vec<String> {
 
 /// Filter events by trial type.
 pub fn filter_by_trial_type<'a>(events: &'a [EegEvent], trial_type: &str) -> Vec<&'a EegEvent> {
-    events.iter()
+    events
+        .iter()
         .filter(|e| e.trial_type.as_deref() == Some(trial_type))
         .collect()
 }

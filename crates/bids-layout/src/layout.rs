@@ -141,12 +141,17 @@ impl BidsLayout {
     /// or doesn't contain valid layout info.
     pub fn load(database_path: &Path) -> Result<Self> {
         let db = Database::open(database_path)?;
-        let (root_str, config_str) = db.get_layout_info()?
+        let (root_str, config_str) = db
+            .get_layout_info()?
             .ok_or_else(|| BidsError::Database("No layout info in database".into()))?;
         let root = PathBuf::from(&root_str);
         let description = DatasetDescription::from_dir(&root).ok();
-        let config_names: Vec<String> = config_str.split(',').map(std::string::ToString::to_string).collect();
-        let configs: Vec<Config> = config_names.iter()
+        let config_names: Vec<String> = config_str
+            .split(',')
+            .map(std::string::ToString::to_string)
+            .collect();
+        let configs: Vec<Config> = config_names
+            .iter()
             .filter_map(|name| Config::load(name).ok())
             .collect();
 
@@ -177,9 +182,17 @@ impl BidsLayout {
         self.db.save_to(path)
     }
 
-    #[must_use] pub fn root(&self) -> &Path { &self.root }
-    #[must_use] pub fn description(&self) -> Option<&DatasetDescription> { self.description.as_ref() }
-    pub(crate) fn db(&self) -> &Database { &self.db }
+    #[must_use]
+    pub fn root(&self) -> &Path {
+        &self.root
+    }
+    #[must_use]
+    pub fn description(&self) -> Option<&DatasetDescription> {
+        self.description.as_ref()
+    }
+    pub(crate) fn db(&self) -> &Database {
+        &self.db
+    }
 
     /// The BIDS specification version declared in `dataset_description.json`.
     #[must_use]
@@ -201,14 +214,30 @@ impl BidsLayout {
         GetBuilder::new(self)
     }
 
-    pub fn get_subjects(&self) -> Result<Vec<String>> { self.db.get_unique_entity_values("subject") }
-    pub fn get_sessions(&self) -> Result<Vec<String>> { self.db.get_unique_entity_values("session") }
-    pub fn get_tasks(&self) -> Result<Vec<String>> { self.db.get_unique_entity_values("task") }
-    pub fn get_runs(&self) -> Result<Vec<String>> { self.db.get_unique_entity_values("run") }
-    pub fn get_datatypes(&self) -> Result<Vec<String>> { self.db.get_unique_entity_values("datatype") }
-    pub fn get_suffixes(&self) -> Result<Vec<String>> { self.db.get_unique_entity_values("suffix") }
-    pub fn get_entities(&self) -> Result<Vec<String>> { self.db.get_entity_names() }
-    pub fn get_entity_values(&self, entity: &str) -> Result<Vec<String>> { self.db.get_unique_entity_values(entity) }
+    pub fn get_subjects(&self) -> Result<Vec<String>> {
+        self.db.get_unique_entity_values("subject")
+    }
+    pub fn get_sessions(&self) -> Result<Vec<String>> {
+        self.db.get_unique_entity_values("session")
+    }
+    pub fn get_tasks(&self) -> Result<Vec<String>> {
+        self.db.get_unique_entity_values("task")
+    }
+    pub fn get_runs(&self) -> Result<Vec<String>> {
+        self.db.get_unique_entity_values("run")
+    }
+    pub fn get_datatypes(&self) -> Result<Vec<String>> {
+        self.db.get_unique_entity_values("datatype")
+    }
+    pub fn get_suffixes(&self) -> Result<Vec<String>> {
+        self.db.get_unique_entity_values("suffix")
+    }
+    pub fn get_entities(&self) -> Result<Vec<String>> {
+        self.db.get_entity_names()
+    }
+    pub fn get_entity_values(&self, entity: &str) -> Result<Vec<String>> {
+        self.db.get_unique_entity_values(entity)
+    }
 
     /// Resolve a path (relative to root if not absolute) to an absolute string.
     fn resolve_path(&self, path: impl AsRef<Path>) -> String {
@@ -226,7 +255,9 @@ impl BidsLayout {
         let tags = self.db.get_tags(&path_str)?;
         if tags.is_empty() {
             let all = self.db.all_file_paths()?;
-            if !all.contains(&path_str) { return Ok(None); }
+            if !all.contains(&path_str) {
+                return Ok(None);
+            }
         }
         Ok(Some(self.reconstruct_file(&path_str)?))
     }
@@ -238,8 +269,8 @@ impl BidsLayout {
         let mut md = BidsMetadata::with_source(&path_str);
         for (name, value, _dtype, is_metadata) in tags {
             if is_metadata {
-                let json_val = serde_json::from_str(&value)
-                    .unwrap_or(serde_json::Value::String(value));
+                let json_val =
+                    serde_json::from_str(&value).unwrap_or(serde_json::Value::String(value));
                 md.insert(name, json_val);
             }
         }
@@ -254,7 +285,9 @@ impl BidsLayout {
 
         let paths = self.db.query_files(&all_filters)?;
         if paths.is_empty() {
-            return Err(BidsError::NoMatch("No functional images match criteria".into()));
+            return Err(BidsError::NoMatch(
+                "No functional images match criteria".into(),
+            ));
         }
 
         // Collect unique TRs, rounding to 10µs to avoid float comparison issues.
@@ -270,17 +303,21 @@ impl BidsLayout {
             return Err(BidsError::NoMatch("Multiple unique TRs found".into()));
         }
 
-        trs.into_iter().next()
+        trs.into_iter()
+            .next()
             .map(|v| v as f64 / 100_000.0)
             .ok_or_else(|| BidsError::NoMatch("No RepetitionTime found in metadata".into()))
     }
 
     /// Get bvec file for a path.
     pub fn get_bvec(&self, path: impl AsRef<Path>) -> Result<Option<BidsFile>> {
-        self.get_nearest(path, &[
-            QueryFilter::eq("extension", ".bvec"),
-            QueryFilter::eq("suffix", "dwi"),
-        ])
+        self.get_nearest(
+            path,
+            &[
+                QueryFilter::eq("extension", ".bvec"),
+                QueryFilter::eq("suffix", "dwi"),
+            ],
+        )
     }
 
     /// Load the gradient table (b-values + b-vectors) for a DWI file.
@@ -291,20 +328,28 @@ impl BidsLayout {
     /// # Errors
     ///
     /// Returns an error if the companion files aren't found or can't be parsed.
-    pub fn get_gradient_table(&self, path: impl AsRef<Path>) -> Result<bids_io::gradient::GradientTable> {
-        let bvec_file = self.get_bvec(&path)?
+    pub fn get_gradient_table(
+        &self,
+        path: impl AsRef<Path>,
+    ) -> Result<bids_io::gradient::GradientTable> {
+        let bvec_file = self
+            .get_bvec(&path)?
             .ok_or_else(|| BidsError::NoMatch("No .bvec file found".into()))?;
-        let bval_file = self.get_bval(&path)?
+        let bval_file = self
+            .get_bval(&path)?
             .ok_or_else(|| BidsError::NoMatch("No .bval file found".into()))?;
         bids_io::gradient::GradientTable::from_files(&bval_file.path, &bvec_file.path)
     }
 
     /// Get bval file for a path.
     pub fn get_bval(&self, path: impl AsRef<Path>) -> Result<Option<BidsFile>> {
-        self.get_nearest(path, &[
-            QueryFilter::eq("extension", ".bval"),
-            QueryFilter::eq("suffix", "dwi"),
-        ])
+        self.get_nearest(
+            path,
+            &[
+                QueryFilter::eq("extension", ".bval"),
+                QueryFilter::eq("suffix", "dwi"),
+            ],
+        )
     }
 
     /// Add a derivatives directory.
@@ -315,8 +360,9 @@ impl BidsLayout {
         if desc_path.exists() {
             let pipeline_name = bids_validate::validate_derivative_path(path)?;
             if self.derivatives.contains_key(&pipeline_name) {
-                return Err(BidsError::DerivativesValidation(
-                    format!("Pipeline '{pipeline_name}' already added")));
+                return Err(BidsError::DerivativesValidation(format!(
+                    "Pipeline '{pipeline_name}' already added"
+                )));
             }
             let deriv = LayoutBuilder::new(path)
                 .validate(false)
@@ -336,8 +382,14 @@ impl BidsLayout {
         Ok(())
     }
 
-    #[must_use] pub fn get_derivative(&self, name: &str) -> Option<&BidsLayout> { self.derivatives.get(name) }
-    #[must_use] pub fn derivatives(&self) -> &HashMap<String, BidsLayout> { &self.derivatives }
+    #[must_use]
+    pub fn get_derivative(&self, name: &str) -> Option<&BidsLayout> {
+        self.derivatives.get(name)
+    }
+    #[must_use]
+    pub fn derivatives(&self) -> &HashMap<String, BidsLayout> {
+        &self.derivatives
+    }
 
     /// Check if this layout is in the specified scope.
     fn in_scope(&self, scope: &Scope) -> bool {
@@ -379,19 +431,24 @@ impl BidsLayout {
         let mut final_filters = filters.to_vec();
         if !has_suffix
             && let Some(bf) = self.get_file(path)?
-                && let Some(EntityValue::Str(s)) = bf.entities.get("suffix") {
-                    final_filters.push(QueryFilter::eq("suffix", s));
-                }
+            && let Some(EntityValue::Str(s)) = bf.entities.get("suffix")
+        {
+            final_filters.push(QueryFilter::eq("suffix", s));
+        }
 
         // Get the source file's entities for scoring
         let source_entities: HashMap<String, String> = if let Some(bf) = self.get_file(path)? {
-            bf.entities.iter().map(|(k, v)| (k.clone(), v.as_str_lossy().into_owned())).collect()
+            bf.entities
+                .iter()
+                .map(|(k, v)| (k.clone(), v.as_str_lossy().into_owned()))
+                .collect()
         } else {
             HashMap::new()
         };
 
         // Get all candidate files
-        let filter_tuples: Vec<_> = final_filters.iter()
+        let filter_tuples: Vec<_> = final_filters
+            .iter()
             .map(|f| (f.entity.clone(), f.values.clone(), f.regex))
             .collect();
         let candidates = self.db.query_files(&filter_tuples)?;
@@ -412,12 +469,14 @@ impl BidsLayout {
                 let mut best: Option<(usize, String)> = None;
                 for file_path in files_in_dir {
                     let tags = self.db.get_tags(file_path)?;
-                    let file_ents: HashMap<String, String> = tags.iter()
+                    let file_ents: HashMap<String, String> = tags
+                        .iter()
                         .filter(|(_, _, _, m)| !m)
                         .map(|(n, v, _, _)| (n.clone(), v.clone()))
                         .collect();
 
-                    let score: usize = source_entities.iter()
+                    let score: usize = source_entities
+                        .iter()
                         .filter(|(k, v)| file_ents.get(*k) == Some(v))
                         .count();
                     if best.as_ref().is_none_or(|(s, _)| score > *s) {
@@ -430,7 +489,9 @@ impl BidsLayout {
                 }
             }
 
-            if current_dir == self.root { break; }
+            if current_dir == self.root {
+                break;
+            }
             dir = current_dir.parent();
         }
 
@@ -469,16 +530,21 @@ impl BidsLayout {
         let patterns: Vec<&str> = if let Some(p) = path_patterns {
             p.to_vec()
         } else {
-            default_patterns = self.configs.iter()
+            default_patterns = self
+                .configs
+                .iter()
                 .filter_map(|c| c.default_path_patterns.as_ref())
                 .flat_map(|p| p.iter().cloned())
                 .collect();
-            default_patterns.iter().map(std::string::String::as_str).collect()
+            default_patterns
+                .iter()
+                .map(std::string::String::as_str)
+                .collect()
         };
 
-        bids_io::path_builder::build_path(source, &patterns, strict)
-            .ok_or_else(|| BidsError::PathBuilding(
-                "Unable to construct path from provided entities".into()))
+        bids_io::path_builder::build_path(source, &patterns, strict).ok_or_else(|| {
+            BidsError::PathBuilding("Unable to construct path from provided entities".into())
+        })
     }
 
     /// Export file index as rows of (path, entity_name, value).
@@ -531,8 +597,8 @@ impl BidsLayout {
             if !is_metadata {
                 bf.entities.insert(name, EntityValue::Str(value));
             } else {
-                let json_val = serde_json::from_str(&value)
-                    .unwrap_or(serde_json::Value::String(value));
+                let json_val =
+                    serde_json::from_str(&value).unwrap_or(serde_json::Value::String(value));
                 bf.metadata.insert(name, json_val);
             }
         }
@@ -543,9 +609,13 @@ impl BidsLayout {
     pub fn get_fieldmap(&self, path: impl AsRef<Path>) -> Result<Vec<HashMap<String, String>>> {
         let path = path.as_ref();
         let ents = self.parse_file_entities(&path.to_string_lossy());
-        let subject = ents.get("subject").map(|v| v.as_str_lossy()).unwrap_or_default();
+        let subject = ents
+            .get("subject")
+            .map(|v| v.as_str_lossy())
+            .unwrap_or_default();
 
-        let fmap_files = self.get()
+        let fmap_files = self
+            .get()
             .subject(&subject)
             .filter_regex("suffix", "(phasediff|magnitude[12]|phase[12]|fieldmap|epi)")
             .filter_any("extension", &[".nii.gz", ".nii"])
@@ -555,18 +625,29 @@ impl BidsLayout {
         for file in &fmap_files {
             let md = self.get_metadata(&file.path)?;
             let intended = md.get("IntendedFor");
-            if intended.is_none() { continue; }
+            if intended.is_none() {
+                continue;
+            }
 
             let intents: Vec<String> = match intended.unwrap() {
                 serde_json::Value::String(s) => vec![s.clone()],
-                serde_json::Value::Array(a) => a.iter().filter_map(|v| v.as_str().map(String::from)).collect(),
+                serde_json::Value::Array(a) => a
+                    .iter()
+                    .filter_map(|v| v.as_str().map(String::from))
+                    .collect(),
                 _ => continue,
             };
 
             let path_str = path.to_string_lossy();
-            if !intents.iter().any(|i| path_str.ends_with(i)) { continue; }
+            if !intents.iter().any(|i| path_str.ends_with(i)) {
+                continue;
+            }
 
-            let suffix = file.entities.get("suffix").map(|v| v.as_str_lossy()).unwrap_or_default();
+            let suffix = file
+                .entities
+                .get("suffix")
+                .map(|v| v.as_str_lossy())
+                .unwrap_or_default();
             let mut fmap = HashMap::new();
             let fp = file.path.to_string_lossy().to_string();
 
@@ -575,7 +656,9 @@ impl BidsLayout {
                     fmap.insert("phasediff".into(), fp.clone());
                     fmap.insert("magnitude1".into(), fp.replace("phasediff", "magnitude1"));
                     let mag2 = fp.replace("phasediff", "magnitude2");
-                    if std::path::Path::new(&mag2).exists() { fmap.insert("magnitude2".into(), mag2); }
+                    if std::path::Path::new(&mag2).exists() {
+                        fmap.insert("magnitude2".into(), mag2);
+                    }
                     fmap.insert("suffix".into(), "phasediff".into());
                 }
                 "phase1" => {
@@ -635,7 +718,11 @@ impl BidsLayout {
         let path_str = self.build_path(entities, path_patterns, strict)?;
         let full_path = self.root.join(&path_str);
         bids_io::writer::write_to_file(
-            &full_path, Some(contents), None, None, None,
+            &full_path,
+            Some(contents),
+            None,
+            None,
+            None,
             bids_io::writer::ConflictStrategy::Fail,
         )?;
         Ok(full_path)
@@ -679,7 +766,10 @@ impl std::fmt::Display for BidsLayout {
         let n_subjects = self.get_subjects().map(|s| s.len()).unwrap_or(0);
         let n_sessions = self.get_sessions().map(|s| s.len()).unwrap_or(0);
         let n_runs = self.get_runs().map(|s| s.len()).unwrap_or(0);
-        write!(f, "BIDS Layout: {root_display} | Subjects: {n_subjects} | Sessions: {n_sessions} | Runs: {n_runs}")
+        write!(
+            f,
+            "BIDS Layout: {root_display} | Subjects: {n_subjects} | Sessions: {n_sessions} | Runs: {n_runs}"
+        )
     }
 }
 
@@ -734,28 +824,71 @@ impl LayoutBuilder {
         }
     }
 
-    #[must_use] pub fn validate(mut self, v: bool) -> Self { self.validate = v; self }
-    #[must_use] pub fn derivatives(mut self, paths: Vec<PathBuf>) -> Self { self.derivatives = Some(paths); self }
-    #[must_use] pub fn add_derivative(mut self, path: impl AsRef<Path>) -> Self {
-        self.derivatives.get_or_insert_with(Vec::new).push(path.as_ref().to_path_buf());
+    #[must_use]
+    pub fn validate(mut self, v: bool) -> Self {
+        self.validate = v;
         self
     }
-    #[must_use] pub fn config(mut self, configs: Vec<String>) -> Self { self.configs = configs; self }
-    #[must_use] pub fn regex_search(mut self, v: bool) -> Self { self.regex_search = v; self }
-    #[must_use] pub fn database_path(mut self, path: impl AsRef<Path>) -> Self {
-        self.database_path = Some(path.as_ref().to_path_buf()); self
+    #[must_use]
+    pub fn derivatives(mut self, paths: Vec<PathBuf>) -> Self {
+        self.derivatives = Some(paths);
+        self
     }
-    #[must_use] pub fn is_derivative(mut self, v: bool) -> Self { self.is_derivative = v; self }
-    #[must_use] pub fn index_metadata(mut self, v: bool) -> Self { self.index_metadata = v; self }
-    #[must_use] pub fn ignore(mut self, patterns: Vec<regex::Regex>) -> Self { self.ignore = Some(patterns); self }
-    #[must_use] pub fn force_index(mut self, patterns: Vec<regex::Regex>) -> Self { self.force_index = Some(patterns); self }
-    #[must_use] pub fn config_filename(mut self, name: &str) -> Self { self.config_filename = name.to_string(); self }
+    #[must_use]
+    pub fn add_derivative(mut self, path: impl AsRef<Path>) -> Self {
+        self.derivatives
+            .get_or_insert_with(Vec::new)
+            .push(path.as_ref().to_path_buf());
+        self
+    }
+    #[must_use]
+    pub fn config(mut self, configs: Vec<String>) -> Self {
+        self.configs = configs;
+        self
+    }
+    #[must_use]
+    pub fn regex_search(mut self, v: bool) -> Self {
+        self.regex_search = v;
+        self
+    }
+    #[must_use]
+    pub fn database_path(mut self, path: impl AsRef<Path>) -> Self {
+        self.database_path = Some(path.as_ref().to_path_buf());
+        self
+    }
+    #[must_use]
+    pub fn is_derivative(mut self, v: bool) -> Self {
+        self.is_derivative = v;
+        self
+    }
+    #[must_use]
+    pub fn index_metadata(mut self, v: bool) -> Self {
+        self.index_metadata = v;
+        self
+    }
+    #[must_use]
+    pub fn ignore(mut self, patterns: Vec<regex::Regex>) -> Self {
+        self.ignore = Some(patterns);
+        self
+    }
+    #[must_use]
+    pub fn force_index(mut self, patterns: Vec<regex::Regex>) -> Self {
+        self.force_index = Some(patterns);
+        self
+    }
+    #[must_use]
+    pub fn config_filename(mut self, name: &str) -> Self {
+        self.config_filename = name.to_string();
+        self
+    }
 
     pub fn build(self) -> Result<BidsLayout> {
         let (root, description) = bids_validate::validate_root(&self.root, self.validate)?;
 
         let is_derivative = self.is_derivative
-            || description.as_ref().is_some_and(bids_core::DatasetDescription::is_derivative);
+            || description
+                .as_ref()
+                .is_some_and(bids_core::DatasetDescription::is_derivative);
         let source_pipeline = if is_derivative {
             bids_validate::validate_derivative_path(&root).ok()
         } else {
@@ -767,13 +900,18 @@ impl LayoutBuilder {
         } else {
             vec!["bids".to_string()]
         };
-        let config_names = if self.configs.is_empty() { default_configs } else { self.configs };
-        let configs: Vec<Config> = config_names.iter()
+        let config_names = if self.configs.is_empty() {
+            default_configs
+        } else {
+            self.configs
+        };
+        let configs: Vec<Config> = config_names
+            .iter()
             .filter_map(|name| Config::load(name).ok())
             .collect();
 
-        let (ignore, force_index) = bids_validate::validate_indexing_args(
-            self.ignore, self.force_index, &root)?;
+        let (ignore, force_index) =
+            bids_validate::validate_indexing_args(self.ignore, self.force_index, &root)?;
 
         let db = match &self.database_path {
             Some(path) if Database::exists(path) => Database::open(path)?,
@@ -810,16 +948,23 @@ impl LayoutBuilder {
         }
 
         let mut layout = BidsLayout {
-            root, db, description, is_derivative, source_pipeline,
-            derivatives: HashMap::new(), configs, regex_search: self.regex_search,
+            root,
+            db,
+            description,
+            is_derivative,
+            source_pipeline,
+            derivatives: HashMap::new(),
+            configs,
+            regex_search: self.regex_search,
             spec_compatibility,
         };
 
         if let Some(deriv_paths) = self.derivatives {
-            for path in deriv_paths { layout.add_derivatives(path)?; }
+            for path in deriv_paths {
+                layout.add_derivatives(path)?;
+            }
         }
 
         Ok(layout)
     }
 }
-

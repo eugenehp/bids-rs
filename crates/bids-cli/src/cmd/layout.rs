@@ -3,8 +3,13 @@
 use bids_layout::BidsLayout;
 use std::path::Path;
 
-pub fn run(root: &Path, db_path: &Path, reset_db: bool,
-           validate: bool, index_metadata: bool) -> bids_core::error::Result<()> {
+pub fn run(
+    root: &Path,
+    db_path: &Path,
+    reset_db: bool,
+    validate: bool,
+    index_metadata: bool,
+) -> bids_core::error::Result<()> {
     let db_file = db_path.join("layout_index.sqlite");
     if reset_db && db_file.exists() {
         std::fs::remove_file(&db_file)?;

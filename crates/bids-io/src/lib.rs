@@ -31,14 +31,14 @@
 //!       sub-01_task-rest_eeg.edf
 //! ```
 
-pub mod tsv;
+pub mod gradient;
 pub mod json;
 pub mod path_builder;
+pub mod tsv;
 pub mod writer;
-pub mod gradient;
 
-pub use tsv::{read_tsv, read_tsv_gz, TsvRow};
-pub use json::{read_json_sidecar, read_json, merge_json_sidecars, find_sidecars};
+pub use gradient::{GradientTable, read_bvals, read_bvecs};
+pub use json::{find_sidecars, merge_json_sidecars, read_json, read_json_sidecar};
 pub use path_builder::build_path;
-pub use writer::{write_to_file, ConflictStrategy};
-pub use gradient::{read_bvals, read_bvecs, GradientTable};
+pub use tsv::{TsvRow, read_tsv, read_tsv_gz};
+pub use writer::{ConflictStrategy, write_to_file};

@@ -23,8 +23,8 @@
 //! hidden files (`.`-prefixed), and common non-BIDS directories. These can be
 //! overridden with custom patterns via [`validate_indexing_args()`].
 
-use bids_core::error::{BidsError, Result};
 use bids_core::dataset_description::DatasetDescription;
+use bids_core::error::{BidsError, Result};
 use regex::Regex;
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
@@ -39,9 +39,9 @@ pub static DEFAULT_IGNORE: LazyLock<Vec<Regex>> = LazyLock::new(|| {
 
 /// Validate the root directory of a BIDS dataset.
 pub fn validate_root(root: &Path, validate: bool) -> Result<(PathBuf, Option<DatasetDescription>)> {
-    let root = root.canonicalize().map_err(|_| {
-        BidsError::RootNotFound(root.to_string_lossy().to_string())
-    })?;
+    let root = root
+        .canonicalize()
+        .map_err(|_| BidsError::RootNotFound(root.to_string_lossy().to_string()))?;
 
     if !root.exists() {
         return Err(BidsError::RootNotFound(root.to_string_lossy().to_string()));
@@ -63,7 +63,11 @@ pub fn validate_root(root: &Path, validate: bool) -> Result<(PathBuf, Option<Dat
             Ok((root, Some(desc)))
         }
         Err(e) => {
-            if validate { Err(e) } else { Ok((root, None)) }
+            if validate {
+                Err(e)
+            } else {
+                Ok((root, None))
+            }
         }
     }
 }
@@ -73,15 +77,19 @@ pub fn validate_derivative_path(path: &Path) -> Result<String> {
     let desc = DatasetDescription::from_dir(path)?;
     desc.pipeline_name()
         .map(std::string::ToString::to_string)
-        .ok_or_else(|| BidsError::DerivativesValidation(
-            "Every valid BIDS-derivatives dataset must have a GeneratedBy.Name field \
-             set inside 'dataset_description.json'".to_string()
-        ))
+        .ok_or_else(|| {
+            BidsError::DerivativesValidation(
+                "Every valid BIDS-derivatives dataset must have a GeneratedBy.Name field \
+             set inside 'dataset_description.json'"
+                    .to_string(),
+            )
+        })
 }
 
 /// Check if a path should be ignored during indexing.
 pub fn should_ignore(path: &Path, root: &Path, ignore_patterns: &[Regex]) -> bool {
-    let rel = path.strip_prefix(root)
+    let rel = path
+        .strip_prefix(root)
         .map(|p| format!("/{}", p.to_string_lossy()))
         .unwrap_or_default();
 
@@ -94,8 +102,12 @@ pub fn is_bids_file(path: &Path) -> bool {
         return false;
     };
     const ROOT_FILES: &[&str] = &[
-        "dataset_description.json", "participants.tsv",
-        "participants.json", "README", "CHANGES", "LICENSE",
+        "dataset_description.json",
+        "participants.tsv",
+        "participants.json",
+        "README",
+        "CHANGES",
+        "LICENSE",
     ];
     ROOT_FILES.contains(&name)
         || name.starts_with("sub-")
@@ -137,7 +149,8 @@ pub fn validate_indexing_args(
     for entry in &force_index {
         if entry.as_str().contains("derivatives") {
             return Err(BidsError::Validation(
-                "Do not pass 'derivatives' in force_index. Use add_derivatives() instead.".to_string()
+                "Do not pass 'derivatives' in force_index. Use add_derivatives() instead."
+                    .to_string(),
             ));
         }
     }
@@ -160,7 +173,13 @@ pub struct ValidationIssue {
 
 impl std::fmt::Display for ValidationIssue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[{}] {}: {}", self.severity.to_uppercase(), self.code, self.message)?;
+        write!(
+            f,
+            "[{}] {}: {}",
+            self.severity.to_uppercase(),
+            self.code,
+            self.message
+        )?;
         if let Some(ref p) = self.path {
             write!(f, " ({p})")?;
         }
@@ -191,13 +210,21 @@ impl ValidationResult {
     /// Count of warnings.
     #[must_use]
     pub fn warning_count(&self) -> usize {
-        self.issues.iter().filter(|i| i.severity == "warning").count()
+        self.issues
+            .iter()
+            .filter(|i| i.severity == "warning")
+            .count()
     }
 }
 
 impl std::fmt::Display for ValidationResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Validation: {} errors, {} warnings", self.error_count(), self.warning_count())?;
+        writeln!(
+            f,
+            "Validation: {} errors, {} warnings",
+            self.error_count(),
+            self.warning_count()
+        )?;
         for issue in &self.issues {
             writeln!(f, "  {issue}")?;
         }
@@ -316,10 +343,13 @@ fn validate_subject_dir(sub_dir: &Path, root: &Path, issues: &mut Vec<Validation
             let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
             // Skip hidden files and known non-BIDS
-            if name.starts_with('.') { continue; }
+            if name.starts_with('.') {
+                continue;
+            }
 
             // Check filename follows BIDS pattern
-            let rel = path.strip_prefix(root)
+            let rel = path
+                .strip_prefix(root)
                 .map(|p| p.to_string_lossy().to_string())
                 .unwrap_or_default();
 
@@ -341,7 +371,8 @@ pub fn should_force_index(path: &Path, root: &Path, force_patterns: &[Regex]) ->
     if force_patterns.is_empty() {
         return false;
     }
-    let rel = path.strip_prefix(root)
+    let rel = path
+        .strip_prefix(root)
         .map(|p| format!("/{}", p.to_string_lossy()))
         .unwrap_or_default();
     force_patterns.iter().any(|pat| pat.is_match(&rel))
@@ -388,7 +419,15 @@ mod tests {
     fn test_should_force_index() {
         let root = Path::new("/data");
         let patterns = vec![Regex::new(r"/extra/").unwrap()];
-        assert!(should_force_index(Path::new("/data/extra/file.txt"), root, &patterns));
-        assert!(!should_force_index(Path::new("/data/sub-01/file.txt"), root, &patterns));
+        assert!(should_force_index(
+            Path::new("/data/extra/file.txt"),
+            root,
+            &patterns
+        ));
+        assert!(!should_force_index(
+            Path::new("/data/sub-01/file.txt"),
+            root,
+            &patterns
+        ));
     }
 }

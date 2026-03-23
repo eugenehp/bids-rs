@@ -48,7 +48,8 @@ pub fn read_electrodes_tsv(path: &Path) -> Result<Vec<Electrode>> {
     let mut electrodes = Vec::with_capacity(rows.len());
 
     for row in &rows {
-        let name = row.get("name")
+        let name = row
+            .get("name")
             .ok_or_else(|| BidsError::Csv("Missing 'name' column in electrodes.tsv".into()))?
             .trim()
             .to_string();
@@ -75,7 +76,11 @@ fn non_empty(val: Option<&String>) -> Option<String> {
 fn parse_f64(val: Option<&String>) -> Option<f64> {
     val.and_then(|s| {
         let s = s.trim();
-        if s.is_empty() || s == "n/a" { None } else { s.parse().ok() }
+        if s.is_empty() || s == "n/a" {
+            None
+        } else {
+            s.parse().ok()
+        }
     })
 }
 

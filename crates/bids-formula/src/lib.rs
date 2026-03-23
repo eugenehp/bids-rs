@@ -52,7 +52,14 @@ pub fn parse_formula(formula: &str) -> Formula {
     let (response, rhs) = if let Some(idx) = formula.find('~') {
         let lhs = formula[..idx].trim();
         let rhs = formula[idx + 1..].trim();
-        (if lhs.is_empty() { None } else { Some(lhs.to_string()) }, rhs.to_string())
+        (
+            if lhs.is_empty() {
+                None
+            } else {
+                Some(lhs.to_string())
+            },
+            rhs.to_string(),
+        )
     } else {
         (None, formula.to_string())
     };
@@ -66,12 +73,22 @@ pub fn parse_formula(formula: &str) -> Formula {
 
     for token in split_terms(rhs) {
         let token = token.trim();
-        if token == "+" { add = true; continue; }
-        if token == "-" { add = false; continue; }
-        if token.is_empty() { continue; }
+        if token == "+" {
+            add = true;
+            continue;
+        }
+        if token == "-" {
+            add = false;
+            continue;
+        }
+        if token.is_empty() {
+            continue;
+        }
 
         if token == "1" {
-            if !add { intercept = false; }
+            if !add {
+                intercept = false;
+            }
             continue;
         }
         if token == "0" {
@@ -86,11 +103,16 @@ pub fn parse_formula(formula: &str) -> Formula {
                 // Add main effects
                 for &p in &parts {
                     let t = Term::Variable(p.into());
-                    if !terms.contains(&t) { terms.push(t); }
+                    if !terms.contains(&t) {
+                        terms.push(t);
+                    }
                 }
                 // Add interaction
-                let interaction = Term::Interaction(parts.iter().map(std::string::ToString::to_string).collect());
-                if !terms.contains(&interaction) { terms.push(interaction); }
+                let interaction =
+                    Term::Interaction(parts.iter().map(std::string::ToString::to_string).collect());
+                if !terms.contains(&interaction) {
+                    terms.push(interaction);
+                }
             } else if token.contains(':') {
                 // Interaction
                 let parts: Vec<String> = token.split(':').map(|s| s.trim().to_string()).collect();
@@ -111,7 +133,11 @@ pub fn parse_formula(formula: &str) -> Formula {
         }
     }
 
-    Formula { response, terms, intercept }
+    Formula {
+        response,
+        terms,
+        intercept,
+    }
 }
 
 /// Build a design matrix from a formula and data.
@@ -175,19 +201,25 @@ fn split_terms(s: &str) -> Vec<String> {
     for ch in s.chars() {
         match ch {
             '+' => {
-                if !current.trim().is_empty() { tokens.push(current.trim().to_string()); }
+                if !current.trim().is_empty() {
+                    tokens.push(current.trim().to_string());
+                }
                 current.clear();
                 tokens.push("+".into());
             }
             '-' => {
-                if !current.trim().is_empty() { tokens.push(current.trim().to_string()); }
+                if !current.trim().is_empty() {
+                    tokens.push(current.trim().to_string());
+                }
                 current.clear();
                 tokens.push("-".into());
             }
             _ => current.push(ch),
         }
     }
-    if !current.trim().is_empty() { tokens.push(current.trim().to_string()); }
+    if !current.trim().is_empty() {
+        tokens.push(current.trim().to_string());
+    }
     tokens
 }
 

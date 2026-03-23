@@ -46,8 +46,11 @@ impl BIDSLayout {
     #[new]
     #[pyo3(signature = (root, validate=true, derivatives=false, index_metadata=true, database_path=None))]
     fn new(
-        root: &str, validate: bool, derivatives: bool,
-        index_metadata: bool, database_path: Option<&str>,
+        root: &str,
+        validate: bool,
+        derivatives: bool,
+        index_metadata: bool,
+        database_path: Option<&str>,
     ) -> PyResult<Self> {
         let mut builder = bids_layout::BidsLayout::builder(root)
             .validate(validate)
@@ -74,20 +77,40 @@ impl BIDSLayout {
     }
 
     #[getter]
-    fn root(&self) -> String { self.inner.root().to_string_lossy().to_string() }
+    fn root(&self) -> String {
+        self.inner.root().to_string_lossy().to_string()
+    }
 
-    fn __repr__(&self) -> String { format!("{}", self.inner) }
-    fn __str__(&self) -> String { format!("{}", self.inner) }
+    fn __repr__(&self) -> String {
+        format!("{}", self.inner)
+    }
+    fn __str__(&self) -> String {
+        format!("{}", self.inner)
+    }
 
     // ── Entity listing ──
 
-    fn get_subjects(&self) -> PyResult<Vec<String>> { self.inner.get_subjects().map_err(to_py_err) }
-    fn get_sessions(&self) -> PyResult<Vec<String>> { self.inner.get_sessions().map_err(to_py_err) }
-    fn get_tasks(&self) -> PyResult<Vec<String>> { self.inner.get_tasks().map_err(to_py_err) }
-    fn get_runs(&self) -> PyResult<Vec<String>> { self.inner.get_runs().map_err(to_py_err) }
-    fn get_datatypes(&self) -> PyResult<Vec<String>> { self.inner.get_datatypes().map_err(to_py_err) }
-    fn get_suffixes(&self) -> PyResult<Vec<String>> { self.inner.get_suffixes().map_err(to_py_err) }
-    fn get_entities(&self) -> PyResult<Vec<String>> { self.inner.get_entities().map_err(to_py_err) }
+    fn get_subjects(&self) -> PyResult<Vec<String>> {
+        self.inner.get_subjects().map_err(to_py_err)
+    }
+    fn get_sessions(&self) -> PyResult<Vec<String>> {
+        self.inner.get_sessions().map_err(to_py_err)
+    }
+    fn get_tasks(&self) -> PyResult<Vec<String>> {
+        self.inner.get_tasks().map_err(to_py_err)
+    }
+    fn get_runs(&self) -> PyResult<Vec<String>> {
+        self.inner.get_runs().map_err(to_py_err)
+    }
+    fn get_datatypes(&self) -> PyResult<Vec<String>> {
+        self.inner.get_datatypes().map_err(to_py_err)
+    }
+    fn get_suffixes(&self) -> PyResult<Vec<String>> {
+        self.inner.get_suffixes().map_err(to_py_err)
+    }
+    fn get_entities(&self) -> PyResult<Vec<String>> {
+        self.inner.get_entities().map_err(to_py_err)
+    }
 
     /// Get unique values for a specific entity.
     fn get_entity_values(&self, entity: &str) -> PyResult<Vec<String>> {
@@ -104,7 +127,9 @@ impl BIDSLayout {
     /// - `scope="all"`, `scope="raw"`, `scope="derivatives"`
     #[pyo3(signature = (**kwargs))]
     fn get<'py>(&self, py: Python<'py>, kwargs: Option<&Bound<'py, PyDict>>) -> PyResult<PyObject> {
-        let mut query = self.inner.get()
+        let mut query = self
+            .inner
+            .get()
             .invalid_filters(bids_layout::InvalidFilters::Drop);
 
         let mut return_type = "object".to_string();
@@ -114,9 +139,19 @@ impl BIDSLayout {
             for (key, val) in kw.iter() {
                 let k: String = key.extract()?;
                 match k.as_str() {
-                    "return_type" => { return_type = val.extract()?; continue; }
-                    "target" => { target = val.extract()?; continue; }
-                    "scope" => { let v: String = val.extract()?; query = query.scope(&v); continue; }
+                    "return_type" => {
+                        return_type = val.extract()?;
+                        continue;
+                    }
+                    "target" => {
+                        target = val.extract()?;
+                        continue;
+                    }
+                    "scope" => {
+                        let v: String = val.extract()?;
+                        query = query.scope(&v);
+                        continue;
+                    }
                     _ => {}
                 }
 
@@ -129,7 +164,9 @@ impl BIDSLayout {
                     continue;
                 };
 
-                if values.is_empty() { continue; }
+                if values.is_empty() {
+                    continue;
+                }
 
                 // Map to query builder
                 let str_refs: Vec<&str> = values.iter().map(|s| s.as_str()).collect();
@@ -145,9 +182,16 @@ impl BIDSLayout {
                     "recording" => query = query.filter_any("recording", &str_refs),
                     "extension" => {
                         // Normalize extensions to have leading dot
-                        let normed: Vec<String> = values.iter().map(|v| {
-                            if v.starts_with('.') { v.clone() } else { format!(".{}", v) }
-                        }).collect();
+                        let normed: Vec<String> = values
+                            .iter()
+                            .map(|v| {
+                                if v.starts_with('.') {
+                                    v.clone()
+                                } else {
+                                    format!(".{}", v)
+                                }
+                            })
+                            .collect();
                         let refs: Vec<&str> = normed.iter().map(|s| s.as_str()).collect();
                         query = query.filter_any("extension", &refs);
                     }
@@ -165,7 +209,8 @@ impl BIDSLayout {
         match return_type.as_str() {
             "file" | "filename" => {
                 let paths = query.return_paths().map_err(to_py_err)?;
-                let strs: Vec<String> = paths.iter()
+                let strs: Vec<String> = paths
+                    .iter()
                     .map(|p| p.to_string_lossy().to_string())
                     .collect();
                 Ok(strs.into_pyobject(py)?.into_any().unbind())
@@ -173,7 +218,8 @@ impl BIDSLayout {
             "id" => {
                 if target.is_empty() {
                     return Err(pyo3::exceptions::PyValueError::new_err(
-                        "return_type='id' requires a 'target' argument"));
+                        "return_type='id' requires a 'target' argument",
+                    ));
                 }
                 let vals = query.return_unique(&target).map_err(to_py_err)?;
                 Ok(vals.into_pyobject(py)?.into_any().unbind())
@@ -181,7 +227,8 @@ impl BIDSLayout {
             "dir" => {
                 if target.is_empty() {
                     return Err(pyo3::exceptions::PyValueError::new_err(
-                        "return_type='dir' requires a 'target' argument"));
+                        "return_type='dir' requires a 'target' argument",
+                    ));
                 }
                 let dirs = query.return_directories(&target).map_err(to_py_err)?;
                 Ok(dirs.into_pyobject(py)?.into_any().unbind())
@@ -189,13 +236,18 @@ impl BIDSLayout {
             _ => {
                 // Default: return BIDSFile objects
                 let files = query.collect().map_err(to_py_err)?;
-                let pyfiles: Vec<BIDSFile> = files.iter().map(|f| BIDSFile {
-                    path: f.path.to_string_lossy().to_string(),
-                    filename: f.filename.clone(),
-                    entities: f.entities.iter()
-                        .map(|(k, v)| (k.clone(), v.as_str_lossy().into_owned()))
-                        .collect(),
-                }).collect();
+                let pyfiles: Vec<BIDSFile> = files
+                    .iter()
+                    .map(|f| BIDSFile {
+                        path: f.path.to_string_lossy().to_string(),
+                        filename: f.filename.clone(),
+                        entities: f
+                            .entities
+                            .iter()
+                            .map(|(k, v)| (k.clone(), v.as_str_lossy().into_owned()))
+                            .collect(),
+                    })
+                    .collect();
                 Ok(pyfiles.into_pyobject(py)?.into_any().unbind())
             }
         }
@@ -207,7 +259,9 @@ impl BIDSLayout {
         Ok(f.map(|f| BIDSFile {
             path: f.path.to_string_lossy().to_string(),
             filename: f.filename.clone(),
-            entities: f.entities.iter()
+            entities: f
+                .entities
+                .iter()
                 .map(|(k, v)| (k.clone(), v.as_str_lossy().into_owned()))
                 .collect(),
         }))
@@ -230,9 +284,15 @@ impl BIDSLayout {
             let dict = PyDict::new(py);
             let _ = dict.set_item("Name", &d.name);
             let _ = dict.set_item("BIDSVersion", &d.bids_version);
-            if let Some(ref l) = d.license { let _ = dict.set_item("License", l); }
-            if let Some(ref dt) = d.dataset_type { let _ = dict.set_item("DatasetType", dt); }
-            if let Some(ref a) = d.authors { let _ = dict.set_item("Authors", a); }
+            if let Some(ref l) = d.license {
+                let _ = dict.set_item("License", l);
+            }
+            if let Some(ref dt) = d.dataset_type {
+                let _ = dict.set_item("DatasetType", dt);
+            }
+            if let Some(ref a) = d.authors {
+                let _ = dict.set_item("Authors", a);
+            }
             dict.into_any().unbind()
         }))
     }
@@ -253,7 +313,8 @@ impl BIDSLayout {
 
     /// Parse BIDS entities from a filename string.
     fn parse_file_entities(&self, filename: &str) -> HashMap<String, String> {
-        self.inner.parse_file_entities(filename)
+        self.inner
+            .parse_file_entities(filename)
             .iter()
             .map(|(k, v)| (k.clone(), v.as_str_lossy().into_owned()))
             .collect()
@@ -262,16 +323,23 @@ impl BIDSLayout {
     /// Build a BIDS-compliant path from entities.
     #[pyo3(signature = (entities, path_patterns=None, strict=false))]
     fn build_path(
-        &self, entities: HashMap<String, String>,
-        path_patterns: Option<Vec<String>>, strict: bool,
+        &self,
+        entities: HashMap<String, String>,
+        path_patterns: Option<Vec<String>>,
+        strict: bool,
     ) -> PyResult<Option<String>> {
         use bids_core::entities::{Entities, EntityValue};
-        let ents: Entities = entities.into_iter()
+        let ents: Entities = entities
+            .into_iter()
             .map(|(k, v)| (k, EntityValue::Str(v)))
             .collect();
         let patterns_owned = path_patterns.unwrap_or_default();
         let pattern_refs: Vec<&str> = patterns_owned.iter().map(|s| s.as_str()).collect();
-        let pats = if pattern_refs.is_empty() { None } else { Some(pattern_refs.as_slice()) };
+        let pats = if pattern_refs.is_empty() {
+            None
+        } else {
+            Some(pattern_refs.as_slice())
+        };
         match self.inner.build_path(&ents, pats, strict) {
             Ok(p) => Ok(Some(p)),
             Err(_) => Ok(None),
@@ -291,7 +359,9 @@ impl BIDSLayout {
 
     /// Save the database index to a file.
     fn save(&self, path: &str) -> PyResult<()> {
-        self.inner.save(std::path::Path::new(path)).map_err(to_py_err)
+        self.inner
+            .save(std::path::Path::new(path))
+            .map_err(to_py_err)
     }
 }
 
@@ -311,14 +381,21 @@ struct BIDSFile {
 
 #[pymethods]
 impl BIDSFile {
-    fn __repr__(&self) -> String { format!("<BIDSFile '{}'>", self.filename) }
-    fn __str__(&self) -> String { self.path.clone() }
-    fn __fspath__(&self) -> String { self.path.clone() }
+    fn __repr__(&self) -> String {
+        format!("<BIDSFile '{}'>", self.filename)
+    }
+    fn __str__(&self) -> String {
+        self.path.clone()
+    }
+    fn __fspath__(&self) -> String {
+        self.path.clone()
+    }
 
     /// Get the path relative to the dataset root.
     #[getter]
     fn relpath(&self) -> String {
-        self.path.rsplit_once("/sub-")
+        self.path
+            .rsplit_once("/sub-")
             .map(|(_, rest)| format!("sub-{}", rest))
             .unwrap_or_else(|| self.path.clone())
     }
@@ -327,10 +404,15 @@ impl BIDSFile {
     #[getter]
     fn extension(&self) -> &str {
         let name = &self.filename;
-        if name.ends_with(".nii.gz") { ".nii.gz" }
-        else if name.ends_with(".tsv.gz") { ".tsv.gz" }
-        else if name.ends_with(".dtseries.nii") { ".dtseries.nii" }
-        else { name.rfind('.').map(|i| &name[i..]).unwrap_or("") }
+        if name.ends_with(".nii.gz") {
+            ".nii.gz"
+        } else if name.ends_with(".tsv.gz") {
+            ".tsv.gz"
+        } else if name.ends_with(".dtseries.nii") {
+            ".dtseries.nii"
+        } else {
+            name.rfind('.').map(|i| &name[i..]).unwrap_or("")
+        }
     }
 
     /// File suffix (the part before the extension, after the last `_`).
@@ -355,16 +437,37 @@ fn read_nifti_header(path: &str) -> PyResult<HashMap<String, PyObject>> {
         let hdr = bids_nifti::NiftiHeader::from_file(std::path::Path::new(path))
             .map_err(|e| pyo3::exceptions::PyIOError::new_err(e.to_string()))?;
         let mut m: HashMap<String, PyObject> = HashMap::new();
-        m.insert("ndim".into(), hdr.ndim.into_pyobject(py)?.into_any().unbind());
-        m.insert("shape".into(), hdr.shape().into_pyobject(py)?.into_any().unbind());
-        m.insert("n_vols".into(), hdr.n_vols().into_pyobject(py)?.into_any().unbind());
+        m.insert(
+            "ndim".into(),
+            hdr.ndim.into_pyobject(py)?.into_any().unbind(),
+        );
+        m.insert(
+            "shape".into(),
+            hdr.shape().into_pyobject(py)?.into_any().unbind(),
+        );
+        m.insert(
+            "n_vols".into(),
+            hdr.n_vols().into_pyobject(py)?.into_any().unbind(),
+        );
         let (mx, my, mz) = hdr.matrix_size();
-        m.insert("matrix_size".into(), (mx, my, mz).into_pyobject(py)?.into_any().unbind());
+        m.insert(
+            "matrix_size".into(),
+            (mx, my, mz).into_pyobject(py)?.into_any().unbind(),
+        );
         let (vx, vy, vz) = hdr.voxel_size();
-        m.insert("voxel_size".into(), (vx, vy, vz).into_pyobject(py)?.into_any().unbind());
+        m.insert(
+            "voxel_size".into(),
+            (vx, vy, vz).into_pyobject(py)?.into_any().unbind(),
+        );
         m.insert("tr".into(), hdr.tr().into_pyobject(py)?.into_any().unbind());
-        m.insert("datatype".into(), (hdr.datatype as i32).into_pyobject(py)?.into_any().unbind());
-        m.insert("n_voxels".into(), hdr.n_voxels().into_pyobject(py)?.into_any().unbind());
+        m.insert(
+            "datatype".into(),
+            (hdr.datatype as i32).into_pyobject(py)?.into_any().unbind(),
+        );
+        m.insert(
+            "n_voxels".into(),
+            hdr.n_voxels().into_pyobject(py)?.into_any().unbind(),
+        );
         Ok(m)
     })
 }
@@ -435,10 +538,22 @@ fn parse_formula(formula: &str) -> HashMap<String, PyObject> {
     Python::with_gil(|py| {
         let f = bids_formula::parse_formula(formula);
         let mut m: HashMap<String, PyObject> = HashMap::new();
-        m.insert("response".into(), f.response.into_pyobject(py).unwrap().into_any().unbind());
-        m.insert("intercept".into(), pyo3::types::PyBool::new(py, f.intercept).to_owned().into_any().unbind());
+        m.insert(
+            "response".into(),
+            f.response.into_pyobject(py).unwrap().into_any().unbind(),
+        );
+        m.insert(
+            "intercept".into(),
+            pyo3::types::PyBool::new(py, f.intercept)
+                .to_owned()
+                .into_any()
+                .unbind(),
+        );
         let terms: Vec<String> = f.terms.iter().map(|t| t.name()).collect();
-        m.insert("terms".into(), terms.into_pyobject(py).unwrap().into_any().unbind());
+        m.insert(
+            "terms".into(),
+            terms.into_pyobject(py).unwrap().into_any().unbind(),
+        );
         m
     })
 }
@@ -461,11 +576,15 @@ fn is_valid_datatype(dt: &str) -> bool {
 
 /// Convert a plural English word to singular.
 #[pyfunction]
-fn singularize(word: &str) -> Option<String> { bids_inflect::singularize(word) }
+fn singularize(word: &str) -> Option<String> {
+    bids_inflect::singularize(word)
+}
 
 /// Convert a singular English word to plural.
 #[pyfunction]
-fn pluralize(word: &str) -> String { bids_inflect::pluralize(word) }
+fn pluralize(word: &str) -> String {
+    bids_inflect::pluralize(word)
+}
 
 // ─────────────────────── Reports ───────────────────────
 
@@ -502,7 +621,8 @@ fn json_to_py(py: Python<'_>, v: &serde_json::Value) -> PyResult<PyObject> {
         }
         serde_json::Value::String(s) => Ok(s.into_pyobject(py)?.into_any().unbind()),
         serde_json::Value::Array(arr) => {
-            let items: Vec<PyObject> = arr.iter()
+            let items: Vec<PyObject> = arr
+                .iter()
                 .map(|item| json_to_py(py, item))
                 .collect::<PyResult<_>>()?;
             Ok(items.into_pyobject(py)?.into_any().unbind())

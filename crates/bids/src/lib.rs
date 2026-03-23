@@ -45,10 +45,12 @@
 
 // Core
 pub use bids_core as core;
-pub use bids_core::{BidsError, BidsFile, BidsMetadata, Config, DatasetDescription,
-                    Entity, EntityValue, Entities, StringEntities, PaddedInt, CopyMode};
 pub use bids_core::error::Result;
-pub use bids_core::utils::{matches_entities, collect_associated_files, convert_json_keys};
+pub use bids_core::utils::{collect_associated_files, convert_json_keys, matches_entities};
+pub use bids_core::{
+    BidsError, BidsFile, BidsMetadata, Config, CopyMode, DatasetDescription, Entities, Entity,
+    EntityValue, PaddedInt, StringEntities,
+};
 
 // IO
 pub use bids_io as io;
@@ -56,7 +58,7 @@ pub use bids_io::gradient::GradientTable;
 
 // Layout
 pub use bids_layout as layout;
-pub use bids_layout::{BidsLayout, Query, QueryFilter, InvalidFilters, Scope};
+pub use bids_layout::{BidsLayout, InvalidFilters, Query, QueryFilter, Scope};
 
 // Variables
 pub use bids_variables as variables;
@@ -69,23 +71,23 @@ pub use bids_derive as derive;
 
 // Modeling
 pub use bids_modeling as modeling;
-pub use bids_modeling::{StatsModelsGraph, ContrastInfo, HrfModel};
+pub use bids_modeling::{ContrastInfo, HrfModel, StatsModelsGraph};
 
 // Reports
 pub use bids_reports as reports;
 pub use bids_reports::BidsReport;
 
 // Domain crates
+pub use bids_beh as beh;
 pub use bids_eeg as eeg;
 pub use bids_ieeg as ieeg;
 pub use bids_meg as meg;
-pub use bids_pet as pet;
-pub use bids_perf as perf;
-pub use bids_motion as motion;
-pub use bids_nirs as nirs;
-pub use bids_mrs as mrs;
 pub use bids_micr as micr;
-pub use bids_beh as beh;
+pub use bids_motion as motion;
+pub use bids_mrs as mrs;
+pub use bids_nirs as nirs;
+pub use bids_perf as perf;
+pub use bids_pet as pet;
 
 // Dataset downloading and aggregation
 pub use bids_dataset as dataset;
@@ -94,15 +96,15 @@ pub use bids_dataset as dataset;
 pub use bids_core::timeseries::TimeSeries;
 
 // Infrastructure crates
-pub use bids_nifti as nifti;
 pub use bids_filter as filter;
 pub use bids_formula as formula;
-pub use bids_schema as schema;
 pub use bids_inflect as inflect;
+pub use bids_nifti as nifti;
+pub use bids_schema as schema;
 
 // Version tracking
 pub use bids_schema::version::{
-    BidsVersion, Compatibility, SUPPORTED_BIDS_VERSION, MIN_COMPATIBLE_VERSION,
+    BidsVersion, Compatibility, MIN_COMPATIBLE_VERSION, SUPPORTED_BIDS_VERSION,
 };
 
 /// Convenience prelude importing the most commonly used types.
@@ -111,13 +113,13 @@ pub use bids_schema::version::{
 /// use bids::prelude::*;
 /// ```
 pub mod prelude {
-    pub use bids_core::{BidsError, BidsFile, BidsMetadata, Config, DatasetDescription};
-    pub use bids_core::{Entity, EntityValue, Entities};
     pub use bids_core::error::Result;
     pub use bids_core::timeseries::TimeSeries;
-    pub use bids_layout::{BidsLayout, Query, QueryFilter, Scope, InvalidFilters};
-    pub use bids_eeg::{EegLayout, ReadOptions, EegData};
+    pub use bids_core::{BidsError, BidsFile, BidsMetadata, Config, DatasetDescription};
+    pub use bids_core::{Entities, Entity, EntityValue};
+    pub use bids_dataset::{Aggregator, DatasetFilter, OpenNeuro, Split};
+    pub use bids_eeg::{EegData, EegLayout, ReadOptions};
+    pub use bids_layout::{BidsLayout, InvalidFilters, Query, QueryFilter, Scope};
     pub use bids_nifti::NiftiImage;
-    pub use bids_dataset::{OpenNeuro, DatasetFilter, Aggregator, Split};
     pub use bids_reports::BidsReport;
 }

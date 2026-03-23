@@ -6,14 +6,15 @@
 //! They are behind `#[ignore]` by default so they don't run in CI without
 //! network access. Use `--ignored` to include them.
 
-use bids_dataset::{OpenNeuro, DatasetFilter, Aggregator, Split};
+use bids_dataset::{Aggregator, DatasetFilter, OpenNeuro, Split};
 use std::path::Path;
 
 #[test]
 #[ignore] // requires network
 fn test_search_eeg_datasets() {
     let on = OpenNeuro::new();
-    let hits = on.search()
+    let hits = on
+        .search()
         .modality("eeg")
         .species("Human")
         .limit(10)
@@ -22,23 +23,23 @@ fn test_search_eeg_datasets() {
 
     println!("Found {} EEG datasets:", hits.len());
     for ds in &hits {
-        println!("  {} — {} (modalities: {:?}, size: {:?} bytes)",
-            ds.id, ds.name, ds.modalities,
-            ds.size_bytes);
+        println!(
+            "  {} — {} (modalities: {:?}, size: {:?} bytes)",
+            ds.id, ds.name, ds.modalities, ds.size_bytes
+        );
     }
     assert!(!hits.is_empty(), "Should find at least one EEG dataset");
-    assert!(hits.iter().all(|d| d.modalities.iter().any(|m| m.eq_ignore_ascii_case("eeg"))));
+    assert!(
+        hits.iter()
+            .all(|d| d.modalities.iter().any(|m| m.eq_ignore_ascii_case("eeg")))
+    );
 }
 
 #[test]
 #[ignore]
 fn test_search_mri_datasets() {
     let on = OpenNeuro::new();
-    let hits = on.search()
-        .modality("mri")
-        .limit(5)
-        .execute()
-        .unwrap();
+    let hits = on.search().modality("mri").limit(5).execute().unwrap();
 
     println!("Found {} MRI datasets", hits.len());
     assert!(!hits.is_empty());
@@ -50,7 +51,8 @@ fn test_search_by_keyword() {
     let on = OpenNeuro::new();
     // Keyword search is client-side (OpenNeuro API has no text search).
     // We search EEG datasets and filter by name containing "eeg"
-    let hits = on.search()
+    let hits = on
+        .search()
         .modality("eeg")
         .keyword("EEG")
         .limit(20)
@@ -75,8 +77,13 @@ fn test_list_files_s3() {
     for f in &files[..files.len().min(10)] {
         println!("  {:60} {:>10} bytes", f.path, f.size);
     }
-    assert!(!files.is_empty(), "Should find files in ds004362/sub-001/eeg");
-    assert!(files.iter().any(|f| f.path.ends_with(".json") || f.path.ends_with(".set") || f.path.ends_with(".tsv")));
+    assert!(
+        !files.is_empty(),
+        "Should find files in ds004362/sub-001/eeg"
+    );
+    assert!(files.iter().any(|f| f.path.ends_with(".json")
+        || f.path.ends_with(".set")
+        || f.path.ends_with(".tsv")));
 }
 
 #[test]
@@ -110,22 +117,41 @@ fn test_download_small_files() {
     std::fs::create_dir_all(&dir).unwrap();
 
     // Download only JSON metadata files from one subject (small)
-    let report = on.download_dataset("ds004362", &dir, Some(|f: &bids_dataset::RemoteFile| {
-        f.path.starts_with("sub-001/eeg/") && f.path.ends_with(".json") && f.size < 10_000
-    })).unwrap();
+    let report = on
+        .download_dataset(
+            "ds004362",
+            &dir,
+            Some(|f: &bids_dataset::RemoteFile| {
+                f.path.starts_with("sub-001/eeg/") && f.path.ends_with(".json") && f.size < 10_000
+            }),
+        )
+        .unwrap();
 
     println!("Download report: {}", report);
-    assert!(report.downloaded > 0 || report.skipped > 0, "Should download or skip some files");
-    assert!(report.errors.is_empty(), "Should have no errors: {:?}", report.errors);
+    assert!(
+        report.downloaded > 0 || report.skipped > 0,
+        "Should download or skip some files"
+    );
+    assert!(
+        report.errors.is_empty(),
+        "Should have no errors: {:?}",
+        report.errors
+    );
 
     // Verify files exist
     let local_root = dir.join("ds004362");
     assert!(local_root.exists());
 
     // Second run should skip everything (resume)
-    let report2 = on.download_dataset("ds004362", &dir, Some(|f: &bids_dataset::RemoteFile| {
-        f.path.starts_with("sub-001/eeg/") && f.path.ends_with(".json") && f.size < 10_000
-    })).unwrap();
+    let report2 = on
+        .download_dataset(
+            "ds004362",
+            &dir,
+            Some(|f: &bids_dataset::RemoteFile| {
+                f.path.starts_with("sub-001/eeg/") && f.path.ends_with(".json") && f.size < 10_000
+            }),
+        )
+        .unwrap();
     println!("Second run: {}", report2);
     assert_eq!(report2.downloaded, 0, "Should skip all on re-download");
     assert!(report2.skipped > 0);
@@ -141,18 +167,26 @@ fn test_filter_and_aggregate() {
     std::fs::create_dir_all(&dir).unwrap();
 
     // Download small metadata files from one subject
-    let _ = on.download_dataset("ds004362", &dir, Some(|f: &bids_dataset::RemoteFile| {
-        (f.path.starts_with("sub-001/eeg/") || f.path == "dataset_description.json")
-            && (f.path.ends_with(".json") || f.path.ends_with(".tsv"))
-            && f.size < 10_000
-    })).unwrap();
+    let _ = on
+        .download_dataset(
+            "ds004362",
+            &dir,
+            Some(|f: &bids_dataset::RemoteFile| {
+                (f.path.starts_with("sub-001/eeg/") || f.path == "dataset_description.json")
+                    && (f.path.ends_with(".json") || f.path.ends_with(".tsv"))
+                    && f.size < 10_000
+            }),
+        )
+        .unwrap();
 
     // Aggregate with filter
     let mut agg = Aggregator::new();
-    let count = agg.add_dataset(
-        &dir.join("ds004362"),
-        DatasetFilter::new().modality("eeg").extension(".json"),
-    ).unwrap();
+    let count = agg
+        .add_dataset(
+            &dir.join("ds004362"),
+            DatasetFilter::new().modality("eeg").extension(".json"),
+        )
+        .unwrap();
     println!("Aggregated {} files", count);
     assert!(count > 0);
     assert!(!agg.subjects().is_empty());
@@ -166,7 +200,9 @@ fn test_filter_and_aggregate() {
 
     // Export splits
     let split_dir = dir.join("splits");
-    let report = agg.export_split(split_dir.to_str().unwrap(), Split::ratio(0.6, 0.2, 0.2)).unwrap();
+    let report = agg
+        .export_split(split_dir.to_str().unwrap(), Split::ratio(0.6, 0.2, 0.2))
+        .unwrap();
     println!("Split: {}", report);
     assert!(split_dir.join("train.csv").exists());
     assert!(split_dir.join("val.csv").exists());
@@ -198,9 +234,13 @@ fn test_end_to_end_eeg_pipeline() {
     // 4. Download metadata only (fast)
     let dir = std::env::temp_dir().join("bids_dataset_test_e2e");
     std::fs::create_dir_all(&dir).unwrap();
-    let report = on.download_dataset(&ds.id, &dir, Some(|f: &bids_dataset::RemoteFile| {
-        f.path.ends_with(".json") && f.size < 5_000
-    })).unwrap();
+    let report = on
+        .download_dataset(
+            &ds.id,
+            &dir,
+            Some(|f: &bids_dataset::RemoteFile| f.path.ends_with(".json") && f.size < 5_000),
+        )
+        .unwrap();
     println!("Step 4 — Downloaded: {}", report);
 
     std::fs::remove_dir_all(&dir).unwrap();

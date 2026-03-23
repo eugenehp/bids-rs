@@ -16,11 +16,7 @@ use crate::file::BidsFile;
 ///
 /// Corresponds to PyBIDS' `matches_entities()`.
 #[must_use]
-pub fn matches_entities(
-    file_entities: &Entities,
-    target: &Entities,
-    strict: bool,
-) -> bool {
+pub fn matches_entities(file_entities: &Entities, target: &Entities, strict: bool) -> bool {
     // Quick length check for strict mode avoids collecting into HashSets.
     if strict && file_entities.len() != target.len() {
         return false;
@@ -31,7 +27,9 @@ pub fn matches_entities(
             Some(current_val) if current_val == target_val => {}
             Some(_) => return false,
             None => {
-                if strict { return false; }
+                if strict {
+                    return false;
+                }
             }
         }
     }
@@ -64,7 +62,9 @@ pub fn collect_associated_files(files: &[BidsFile]) -> Vec<Vec<&BidsFile>> {
         indexmap::IndexMap::new();
 
     for f in files {
-        let mut key: Vec<(String, String)> = f.entities.iter()
+        let mut key: Vec<(String, String)> = f
+            .entities
+            .iter()
             .filter(|(k, _)| !MULTI_ENTITIES.contains(&k.as_str()))
             .map(|(k, v)| (k.clone(), v.as_str_lossy().into_owned()))
             .collect();
@@ -108,8 +108,9 @@ pub fn camel_to_snake(s: &str) -> String {
             let next = chars.get(i + 1);
             // Insert underscore before uppercase if preceded by lowercase/digit
             // or followed by lowercase (handles "EEGReference" -> "eeg_reference")
-            if prev.is_lowercase() || prev.is_ascii_digit()
-               || next.is_some_and(|n| n.is_lowercase())
+            if prev.is_lowercase()
+                || prev.is_ascii_digit()
+                || next.is_some_and(|n| n.is_lowercase())
             {
                 result.push('_');
             }
@@ -140,7 +141,8 @@ pub fn snake_to_camel(s: &str) -> String {
 /// Returns up to `n` suggestions sorted by edit distance.
 #[must_use]
 pub fn get_close_matches(word: &str, candidates: &[String], n: usize) -> Vec<String> {
-    let mut scored: Vec<(usize, &String)> = candidates.iter()
+    let mut scored: Vec<(usize, &String)> = candidates
+        .iter()
         .map(|c| (edit_distance(word, c), c))
         .filter(|(d, _)| *d <= word.len().max(3))
         .collect();
@@ -158,9 +160,7 @@ fn edit_distance(a: &str, b: &str) -> usize {
         curr[0] = i + 1;
         for (j, cb) in b.iter().enumerate() {
             let cost = if ca == cb { 0 } else { 1 };
-            curr[j + 1] = (prev[j + 1] + 1)
-                .min(curr[j] + 1)
-                .min(prev[j] + cost);
+            curr[j + 1] = (prev[j + 1] + 1).min(curr[j] + 1).min(prev[j] + cost);
         }
         std::mem::swap(&mut prev, &mut curr);
     }
@@ -206,8 +206,11 @@ mod tests {
     #[test]
     fn test_close_matches() {
         let candidates = vec![
-            "subject".to_string(), "session".to_string(), "suffix".to_string(),
-            "task".to_string(), "run".to_string(),
+            "subject".to_string(),
+            "session".to_string(),
+            "suffix".to_string(),
+            "task".to_string(),
+            "run".to_string(),
         ];
         let matches = get_close_matches("suject", &candidates, 2);
         assert!(!matches.is_empty());

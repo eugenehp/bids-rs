@@ -14,7 +14,10 @@ use std::f64::consts::PI;
 /// `cutoff` is normalized frequency: cutoff_hz / (fs/2), must be in (0, 1).
 #[must_use]
 pub fn butter_lowpass(order: usize, cutoff: f64) -> (Vec<f64>, Vec<f64>) {
-    assert!(cutoff > 0.0 && cutoff < 1.0, "cutoff must be in (0,1), got {cutoff}");
+    assert!(
+        cutoff > 0.0 && cutoff < 1.0,
+        "cutoff must be in (0,1), got {cutoff}"
+    );
 
     // Step 1: Analog Butterworth poles on the unit circle (left half-plane)
     let mut poles_s: Vec<(f64, f64)> = Vec::with_capacity(order);
@@ -28,7 +31,8 @@ pub fn butter_lowpass(order: usize, cutoff: f64) -> (Vec<f64>, Vec<f64>) {
     let warped = 2.0 * fs * (PI * cutoff / fs).tan();
 
     // Step 3: Scale analog poles by warped cutoff
-    let poles_a: Vec<(f64, f64)> = poles_s.iter()
+    let poles_a: Vec<(f64, f64)> = poles_s
+        .iter()
         .map(|(re, im)| (re * warped, im * warped))
         .collect();
 
@@ -86,7 +90,9 @@ pub fn lfilter(b: &[f64], a: &[f64], x: &[f64]) -> Vec<f64> {
                 - a.get(j + 1).copied().unwrap_or(0.0) * out
                 + d.get(j + 1).copied().unwrap_or(0.0);
         }
-        if nfilt > 0 { d[nfilt - 1] = 0.0; }
+        if nfilt > 0 {
+            d[nfilt - 1] = 0.0;
+        }
     }
     y
 }
@@ -96,7 +102,9 @@ pub fn lfilter(b: &[f64], a: &[f64], x: &[f64]) -> Vec<f64> {
 /// Matches `scipy.signal.filtfilt(b, a, x)`.
 #[must_use]
 pub fn filtfilt(b: &[f64], a: &[f64], x: &[f64]) -> Vec<f64> {
-    if x.is_empty() { return vec![]; }
+    if x.is_empty() {
+        return vec![];
+    }
     // Pad signal to reduce edge effects (3 * max(len(a), len(b)) samples)
     let npad = 3 * b.len().max(a.len());
     let mut padded = Vec::with_capacity(x.len() + 2 * npad);
@@ -130,20 +138,35 @@ pub fn filtfilt(b: &[f64], a: &[f64], x: &[f64]) -> Vec<f64> {
 /// `cutoff` is normalized frequency in (0, 1).
 #[must_use]
 pub fn butter_highpass(order: usize, cutoff: f64) -> (Vec<f64>, Vec<f64>) {
-    assert!(cutoff > 0.0 && cutoff < 1.0, "cutoff must be in (0,1), got {cutoff}");
+    assert!(
+        cutoff > 0.0 && cutoff < 1.0,
+        "cutoff must be in (0,1), got {cutoff}"
+    );
     // High-pass = transform low-pass: s → 1/s before bilinear.
     // Equivalently: zeros at z=+1 (not -1), and gain at Nyquist=1.
     let (b_lp, a_lp) = butter_lowpass(order, cutoff);
     // Spectral inversion: negate every other coefficient of b, flipping the response
-    let b_hp: Vec<f64> = b_lp.iter().enumerate()
+    let b_hp: Vec<f64> = b_lp
+        .iter()
+        .enumerate()
         .map(|(i, &v)| if i % 2 == 0 { v } else { -v })
         .collect();
-    let a_hp: Vec<f64> = a_lp.iter().enumerate()
+    let a_hp: Vec<f64> = a_lp
+        .iter()
+        .enumerate()
         .map(|(i, &v)| if i % 2 == 0 { v } else { -v })
         .collect();
     // Re-normalize: gain at Nyquist (z = -1) should be 1
-    let gain_a: f64 = a_hp.iter().enumerate().map(|(i, &v)| v * (-1.0f64).powi(i as i32)).sum();
-    let gain_b: f64 = b_hp.iter().enumerate().map(|(i, &v)| v * (-1.0f64).powi(i as i32)).sum();
+    let gain_a: f64 = a_hp
+        .iter()
+        .enumerate()
+        .map(|(i, &v)| v * (-1.0f64).powi(i as i32))
+        .sum();
+    let gain_b: f64 = b_hp
+        .iter()
+        .enumerate()
+        .map(|(i, &v)| v * (-1.0f64).powi(i as i32))
+        .sum();
     let gain = gain_a / gain_b;
     let b: Vec<f64> = b_hp.iter().map(|&v| v * gain).collect();
     (b, a_hp)
@@ -155,8 +178,10 @@ pub fn butter_highpass(order: usize, cutoff: f64) -> (Vec<f64>, Vec<f64>) {
 /// `low` and `high` are normalized frequencies in (0, 1).
 #[must_use]
 pub fn butter_bandpass(order: usize, low: f64, high: f64) -> (Vec<f64>, Vec<f64>) {
-    assert!(low > 0.0 && low < 1.0 && high > 0.0 && high < 1.0 && low < high,
-        "frequencies must be 0 < low < high < 1, got low={low}, high={high}");
+    assert!(
+        low > 0.0 && low < 1.0 && high > 0.0 && high < 1.0 && low < high,
+        "frequencies must be 0 < low < high < 1, got low={low}, high={high}"
+    );
     // Cascade: highpass at `low` then lowpass at `high`
     let (b_hp, a_hp) = butter_highpass(order, low);
     let (b_lp, a_lp) = butter_lowpass(order, high);
@@ -197,12 +222,18 @@ pub fn notch_filter(x: &[f64], freq_hz: f64, fs: f64, quality: f64) -> Vec<f64> 
 /// Nyquist frequency before decimation (like MNE's `raw.resample()`).
 #[must_use]
 pub fn resample(x: &[f64], fs_old: f64, fs_new: f64) -> Vec<f64> {
-    if x.is_empty() || fs_old <= 0.0 || fs_new <= 0.0 { return vec![]; }
-    if (fs_old - fs_new).abs() < 1e-10 { return x.to_vec(); }
+    if x.is_empty() || fs_old <= 0.0 || fs_new <= 0.0 {
+        return vec![];
+    }
+    if (fs_old - fs_new).abs() < 1e-10 {
+        return x.to_vec();
+    }
 
     let ratio = fs_new / fs_old;
     let n_out = (x.len() as f64 * ratio).round() as usize;
-    if n_out == 0 { return vec![]; }
+    if n_out == 0 {
+        return vec![];
+    }
 
     // Anti-alias filter when downsampling
     let src = if fs_new < fs_old {
@@ -300,12 +331,28 @@ mod tests {
         assert_eq!(a.len(), 4);
         // DC gain should be ~0 (high-pass blocks DC)
         let dc_gain: f64 = b.iter().sum::<f64>() / a.iter().sum::<f64>();
-        assert!(dc_gain.abs() < 0.01, "HP DC gain should be ~0, got {}", dc_gain);
+        assert!(
+            dc_gain.abs() < 0.01,
+            "HP DC gain should be ~0, got {}",
+            dc_gain
+        );
         // Nyquist gain should be ~1
-        let ny_gain_b: f64 = b.iter().enumerate().map(|(i, &v)| v * (-1.0f64).powi(i as i32)).sum();
-        let ny_gain_a: f64 = a.iter().enumerate().map(|(i, &v)| v * (-1.0f64).powi(i as i32)).sum();
+        let ny_gain_b: f64 = b
+            .iter()
+            .enumerate()
+            .map(|(i, &v)| v * (-1.0f64).powi(i as i32))
+            .sum();
+        let ny_gain_a: f64 = a
+            .iter()
+            .enumerate()
+            .map(|(i, &v)| v * (-1.0f64).powi(i as i32))
+            .sum();
         let ny_gain = ny_gain_b / ny_gain_a;
-        assert!((ny_gain - 1.0).abs() < 0.01, "HP Nyquist gain should be ~1, got {}", ny_gain);
+        assert!(
+            (ny_gain - 1.0).abs() < 0.01,
+            "HP Nyquist gain should be ~1, got {}",
+            ny_gain
+        );
     }
 
     #[test]
@@ -316,8 +363,16 @@ mod tests {
         let dc_a: f64 = a.iter().sum();
         assert!((dc_b / dc_a).abs() < 0.01, "BP DC gain should be ~0");
         // Nyquist gain should be ~0
-        let ny_b: f64 = b.iter().enumerate().map(|(i, &v)| v * (-1.0f64).powi(i as i32)).sum();
-        let ny_a: f64 = a.iter().enumerate().map(|(i, &v)| v * (-1.0f64).powi(i as i32)).sum();
+        let ny_b: f64 = b
+            .iter()
+            .enumerate()
+            .map(|(i, &v)| v * (-1.0f64).powi(i as i32))
+            .sum();
+        let ny_a: f64 = a
+            .iter()
+            .enumerate()
+            .map(|(i, &v)| v * (-1.0f64).powi(i as i32))
+            .sum();
         assert!((ny_b / ny_a).abs() < 0.01, "BP Nyquist gain should be ~0");
     }
 
@@ -326,10 +381,12 @@ mod tests {
         // Signal with 50 Hz hum + 10 Hz signal
         let fs = 500.0;
         let n = 1000;
-        let signal: Vec<f64> = (0..n).map(|i| {
-            let t = i as f64 / fs;
-            (2.0 * PI * 10.0 * t).sin() + 0.5 * (2.0 * PI * 50.0 * t).sin()
-        }).collect();
+        let signal: Vec<f64> = (0..n)
+            .map(|i| {
+                let t = i as f64 / fs;
+                (2.0 * PI * 10.0 * t).sin() + 0.5 * (2.0 * PI * 50.0 * t).sin()
+            })
+            .collect();
 
         let filtered = notch_filter(&signal, 50.0, fs, 30.0);
         assert_eq!(filtered.len(), n);
@@ -340,18 +397,24 @@ mod tests {
         let orig_energy: f64 = signal[half..].iter().map(|v| v * v).sum::<f64>();
         let filt_energy: f64 = filtered[half..].iter().map(|v| v * v).sum::<f64>();
         // Original has ~1.25 (1.0 + 0.25), filtered should have ~1.0
-        assert!(filt_energy < orig_energy * 0.9,
-            "Notch should reduce energy: orig={:.3}, filt={:.3}", orig_energy, filt_energy);
+        assert!(
+            filt_energy < orig_energy * 0.9,
+            "Notch should reduce energy: orig={:.3}, filt={:.3}",
+            orig_energy,
+            filt_energy
+        );
     }
 
     #[test]
     fn test_resample_downsample() {
         let fs = 1000.0;
         let n = 1000;
-        let signal: Vec<f64> = (0..n).map(|i| {
-            let t = i as f64 / fs;
-            (2.0 * PI * 10.0 * t).sin()
-        }).collect();
+        let signal: Vec<f64> = (0..n)
+            .map(|i| {
+                let t = i as f64 / fs;
+                (2.0 * PI * 10.0 * t).sin()
+            })
+            .collect();
 
         let resampled = resample(&signal, fs, 250.0);
         assert_eq!(resampled.len(), 250); // 1000 * 250/1000
@@ -387,10 +450,12 @@ mod tests {
         // Generate signal: low freq + high freq
         let n = 200;
         let fs = 100.0;
-        let signal: Vec<f64> = (0..n).map(|i| {
-            let t = i as f64 / fs;
-            (2.0 * PI * 5.0 * t).sin() + (2.0 * PI * 40.0 * t).sin()
-        }).collect();
+        let signal: Vec<f64> = (0..n)
+            .map(|i| {
+                let t = i as f64 / fs;
+                (2.0 * PI * 5.0 * t).sin() + (2.0 * PI * 40.0 * t).sin()
+            })
+            .collect();
 
         // Low-pass at 10 Hz (cutoff = 10 / (100/2) = 0.2)
         let (b, a) = butter_lowpass(5, 0.2);
@@ -401,7 +466,11 @@ mod tests {
         // Check that the filtered signal has lower energy than the original
         let orig_energy: f64 = signal.iter().map(|v| v * v).sum::<f64>() / n as f64;
         let filt_energy: f64 = filtered.iter().map(|v| v * v).sum::<f64>() / n as f64;
-        assert!(filt_energy < orig_energy * 0.7,
-            "Filtered energy {} should be much less than original {}", filt_energy, orig_energy);
+        assert!(
+            filt_energy < orig_energy * 0.7,
+            "Filtered energy {} should be much less than original {}",
+            filt_energy,
+            orig_energy
+        );
     }
 }

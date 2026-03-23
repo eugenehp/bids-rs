@@ -25,16 +25,34 @@ pub struct MegData {
 }
 
 impl MegData {
-    pub fn n_channels(&self) -> usize { self.data.len() }
+    pub fn n_channels(&self) -> usize {
+        self.data.len()
+    }
 }
 
 impl bids_core::timeseries::TimeSeries for MegData {
-    fn n_channels(&self) -> usize { self.data.len() }
-    fn n_samples(&self) -> usize { self.n_samples }
-    fn channel_names(&self) -> &[String] { &self.channel_names }
-    fn sampling_rate(&self) -> f64 { self.sfreq }
-    fn channel_data(&self, index: usize) -> Option<&[f64]> { self.data.get(index).map(|v| v.as_slice()) }
-    fn duration(&self) -> f64 { if self.sfreq > 0.0 { self.n_samples as f64 / self.sfreq } else { 0.0 } }
+    fn n_channels(&self) -> usize {
+        self.data.len()
+    }
+    fn n_samples(&self) -> usize {
+        self.n_samples
+    }
+    fn channel_names(&self) -> &[String] {
+        &self.channel_names
+    }
+    fn sampling_rate(&self) -> f64 {
+        self.sfreq
+    }
+    fn channel_data(&self, index: usize) -> Option<&[f64]> {
+        self.data.get(index).map(|v| v.as_slice())
+    }
+    fn duration(&self) -> f64 {
+        if self.sfreq > 0.0 {
+            self.n_samples as f64 / self.sfreq
+        } else {
+            0.0
+        }
+    }
 }
 
 /// Read raw MEG data from a FIFF (.fif) file.
@@ -42,15 +60,17 @@ impl bids_core::timeseries::TimeSeries for MegData {
 /// Uses the `fiff` crate to parse the FIFF tree, extract measurement info
 /// (channels, sampling rate, bad channels), and read raw data buffers.
 pub fn read_fiff(path: &Path) -> Result<MegData> {
-    use fiff::{open_fiff, MeasInfo};
-    use fiff::tree::dir_tree_find;
-    use fiff::tag::Tag;
     use fiff::constants::*;
+    use fiff::tag::Tag;
+    use fiff::tree::dir_tree_find;
+    use fiff::{MeasInfo, open_fiff};
 
-    let (mut reader, tree) = open_fiff(path)
-        .map_err(|e| BidsError::Io(std::io::Error::new(
-            std::io::ErrorKind::Other, format!("FIFF open error: {}", e)
-        )))?;
+    let (mut reader, tree) = open_fiff(path).map_err(|e| {
+        BidsError::Io(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!("FIFF open error: {}", e),
+        ))
+    })?;
 
     // Read measurement info
     let meas_info = MeasInfo::read(&mut reader, &tree)
@@ -58,13 +78,17 @@ pub fn read_fiff(path: &Path) -> Result<MegData> {
 
     let sfreq = meas_info.sfreq;
     let n_channels = meas_info.nchan as usize;
-    let channel_names: Vec<String> = meas_info.channels.iter()
+    let channel_names: Vec<String> = meas_info
+        .channels
+        .iter()
         .map(|ch| ch.ch_name.clone())
         .collect();
     let bad_channels = meas_info.bads.clone();
 
     // Calibration factors per channel
-    let cals: Vec<f64> = meas_info.channels.iter()
+    let cals: Vec<f64> = meas_info
+        .channels
+        .iter()
         .map(|ch| ch.calibration())
         .collect();
 

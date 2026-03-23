@@ -111,7 +111,12 @@ impl Config {
 
 impl std::fmt::Display for Config {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Config('{}', {} entities", self.name, self.entities.len())?;
+        write!(
+            f,
+            "Config('{}', {} entities",
+            self.name,
+            self.entities.len()
+        )?;
         if let Some(patterns) = &self.default_path_patterns {
             write!(f, ", {} patterns", patterns.len())?;
         }

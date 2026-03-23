@@ -41,7 +41,6 @@ impl std::fmt::Display for ConflictStrategy {
     }
 }
 
-
 /// Write contents to a file, optionally creating a symlink or copying from another file.
 ///
 /// Corresponds to PyBIDS' `write_to_file()`.
@@ -126,7 +125,15 @@ mod tests {
         fs::create_dir_all(&dir).unwrap();
         let path = dir.join("test.txt");
 
-        write_to_file(&path, Some(b"hello"), None, None, None, ConflictStrategy::Fail).unwrap();
+        write_to_file(
+            &path,
+            Some(b"hello"),
+            None,
+            None,
+            None,
+            ConflictStrategy::Fail,
+        )
+        .unwrap();
         assert_eq!(fs::read_to_string(&path).unwrap(), "hello");
 
         fs::remove_dir_all(&dir).unwrap();
@@ -138,8 +145,23 @@ mod tests {
         fs::create_dir_all(&dir).unwrap();
         let path = dir.join("test.txt");
 
-        write_to_file(&path, Some(b"first"), None, None, None, ConflictStrategy::Fail).unwrap();
-        let result = write_to_file(&path, Some(b"second"), None, None, None, ConflictStrategy::Fail);
+        write_to_file(
+            &path,
+            Some(b"first"),
+            None,
+            None,
+            None,
+            ConflictStrategy::Fail,
+        )
+        .unwrap();
+        let result = write_to_file(
+            &path,
+            Some(b"second"),
+            None,
+            None,
+            None,
+            ConflictStrategy::Fail,
+        );
         assert!(result.is_err());
 
         fs::remove_dir_all(&dir).unwrap();
@@ -151,8 +173,24 @@ mod tests {
         fs::create_dir_all(&dir).unwrap();
         let path = dir.join("test.txt");
 
-        write_to_file(&path, Some(b"first"), None, None, None, ConflictStrategy::Fail).unwrap();
-        write_to_file(&path, Some(b"second"), None, None, None, ConflictStrategy::Skip).unwrap();
+        write_to_file(
+            &path,
+            Some(b"first"),
+            None,
+            None,
+            None,
+            ConflictStrategy::Fail,
+        )
+        .unwrap();
+        write_to_file(
+            &path,
+            Some(b"second"),
+            None,
+            None,
+            None,
+            ConflictStrategy::Skip,
+        )
+        .unwrap();
         assert_eq!(fs::read_to_string(&path).unwrap(), "first"); // unchanged
 
         fs::remove_dir_all(&dir).unwrap();
@@ -164,8 +202,24 @@ mod tests {
         fs::create_dir_all(&dir).unwrap();
         let path = dir.join("test.txt");
 
-        write_to_file(&path, Some(b"first"), None, None, None, ConflictStrategy::Fail).unwrap();
-        write_to_file(&path, Some(b"second"), None, None, None, ConflictStrategy::Overwrite).unwrap();
+        write_to_file(
+            &path,
+            Some(b"first"),
+            None,
+            None,
+            None,
+            ConflictStrategy::Fail,
+        )
+        .unwrap();
+        write_to_file(
+            &path,
+            Some(b"second"),
+            None,
+            None,
+            None,
+            ConflictStrategy::Overwrite,
+        )
+        .unwrap();
         assert_eq!(fs::read_to_string(&path).unwrap(), "second");
 
         fs::remove_dir_all(&dir).unwrap();
@@ -177,12 +231,31 @@ mod tests {
         fs::create_dir_all(&dir).unwrap();
         let path = dir.join("test.txt");
 
-        write_to_file(&path, Some(b"first"), None, None, None, ConflictStrategy::Fail).unwrap();
-        write_to_file(&path, Some(b"second"), None, None, None, ConflictStrategy::Append).unwrap();
+        write_to_file(
+            &path,
+            Some(b"first"),
+            None,
+            None,
+            None,
+            ConflictStrategy::Fail,
+        )
+        .unwrap();
+        write_to_file(
+            &path,
+            Some(b"second"),
+            None,
+            None,
+            None,
+            ConflictStrategy::Append,
+        )
+        .unwrap();
 
         // Original should be unchanged, new file should exist as test_1.txt
         assert_eq!(fs::read_to_string(&path).unwrap(), "first");
-        assert_eq!(fs::read_to_string(dir.join("test_1.txt")).unwrap(), "second");
+        assert_eq!(
+            fs::read_to_string(dir.join("test_1.txt")).unwrap(),
+            "second"
+        );
 
         fs::remove_dir_all(&dir).unwrap();
     }
@@ -192,7 +265,15 @@ mod tests {
         let dir = std::env::temp_dir().join("bids_writer_test_parents");
         let path = dir.join("a").join("b").join("c").join("test.txt");
 
-        write_to_file(&path, Some(b"deep"), None, None, None, ConflictStrategy::Fail).unwrap();
+        write_to_file(
+            &path,
+            Some(b"deep"),
+            None,
+            None,
+            None,
+            ConflictStrategy::Fail,
+        )
+        .unwrap();
         assert_eq!(fs::read_to_string(&path).unwrap(), "deep");
 
         fs::remove_dir_all(&dir).unwrap();
@@ -226,12 +307,8 @@ mod tests {
 }
 
 fn find_append_path(path: &Path) -> PathBuf {
-    let stem = path.file_stem()
-        .and_then(|s| s.to_str())
-        .unwrap_or("");
-    let ext = path.extension()
-        .and_then(|e| e.to_str())
-        .unwrap_or("");
+    let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
+    let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
     let parent = path.parent().unwrap_or(Path::new("."));
 
     for i in 1..i32::MAX {

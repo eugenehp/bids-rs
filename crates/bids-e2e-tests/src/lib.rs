@@ -35,17 +35,24 @@ mod tests {
 
     fn golden() -> Value {
         let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .parent().unwrap().parent().unwrap()
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
             .join("tests/golden/golden.json");
-        let data = std::fs::read_to_string(&path)
-            .expect("Run `python tests/generate_golden.py` first");
+        let data =
+            std::fs::read_to_string(&path).expect("Run `python tests/generate_golden.py` first");
         serde_json::from_str(&data).unwrap()
     }
 
     fn examples_dir() -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .parent().unwrap().parent().unwrap()
-            .parent().unwrap()
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
             .join("pybids/bids-examples")
     }
 
@@ -57,7 +64,10 @@ mod tests {
         let expected = &g[&key];
 
         let root = examples_dir().join(dataset);
-        if !root.exists() { eprintln!("Skipping {}: not found", dataset); return; }
+        if !root.exists() {
+            eprintln!("Skipping {}: not found", dataset);
+            return;
+        }
 
         let t0 = Instant::now();
         let layout = bids_layout::BidsLayout::new(&root).unwrap();
@@ -65,55 +75,102 @@ mod tests {
 
         // Subjects
         let subjects = layout.get_subjects().unwrap();
-        let expected_subjects: Vec<String> = expected["subjects"].as_array().unwrap()
-            .iter().filter_map(|v| v.as_str().map(String::from)).collect();
-        assert_eq!(subjects, expected_subjects,
-            "{}: subjects mismatch", dataset);
+        let expected_subjects: Vec<String> = expected["subjects"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|v| v.as_str().map(String::from))
+            .collect();
+        assert_eq!(
+            subjects, expected_subjects,
+            "{}: subjects mismatch",
+            dataset
+        );
 
         // Sessions
         let sessions = layout.get_sessions().unwrap();
-        let expected_sessions: Vec<String> = expected["sessions"].as_array().unwrap()
-            .iter().filter_map(|v| v.as_str().map(String::from)).collect();
-        assert_eq!(sessions, expected_sessions,
-            "{}: sessions mismatch", dataset);
+        let expected_sessions: Vec<String> = expected["sessions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|v| v.as_str().map(String::from))
+            .collect();
+        assert_eq!(
+            sessions, expected_sessions,
+            "{}: sessions mismatch",
+            dataset
+        );
 
         // Tasks
         let tasks = layout.get_tasks().unwrap();
-        let expected_tasks: Vec<String> = expected["tasks"].as_array().unwrap()
-            .iter().filter_map(|v| v.as_str().map(String::from)).collect();
-        assert_eq!(tasks, expected_tasks,
-            "{}: tasks mismatch", dataset);
+        let expected_tasks: Vec<String> = expected["tasks"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|v| v.as_str().map(String::from))
+            .collect();
+        assert_eq!(tasks, expected_tasks, "{}: tasks mismatch", dataset);
 
         // Datatypes
         let datatypes = layout.get_datatypes().unwrap();
-        let expected_datatypes: Vec<String> = expected["datatypes"].as_array().unwrap()
-            .iter().filter_map(|v| v.as_str().map(String::from)).collect();
-        assert_eq!(datatypes, expected_datatypes,
-            "{}: datatypes mismatch", dataset);
+        let expected_datatypes: Vec<String> = expected["datatypes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|v| v.as_str().map(String::from))
+            .collect();
+        assert_eq!(
+            datatypes, expected_datatypes,
+            "{}: datatypes mismatch",
+            dataset
+        );
 
         // EEG files
-        let eeg_files: Vec<String> = layout.get().suffix("eeg").collect().unwrap()
-            .iter().filter_map(|f| f.relpath(layout.root()).map(|p| p.to_string_lossy().to_string()))
+        let eeg_files: Vec<String> = layout
+            .get()
+            .suffix("eeg")
+            .collect()
+            .unwrap()
+            .iter()
+            .filter_map(|f| {
+                f.relpath(layout.root())
+                    .map(|p| p.to_string_lossy().to_string())
+            })
             .collect();
         let mut eeg_sorted = eeg_files.clone();
         eeg_sorted.sort();
-        let expected_eeg: Vec<String> = expected["eeg_files"].as_array().unwrap()
-            .iter().filter_map(|v| v.as_str().map(String::from)).collect();
-        assert_eq!(eeg_sorted, expected_eeg,
-            "{}: eeg_files mismatch", dataset);
+        let expected_eeg: Vec<String> = expected["eeg_files"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|v| v.as_str().map(String::from))
+            .collect();
+        assert_eq!(eeg_sorted, expected_eeg, "{}: eeg_files mismatch", dataset);
 
         // Timing comparison
         let py_time = expected["timing_index_ms"].as_f64().unwrap();
-        println!("[{}] Index: Rust {:.1}ms vs Python {:.1}ms ({:.1}x)",
-            dataset, t_index, py_time,
-            if t_index > 0.0 { py_time / t_index } else { 0.0 });
+        println!(
+            "[{}] Index: Rust {:.1}ms vs Python {:.1}ms ({:.1}x)",
+            dataset,
+            t_index,
+            py_time,
+            if t_index > 0.0 {
+                py_time / t_index
+            } else {
+                0.0
+            }
+        );
     }
 
     #[test]
-    fn test_layout_eeg_cbm() { test_layout_dataset("eeg_cbm"); }
+    fn test_layout_eeg_cbm() {
+        test_layout_dataset("eeg_cbm");
+    }
 
     #[test]
-    fn test_layout_eeg_rishikesh() { test_layout_dataset("eeg_rishikesh"); }
+    fn test_layout_eeg_rishikesh() {
+        test_layout_dataset("eeg_rishikesh");
+    }
 
     // ──────────────────── Entity Parsing ────────────────────
 
@@ -127,14 +184,24 @@ mod tests {
 
         for (path, expected_ents) in expected.as_object().unwrap() {
             let parsed = bids_core::entities::parse_file_entities(path, entities);
-            let expected_map: HashMap<String, String> = expected_ents.as_object().unwrap()
-                .iter().map(|(k, v)| (k.clone(), v.as_str().unwrap().to_string())).collect();
+            let expected_map: HashMap<String, String> = expected_ents
+                .as_object()
+                .unwrap()
+                .iter()
+                .map(|(k, v)| (k.clone(), v.as_str().unwrap().to_string()))
+                .collect();
 
             for (key, expected_val) in &expected_map {
                 if let Some(actual) = parsed.get(key) {
-                    assert_eq!(&actual.as_str_lossy(), expected_val,
+                    assert_eq!(
+                        &actual.as_str_lossy(),
+                        expected_val,
                         "Entity '{}' mismatch for {}: got '{}', expected '{}'",
-                        key, path, actual.as_str_lossy(), expected_val);
+                        key,
+                        path,
+                        actual.as_str_lossy(),
+                        expected_val
+                    );
                 }
                 // Note: some entities may differ between bids.json config and PyBIDS schema config
             }
@@ -154,7 +221,10 @@ mod tests {
 
             let mut entities = bids_core::Entities::new();
             for (k, v) in entities_json.as_object().unwrap() {
-                entities.insert(k.clone(), bids_core::EntityValue::Str(v.as_str().unwrap().into()));
+                entities.insert(
+                    k.clone(),
+                    bids_core::EntityValue::Str(v.as_str().unwrap().into()),
+                );
             }
 
             // We test the basic build_path
@@ -179,15 +249,27 @@ mod tests {
 
         let expected_sum = expected["spm_hrf_sum"].as_f64().unwrap();
         let actual_sum: f64 = hrf.iter().sum();
-        assert!((actual_sum - expected_sum).abs() < 0.1,
-            "SPM HRF sum: got {}, expected {}", actual_sum, expected_sum);
+        assert!(
+            (actual_sum - expected_sum).abs() < 0.1,
+            "SPM HRF sum: got {}, expected {}",
+            actual_sum,
+            expected_sum
+        );
 
         let expected_peak = expected["spm_hrf_peak_idx"].as_u64().unwrap() as usize;
-        let actual_peak = hrf.iter().enumerate()
-            .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap()).unwrap().0;
+        let actual_peak = hrf
+            .iter()
+            .enumerate()
+            .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+            .unwrap()
+            .0;
         // Allow ±5 samples tolerance
-        assert!((actual_peak as i64 - expected_peak as i64).unsigned_abs() <= 5,
-            "SPM HRF peak: got {}, expected {}", actual_peak, expected_peak);
+        assert!(
+            (actual_peak as i64 - expected_peak as i64).unsigned_abs() <= 5,
+            "SPM HRF peak: got {}, expected {}",
+            actual_peak,
+            expected_peak
+        );
     }
 
     #[test]
@@ -201,8 +283,12 @@ mod tests {
 
         let expected_sum = expected["glover_hrf_sum"].as_f64().unwrap();
         let actual_sum: f64 = hrf.iter().sum();
-        assert!((actual_sum - expected_sum).abs() < 0.1,
-            "Glover HRF sum: got {}, expected {}", actual_sum, expected_sum);
+        assert!(
+            (actual_sum - expected_sum).abs() < 0.1,
+            "Glover HRF sum: got {}, expected {}",
+            actual_sum,
+            expected_sum
+        );
     }
 
     // ──────────────────── NIfTI ────────────────────
@@ -220,21 +306,38 @@ mod tests {
 
         let hdr = bids_nifti::NiftiHeader::from_file(Path::new(nifti_path)).unwrap();
 
-        assert_eq!(hdr.n_vols(), expected["n_vols"].as_u64().unwrap() as usize,
-            "n_vols mismatch");
+        assert_eq!(
+            hdr.n_vols(),
+            expected["n_vols"].as_u64().unwrap() as usize,
+            "n_vols mismatch"
+        );
 
-        let expected_dim: Vec<usize> = expected["dim"].as_array().unwrap()
-            .iter().map(|v| v.as_u64().unwrap() as usize).collect();
+        let expected_dim: Vec<usize> = expected["dim"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_u64().unwrap() as usize)
+            .collect();
         let (mx, my, mz) = hdr.matrix_size();
-        assert_eq!(vec![mx, my, mz, hdr.n_vols()], expected_dim,
-            "dim mismatch");
+        assert_eq!(vec![mx, my, mz, hdr.n_vols()], expected_dim, "dim mismatch");
 
-        let expected_pixdim: Vec<f64> = expected["pixdim"].as_array().unwrap()
-            .iter().map(|v| v.as_f64().unwrap()).collect();
+        let expected_pixdim: Vec<f64> = expected["pixdim"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_f64().unwrap())
+            .collect();
         let (px, py, pz) = hdr.voxel_size();
-        for (actual, exp) in [px, py, pz, hdr.tr().unwrap_or(0.0)].iter().zip(&expected_pixdim) {
-            assert!((actual - exp).abs() < 0.01,
-                "pixdim mismatch: got {}, expected {}", actual, exp);
+        for (actual, exp) in [px, py, pz, hdr.tr().unwrap_or(0.0)]
+            .iter()
+            .zip(&expected_pixdim)
+        {
+            assert!(
+                (actual - exp).abs() < 0.01,
+                "pixdim mismatch: got {}, expected {}",
+                actual,
+                exp
+            );
         }
     }
 
@@ -248,8 +351,11 @@ mod tests {
         for (plural, expected_singular) in expected.as_object().unwrap() {
             let expected_val = expected_singular.as_str().unwrap();
             let actual = bids_inflect::singularize(plural).unwrap_or_else(|| plural.clone());
-            assert_eq!(actual, expected_val,
-                "singularize('{}') = '{}', expected '{}'", plural, actual, expected_val);
+            assert_eq!(
+                actual, expected_val,
+                "singularize('{}') = '{}', expected '{}'",
+                plural, actual, expected_val
+            );
         }
     }
 
@@ -263,21 +369,39 @@ mod tests {
         // Order 5, cutoff 0.2
         let (b, a) = bids_filter::butter_lowpass(5, 0.2);
 
-        let expected_b: Vec<f64> = expected["butter5_b"].as_array().unwrap()
-            .iter().map(|v| v.as_f64().unwrap()).collect();
-        let expected_a: Vec<f64> = expected["butter5_a"].as_array().unwrap()
-            .iter().map(|v| v.as_f64().unwrap()).collect();
+        let expected_b: Vec<f64> = expected["butter5_b"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_f64().unwrap())
+            .collect();
+        let expected_a: Vec<f64> = expected["butter5_a"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_f64().unwrap())
+            .collect();
 
         assert_eq!(b.len(), expected_b.len(), "b length mismatch");
         assert_eq!(a.len(), expected_a.len(), "a length mismatch");
 
         for (i, (actual, exp)) in b.iter().zip(&expected_b).enumerate() {
-            assert!((actual - exp).abs() < 1e-6,
-                "b[{}] mismatch: got {}, expected {}", i, actual, exp);
+            assert!(
+                (actual - exp).abs() < 1e-6,
+                "b[{}] mismatch: got {}, expected {}",
+                i,
+                actual,
+                exp
+            );
         }
         for (i, (actual, exp)) in a.iter().zip(&expected_a).enumerate() {
-            assert!((actual - exp).abs() < 1e-6,
-                "a[{}] mismatch: got {}, expected {}", i, actual, exp);
+            assert!(
+                (actual - exp).abs() < 1e-6,
+                "a[{}] mismatch: got {}, expected {}",
+                i,
+                actual,
+                exp
+            );
         }
     }
 
@@ -287,18 +411,36 @@ mod tests {
         let expected = &g["filter"];
 
         let (b, a) = bids_filter::butter_lowpass(1, 0.5);
-        let expected_b: Vec<f64> = expected["butter1_b"].as_array().unwrap()
-            .iter().map(|v| v.as_f64().unwrap()).collect();
-        let expected_a: Vec<f64> = expected["butter1_a"].as_array().unwrap()
-            .iter().map(|v| v.as_f64().unwrap()).collect();
+        let expected_b: Vec<f64> = expected["butter1_b"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_f64().unwrap())
+            .collect();
+        let expected_a: Vec<f64> = expected["butter1_a"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_f64().unwrap())
+            .collect();
 
         for (i, (actual, exp)) in b.iter().zip(&expected_b).enumerate() {
-            assert!((actual - exp).abs() < 1e-6,
-                "b1[{}] mismatch: got {}, expected {}", i, actual, exp);
+            assert!(
+                (actual - exp).abs() < 1e-6,
+                "b1[{}] mismatch: got {}, expected {}",
+                i,
+                actual,
+                exp
+            );
         }
         for (i, (actual, exp)) in a.iter().zip(&expected_a).enumerate() {
-            assert!((actual - exp).abs() < 1e-6,
-                "a1[{}] mismatch: got {}, expected {}", i, actual, exp);
+            assert!(
+                (actual - exp).abs() < 1e-6,
+                "a1[{}] mismatch: got {}, expected {}",
+                i,
+                actual,
+                exp
+            );
         }
     }
 
@@ -310,11 +452,13 @@ mod tests {
         // Same signal as Python: sin(2π·5·t) + sin(2π·40·t), fs=100, t=0..2
         let n = 200;
         let fs = 100.0;
-        let signal: Vec<f64> = (0..n).map(|i| {
-            let t = i as f64 / fs;
-            (2.0 * std::f64::consts::PI * 5.0 * t).sin()
-                + (2.0 * std::f64::consts::PI * 40.0 * t).sin()
-        }).collect();
+        let signal: Vec<f64> = (0..n)
+            .map(|i| {
+                let t = i as f64 / fs;
+                (2.0 * std::f64::consts::PI * 5.0 * t).sin()
+                    + (2.0 * std::f64::consts::PI * 40.0 * t).sin()
+            })
+            .collect();
 
         let (b, a) = bids_filter::butter_lowpass(5, 0.2);
         let filtered = bids_filter::filtfilt(&b, &a, &signal);
@@ -323,8 +467,12 @@ mod tests {
         let expected_energy = expected["filtfilt_energy"].as_f64().unwrap();
 
         // Allow 20% tolerance since filtfilt edge handling may differ slightly
-        assert!((filt_energy - expected_energy).abs() / expected_energy < 0.2,
-            "filtfilt energy: got {}, expected {} (>20% off)", filt_energy, expected_energy);
+        assert!(
+            (filt_energy - expected_energy).abs() / expected_energy < 0.2,
+            "filtfilt energy: got {}, expected {} (>20% off)",
+            filt_energy,
+            expected_energy
+        );
     }
 
     // ──────────────────── Schema ────────────────────
@@ -395,7 +543,9 @@ mod tests {
             let key = format!("layout_{}", dataset);
             let expected = &g[&key];
             let root = examples_dir().join(dataset);
-            if !root.exists() { continue; }
+            if !root.exists() {
+                continue;
+            }
 
             let py_ms = expected["timing_index_ms"].as_f64().unwrap();
 
@@ -405,13 +555,20 @@ mod tests {
                 let t0 = Instant::now();
                 let _ = bids_layout::BidsLayout::new(&root).unwrap();
                 let ms = t0.elapsed().as_secs_f64() * 1000.0;
-                if ms < best { best = ms; }
+                if ms < best {
+                    best = ms;
+                }
             }
 
             let speedup = py_ms / best;
-            println!("BENCH [{}]: Rust {:.1}ms vs Python {:.1}ms → {:.1}x {}",
-                dataset, best, py_ms, speedup,
-                if speedup > 1.0 { "faster" } else { "slower" });
+            println!(
+                "BENCH [{}]: Rust {:.1}ms vs Python {:.1}ms → {:.1}x {}",
+                dataset,
+                best,
+                py_ms,
+                speedup,
+                if speedup > 1.0 { "faster" } else { "slower" }
+            );
         }
     }
 }

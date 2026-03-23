@@ -111,16 +111,20 @@ fn parse_ome_xml(xml: &str) -> Result<OmeMetadata> {
     let size_z = extract_xml_attr(xml, "Pixels", "SizeZ").and_then(|s| s.parse().ok());
     let size_c = extract_xml_attr(xml, "Pixels", "SizeC").and_then(|s| s.parse().ok());
     let size_t = extract_xml_attr(xml, "Pixels", "SizeT").and_then(|s| s.parse().ok());
-    let physical_size_x = extract_xml_attr(xml, "Pixels", "PhysicalSizeX").and_then(|s| s.parse().ok());
-    let physical_size_y = extract_xml_attr(xml, "Pixels", "PhysicalSizeY").and_then(|s| s.parse().ok());
-    let physical_size_z = extract_xml_attr(xml, "Pixels", "PhysicalSizeZ").and_then(|s| s.parse().ok());
+    let physical_size_x =
+        extract_xml_attr(xml, "Pixels", "PhysicalSizeX").and_then(|s| s.parse().ok());
+    let physical_size_y =
+        extract_xml_attr(xml, "Pixels", "PhysicalSizeY").and_then(|s| s.parse().ok());
+    let physical_size_z =
+        extract_xml_attr(xml, "Pixels", "PhysicalSizeZ").and_then(|s| s.parse().ok());
     let pixel_type = extract_xml_attr(xml, "Pixels", "Type");
 
     // Extract channel names
     let mut channel_names = Vec::new();
     for ch_start in xml.match_indices("<Channel") {
         let start = ch_start.0;
-        let end = xml[start..].find("/>")
+        let end = xml[start..]
+            .find("/>")
             .or_else(|| xml[start..].find('>'))
             .map(|e| start + e)
             .unwrap_or(xml.len());
@@ -169,9 +173,19 @@ fn read_u16(bytes: &[u8], offset: usize, little_endian: bool) -> u16 {
 
 fn read_u32(bytes: &[u8], offset: usize, little_endian: bool) -> u32 {
     if little_endian {
-        u32::from_le_bytes([bytes[offset], bytes[offset + 1], bytes[offset + 2], bytes[offset + 3]])
+        u32::from_le_bytes([
+            bytes[offset],
+            bytes[offset + 1],
+            bytes[offset + 2],
+            bytes[offset + 3],
+        ])
     } else {
-        u32::from_be_bytes([bytes[offset], bytes[offset + 1], bytes[offset + 2], bytes[offset + 3]])
+        u32::from_be_bytes([
+            bytes[offset],
+            bytes[offset + 1],
+            bytes[offset + 2],
+            bytes[offset + 3],
+        ])
     }
 }
 

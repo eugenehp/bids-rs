@@ -32,15 +32,24 @@ pub struct HarmonizationPlan {
 
 impl std::fmt::Display for HarmonizationPlan {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "HarmonizationPlan({} channels @ {:.1} Hz", self.channels.len(), self.target_sr)?;
+        write!(
+            f,
+            "HarmonizationPlan({} channels @ {:.1} Hz",
+            self.channels.len(),
+            self.target_sr
+        )?;
         let n_inputs = self.channel_availability.len();
         if n_inputs > 0 {
-            let all_present = self.channel_availability.iter()
+            let all_present = self
+                .channel_availability
+                .iter()
                 .all(|avail| avail.iter().all(|&a| a));
             if all_present {
                 write!(f, ", all channels present in all inputs")?;
             } else {
-                let missing: usize = self.channel_availability.iter()
+                let missing: usize = self
+                    .channel_availability
+                    .iter()
                     .map(|avail| avail.iter().filter(|&&a| !a).count())
                     .sum();
                 write!(f, ", {missing} missing channel-input pairs")?;
@@ -79,11 +88,16 @@ pub fn plan_harmonization(
     let ignore: HashSet<&str> = ignore_channels.iter().copied().collect();
 
     // Collect channel sets
-    let channel_sets: Vec<BTreeSet<String>> = inputs.iter().map(|d| {
-        d.channel_labels.iter()
-            .filter(|ch| !ignore.contains(ch.as_str()))
-            .cloned().collect()
-    }).collect();
+    let channel_sets: Vec<BTreeSet<String>> = inputs
+        .iter()
+        .map(|d| {
+            d.channel_labels
+                .iter()
+                .filter(|ch| !ignore.contains(ch.as_str()))
+                .cloned()
+                .collect()
+        })
+        .collect();
 
     let channels: BTreeSet<String> = match strategy {
         ChannelStrategy::Intersect => {
@@ -105,19 +119,30 @@ pub fn plan_harmonization(
     let channels: Vec<String> = channels.into_iter().collect();
 
     // Find minimum sampling rate
-    let target_sr = inputs.iter()
+    let target_sr = inputs
+        .iter()
         .filter_map(|d| d.sampling_rates.first().copied())
         .fold(f64::INFINITY, f64::min)
         + sr_shift;
 
     // Build availability map
-    let channel_availability = inputs.iter().map(|d| {
-        let input_channels: HashSet<&str> = d.channel_labels.iter()
-            .map(|s| s.as_str()).collect();
-        channels.iter().map(|ch| input_channels.contains(ch.as_str())).collect()
-    }).collect();
+    let channel_availability = inputs
+        .iter()
+        .map(|d| {
+            let input_channels: HashSet<&str> =
+                d.channel_labels.iter().map(|s| s.as_str()).collect();
+            channels
+                .iter()
+                .map(|ch| input_channels.contains(ch.as_str()))
+                .collect()
+        })
+        .collect();
 
-    HarmonizationPlan { channels, target_sr, channel_availability }
+    HarmonizationPlan {
+        channels,
+        target_sr,
+        channel_availability,
+    }
 }
 
 /// Apply a harmonization plan to a single `EegData`, producing a new one
@@ -127,12 +152,20 @@ pub fn plan_harmonization(
 #[must_use]
 pub fn apply_harmonization(data: &EegData, plan: &HarmonizationPlan) -> EegData {
     let n_samples = data.data.first().map_or(0, |ch| ch.len());
-    let channel_map: std::collections::HashMap<&str, usize> = data.channel_labels.iter()
-        .enumerate().map(|(i, name)| (name.as_str(), i)).collect();
+    let channel_map: std::collections::HashMap<&str, usize> = data
+        .channel_labels
+        .iter()
+        .enumerate()
+        .map(|(i, name)| (name.as_str(), i))
+        .collect();
 
     let mut new_data = Vec::with_capacity(plan.channels.len());
     let mut new_rates = Vec::with_capacity(plan.channels.len());
-    let sr = data.sampling_rates.first().copied().unwrap_or(plan.target_sr);
+    let sr = data
+        .sampling_rates
+        .first()
+        .copied()
+        .unwrap_or(plan.target_sr);
 
     for ch_name in &plan.channels {
         if let Some(&idx) = channel_map.get(ch_name.as_str()) {
@@ -172,7 +205,9 @@ mod tests {
     fn make_data(channels: &[&str], sr: f64, n_samples: usize) -> EegData {
         EegData {
             channel_labels: channels.iter().map(|s| (*s).to_string()).collect(),
-            data: channels.iter().enumerate()
+            data: channels
+                .iter()
+                .enumerate()
                 .map(|(i, _)| (0..n_samples).map(|s| (s + i) as f64).collect())
                 .collect(),
             sampling_rates: vec![sr; channels.len()],

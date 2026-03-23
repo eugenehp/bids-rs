@@ -68,7 +68,11 @@ impl BidsVersion {
     /// Create a new version.
     #[must_use]
     pub const fn new(major: u16, minor: u16, patch: u16) -> Self {
-        Self { major, minor, patch }
+        Self {
+            major,
+            minor,
+            patch,
+        }
     }
 
     /// Parse a version string like `"1.9.0"`.
@@ -84,7 +88,11 @@ impl BidsVersion {
         let major = parts[0].parse().ok()?;
         let minor = parts[1].parse().ok()?;
         let patch = parts.get(2).and_then(|p| p.parse().ok()).unwrap_or(0);
-        Some(Self { major, minor, patch })
+        Some(Self {
+            major,
+            minor,
+            patch,
+        })
     }
 
     /// Check whether this version is compatible with `other`.
@@ -262,8 +270,10 @@ pub const CHANGELOG: &[SpecChange] = &[
                   and genetic descriptor files",
         new_entities: &["sample", "staining", "chunk"],
         new_datatypes: &["micr"],
-        new_suffixes: &["TEM", "SEM", "uCT", "BF", "DF", "PC", "DIC", "FLUO", "CONF",
-                        "PLI", "CARS", "2PE", "MPE", "SR", "NLO", "OCT", "SPIM"],
+        new_suffixes: &[
+            "TEM", "SEM", "uCT", "BF", "DF", "PC", "DIC", "FLUO", "CONF", "PLI", "CARS", "2PE",
+            "MPE", "SR", "NLO", "OCT", "SPIM",
+        ],
         deprecated_entities: &[],
         breaking: false,
     },
@@ -273,8 +283,19 @@ pub const CHANGELOG: &[SpecChange] = &[
                   and NIRS datatypes. Added quantitative MRI entities and suffixes.",
         new_entities: &["tracksys", "nucleus", "volume"],
         new_datatypes: &["motion", "mrs", "nirs", "perf"],
-        new_suffixes: &["motion", "nirs", "optodes", "svs", "mrsi", "unloc", "mrsref",
-                        "asl", "m0scan", "aslcontext", "asllabeling"],
+        new_suffixes: &[
+            "motion",
+            "nirs",
+            "optodes",
+            "svs",
+            "mrsi",
+            "unloc",
+            "mrsref",
+            "asl",
+            "m0scan",
+            "aslcontext",
+            "asllabeling",
+        ],
         deprecated_entities: &[],
         breaking: false,
     },

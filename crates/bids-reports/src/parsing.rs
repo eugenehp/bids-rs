@@ -4,9 +4,9 @@
 //! parameters for a specific modality (func, anat, dwi, fmap, eeg),
 //! using metadata from JSON sidecars.
 
+use crate::parameters;
 use bids_core::file::BidsFile;
 use bids_core::metadata::BidsMetadata;
-use crate::parameters;
 use std::collections::HashMap;
 
 /// Generate a description paragraph for functional (BOLD) scans.
@@ -27,16 +27,26 @@ pub fn func_info(files: &[BidsFile], metadata: &BidsMetadata) -> String {
 
     let mut desc = format!(
         "{} of {} task were collected (TR={}, TE={}, flip angle={}, {} slice acquisition",
-        capitalize(&run_str), task, tr, te, fa, slice_order,
+        capitalize(&run_str),
+        task,
+        tr,
+        te,
+        fa,
+        slice_order,
     );
-    if mb != "n/a" { desc.push_str(&format!(", MB={mb}")); }
+    if mb != "n/a" {
+        desc.push_str(&format!(", MB={mb}"));
+    }
     desc.push_str(").");
     desc
 }
 
 /// Generate a description for anatomical scans.
 pub fn anat_info(files: &[BidsFile], metadata: &BidsMetadata) -> String {
-    let suffix = files.first().and_then(|f| f.suffix()).unwrap_or("structural");
+    let suffix = files
+        .first()
+        .and_then(|f| f.suffix())
+        .unwrap_or("structural");
     let tr = parameters::describe_repetition_time(metadata);
     let te = parameters::describe_echo_times(metadata);
     let fa = parameters::describe_flip_angle(metadata);
@@ -51,8 +61,12 @@ pub fn dwi_info(_files: &[BidsFile], metadata: &BidsMetadata) -> String {
     let bvals = parameters::describe_bvals(metadata);
 
     let mut desc = format!("Diffusion-weighted images were collected (TR={tr}, TE={te}");
-    if n_dirs != "unknown" { desc.push_str(&format!(", {n_dirs} directions")); }
-    if bvals != "unknown" { desc.push_str(&format!(", b-values: {bvals}")); }
+    if n_dirs != "unknown" {
+        desc.push_str(&format!(", {n_dirs} directions"));
+    }
+    if bvals != "unknown" {
+        desc.push_str(&format!(", b-values: {bvals}"));
+    }
     desc.push_str(").");
     desc
 }
@@ -65,8 +79,12 @@ pub fn fmap_info(files: &[BidsFile], metadata: &BidsMetadata) -> String {
     let targets = parameters::describe_intendedfor_targets(metadata);
 
     let mut desc = format!("{n} {suffix} fieldmap image(s) were collected");
-    if te != "unknown" { desc.push_str(&format!(" (TE={te})")); }
-    if targets != "none" { desc.push_str(&format!(" for distortion correction of {targets}")); }
+    if te != "unknown" {
+        desc.push_str(&format!(" (TE={te})"));
+    }
+    if targets != "none" {
+        desc.push_str(&format!(" for distortion correction of {targets}"));
+    }
     desc.push('.');
     desc
 }
@@ -95,16 +113,22 @@ pub fn report_subject(subject: &str, files: &[BidsFile]) -> String {
         }
         set.into_iter().collect()
     };
-    format!("Subject {}: {} files across {} datatype(s) ({}).",
-        subject, n_files, datatypes.len(),
-        parameters::list_to_str(&datatypes))
+    format!(
+        "Subject {}: {} files across {} datatype(s) ({}).",
+        subject,
+        n_files,
+        datatypes.len(),
+        parameters::list_to_str(&datatypes)
+    )
 }
 
 /// Generate a full methods section for all datatypes found.
 pub fn generate_methods(datatypes: &[(String, Vec<BidsFile>, BidsMetadata)]) -> String {
     let mut sections = Vec::new();
     for (datatype, files, md) in datatypes {
-        if files.is_empty() { continue; }
+        if files.is_empty() {
+            continue;
+        }
         let section = match datatype.as_str() {
             "func" => func_info(files, md),
             "anat" => anat_info(files, md),

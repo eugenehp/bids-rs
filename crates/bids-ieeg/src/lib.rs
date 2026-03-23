@@ -13,18 +13,18 @@
 //!
 //! See: <https://bids-specification.readthedocs.io/en/stable/modality-specific-files/intracranial-electroencephalography.html>
 
-pub mod metadata;
 pub mod layout;
+pub mod metadata;
 
 use bids_core::error::Result;
 use bids_io::tsv::read_tsv;
 use serde::{Deserialize, Serialize};
 
-pub use metadata::IeegMetadata;
 pub use layout::IeegLayout;
+pub use metadata::IeegMetadata;
 
 // Re-export data reading types from bids-eeg (iEEG uses the same file formats)
-pub use bids_eeg::{Annotation, EegData, ReadOptions, read_edf, read_brainvision, read_eeg_data};
+pub use bids_eeg::{Annotation, EegData, ReadOptions, read_brainvision, read_edf, read_eeg_data};
 
 /// An iEEG electrode with size, hemisphere, group, and type.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -41,37 +41,57 @@ pub struct IeegElectrode {
 }
 
 impl IeegElectrode {
-    pub fn has_position(&self) -> bool { self.x.is_some() && self.y.is_some() && self.z.is_some() }
+    pub fn has_position(&self) -> bool {
+        self.x.is_some() && self.y.is_some() && self.z.is_some()
+    }
     pub fn position(&self) -> Option<(f64, f64, f64)> {
-        match (self.x, self.y, self.z) { (Some(x), Some(y), Some(z)) => Some((x, y, z)), _ => None }
+        match (self.x, self.y, self.z) {
+            (Some(x), Some(y), Some(z)) => Some((x, y, z)),
+            _ => None,
+        }
     }
 }
 
 pub fn read_ieeg_electrodes(path: &std::path::Path) -> Result<Vec<IeegElectrode>> {
     let rows = read_tsv(path)?;
-    Ok(rows.iter().map(|r| {
-        let get = |k: &str| r.get(k).filter(|s| !s.is_empty() && s.as_str() != "n/a").cloned();
-        let getf = |k: &str| r.get(k).and_then(|v| v.parse().ok());
-        IeegElectrode {
-            name: r.get("name").cloned().unwrap_or_default(),
-            x: getf("x"), y: getf("y"), z: getf("z"), size: getf("size"),
-            hemisphere: get("hemisphere"), group: get("group"),
-            electrode_type: get("type"), manufacturer: get("manufacturer"),
-        }
-    }).collect())
+    Ok(rows
+        .iter()
+        .map(|r| {
+            let get = |k: &str| {
+                r.get(k)
+                    .filter(|s| !s.is_empty() && s.as_str() != "n/a")
+                    .cloned()
+            };
+            let getf = |k: &str| r.get(k).and_then(|v| v.parse().ok());
+            IeegElectrode {
+                name: r.get("name").cloned().unwrap_or_default(),
+                x: getf("x"),
+                y: getf("y"),
+                z: getf("z"),
+                size: getf("size"),
+                hemisphere: get("hemisphere"),
+                group: get("group"),
+                electrode_type: get("type"),
+                manufacturer: get("manufacturer"),
+            }
+        })
+        .collect())
 }
 
 /// iEEG coordinate system from _coordsystem.json.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct IeegCoordSystem {
-    #[serde(rename = "iEEGCoordinateSystem")] pub coordinate_system: String,
-    #[serde(rename = "iEEGCoordinateUnits")] pub coordinate_units: String,
+    #[serde(rename = "iEEGCoordinateSystem")]
+    pub coordinate_system: String,
+    #[serde(rename = "iEEGCoordinateUnits")]
+    pub coordinate_units: String,
     #[serde(rename = "iEEGCoordinateSystemDescription", default)]
     pub coordinate_system_description: Option<String>,
     #[serde(rename = "iEEGCoordinateProcessingDescription", default)]
     pub processing_description: Option<String>,
-    #[serde(rename = "IntendedFor", default)] pub intended_for: Option<serde_json::Value>,
+    #[serde(rename = "IntendedFor", default)]
+    pub intended_for: Option<serde_json::Value>,
 }
 
 impl IeegCoordSystem {
@@ -83,9 +103,12 @@ impl IeegCoordSystem {
 
 #[derive(Debug)]
 pub struct IeegSummary {
-    pub n_subjects: usize, pub n_recordings: usize,
-    pub subjects: Vec<String>, pub tasks: Vec<String>,
-    pub sampling_frequency: Option<f64>, pub channel_count: Option<usize>,
+    pub n_subjects: usize,
+    pub n_recordings: usize,
+    pub subjects: Vec<String>,
+    pub tasks: Vec<String>,
+    pub sampling_frequency: Option<f64>,
+    pub channel_count: Option<usize>,
 }
 impl std::fmt::Display for IeegSummary {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -93,8 +116,12 @@ impl std::fmt::Display for IeegSummary {
         writeln!(f, "  Subjects: {}", self.n_subjects)?;
         writeln!(f, "  Recordings: {}", self.n_recordings)?;
         writeln!(f, "  Tasks: {:?}", self.tasks)?;
-        if let Some(sf) = self.sampling_frequency { writeln!(f, "  Sampling Frequency: {sf} Hz")?; }
-        if let Some(cc) = self.channel_count { writeln!(f, "  Channels: {cc}")?; }
+        if let Some(sf) = self.sampling_frequency {
+            writeln!(f, "  Sampling Frequency: {sf} Hz")?;
+        }
+        if let Some(cc) = self.channel_count {
+            writeln!(f, "  Channels: {cc}")?;
+        }
         Ok(())
     }
 }

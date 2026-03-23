@@ -21,7 +21,8 @@ pub fn make_agent() -> Agent {
 
 /// Common headers applied to every request.
 pub fn get(agent: &Agent, url: &str) -> ureq::RequestBuilder<ureq::typestate::WithoutBody> {
-    agent.get(url)
+    agent
+        .get(url)
         .header("User-Agent", USER_AGENT)
         .header("Accept", "*/*")
         .header("Accept-Language", "en-US,en;q=0.9")
@@ -36,7 +37,9 @@ pub fn get(agent: &Agent, url: &str) -> ureq::RequestBuilder<ureq::typestate::Wi
 /// - On 429: parses Retry-After header and triggers global cooldown
 /// - On 5xx / network errors: exponential backoff (1s, 2s, 4s, ...)
 pub fn get_with_retry(
-    agent: &Agent, url: &str, max_retries: u32,
+    agent: &Agent,
+    url: &str,
+    max_retries: u32,
 ) -> crate::Result<ureq::http::Response<ureq::Body>> {
     get_with_retry_limited(agent, url, max_retries, None)
 }
@@ -45,24 +48,34 @@ pub fn get_with_retry(
 ///
 /// Retry base delay is controlled by `BIDS_RETRY_BASE_MS` env var (default 1000ms).
 pub fn get_with_retry_limited(
-    agent: &Agent, url: &str, max_retries: u32,
+    agent: &Agent,
+    url: &str,
+    max_retries: u32,
     limiter: Option<&crate::ratelimit::RateLimiter>,
 ) -> crate::Result<ureq::http::Response<ureq::Body>> {
     let base_ms: u64 = std::env::var("BIDS_RETRY_BASE_MS")
-        .ok().and_then(|v| v.parse().ok()).unwrap_or(1000);
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(1000);
     let mut last_err = None;
     for attempt in 0..=max_retries {
         if attempt > 0 {
             // Exponential backoff: base, 2*base, 4*base, ...
-            std::thread::sleep(std::time::Duration::from_millis(base_ms * (1 << (attempt - 1))));
+            std::thread::sleep(std::time::Duration::from_millis(
+                base_ms * (1 << (attempt - 1)),
+            ));
         }
 
         // Rate limit
-        if let Some(rl) = limiter { rl.acquire(); }
+        if let Some(rl) = limiter {
+            rl.acquire();
+        }
 
         match get(agent, url).call() {
             Ok(resp) => {
-                if let Some(rl) = limiter { rl.clear_cooldown(); }
+                if let Some(rl) = limiter {
+                    rl.clear_cooldown();
+                }
                 return Ok(resp);
             }
             Err(e) => {
@@ -91,7 +104,9 @@ pub fn get_with_retry_limited(
         }
     }
     Err(crate::Error::Network(
-        last_err.map(|e| e.to_string()).unwrap_or_else(|| "max retries exceeded".into())
+        last_err
+            .map(|e| e.to_string())
+            .unwrap_or_else(|| "max retries exceeded".into()),
     ))
 }
 
@@ -109,7 +124,9 @@ pub struct StderrProgress {
 }
 
 impl StderrProgress {
-    pub fn new(total: usize) -> Self { Self { total, done: 0 } }
+    pub fn new(total: usize) -> Self {
+        Self { total, done: 0 }
+    }
 }
 
 impl ProgressCallback for StderrProgress {
@@ -125,21 +142,27 @@ impl ProgressCallback for StderrProgress {
 
 /// POST with JSON body, browser-like headers, and optional rate limiting.
 pub fn post_json(
-    agent: &Agent, url: &str, body: &serde_json::Value,
+    agent: &Agent,
+    url: &str,
+    body: &serde_json::Value,
 ) -> crate::Result<serde_json::Value> {
     post_json_limited(agent, url, body, None)
 }
 
 /// POST with explicit rate limiter.
 pub fn post_json_limited(
-    agent: &Agent, url: &str, body: &serde_json::Value,
+    agent: &Agent,
+    url: &str,
+    body: &serde_json::Value,
     limiter: Option<&crate::ratelimit::RateLimiter>,
 ) -> crate::Result<serde_json::Value> {
-    if let Some(rl) = limiter { rl.acquire(); }
-    let json_str = serde_json::to_string(body)
-        .map_err(|e| crate::Error::Network(e.to_string()))?;
+    if let Some(rl) = limiter {
+        rl.acquire();
+    }
+    let json_str = serde_json::to_string(body).map_err(|e| crate::Error::Network(e.to_string()))?;
 
-    let mut resp = agent.post(url)
+    let mut resp = agent
+        .post(url)
         .header("User-Agent", USER_AGENT)
         .header("Accept", "application/json")
         .header("Accept-Language", "en-US,en;q=0.9")
@@ -153,7 +176,9 @@ pub fn post_json_limited(
         .send(json_str.as_bytes())
         .map_err(|e| crate::Error::Network(e.to_string()))?;
 
-    let json: serde_json::Value = resp.body_mut().read_json()
+    let json: serde_json::Value = resp
+        .body_mut()
+        .read_json()
         .map_err(|e| crate::Error::Network(format!("JSON parse: {e}")))?;
     Ok(json)
 }

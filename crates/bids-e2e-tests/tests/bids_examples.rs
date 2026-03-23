@@ -48,11 +48,15 @@ fn discover_datasets(root: &Path) -> Vec<PathBuf> {
 /// Detect datatypes present in a dataset.
 fn detect_datatypes(root: &Path) -> Vec<String> {
     let known = [
-        "anat", "func", "dwi", "fmap", "eeg", "meg", "ieeg",
-        "pet", "perf", "nirs", "motion", "mrs", "micr", "beh",
+        "anat", "func", "dwi", "fmap", "eeg", "meg", "ieeg", "pet", "perf", "nirs", "motion",
+        "mrs", "micr", "beh",
     ];
     let mut found = Vec::new();
-    for entry in walkdir::WalkDir::new(root).max_depth(4).into_iter().flatten() {
+    for entry in walkdir::WalkDir::new(root)
+        .max_depth(4)
+        .into_iter()
+        .flatten()
+    {
         if entry.file_type().is_dir() {
             let name = entry.file_name().to_string_lossy().to_string();
             if known.contains(&name.as_str()) && !found.contains(&name) {
@@ -70,7 +74,11 @@ fn detect_datatypes(root: &Path) -> Vec<String> {
 fn test_all_datasets_index_successfully() {
     let examples = require_examples!();
     let datasets = discover_datasets(examples.root());
-    assert!(!datasets.is_empty(), "No datasets found in {}", examples.root().display());
+    assert!(
+        !datasets.is_empty(),
+        "No datasets found in {}",
+        examples.root().display()
+    );
 
     let mut pass = 0;
     let mut fail = 0;
@@ -108,7 +116,9 @@ fn test_all_datasets_have_subjects() {
     let mut no_subjects = Vec::new();
     for ds in &datasets {
         let name = ds.file_name().unwrap().to_string_lossy().to_string();
-        if name.starts_with("atlas-") { continue; }
+        if name.starts_with("atlas-") {
+            continue;
+        }
 
         if let Ok(layout) = bids_layout::BidsLayout::builder(ds).validate(false).build() {
             if let Ok(subjects) = layout.get_subjects() {
@@ -122,7 +132,10 @@ fn test_all_datasets_have_subjects() {
     if !no_subjects.is_empty() {
         eprintln!("Datasets with no subjects detected: {:?}", no_subjects);
     }
-    assert!(no_subjects.len() < 5, "Too many datasets without subjects: {no_subjects:?}");
+    assert!(
+        no_subjects.len() < 5,
+        "Too many datasets without subjects: {no_subjects:?}"
+    );
 }
 
 // ─── Metadata: JSON sidecar inheritance works on real datasets ─────────────
@@ -141,7 +154,12 @@ fn test_metadata_inheritance() {
         .build()
         .unwrap();
 
-    let bold_files = layout.get().suffix("bold").extension(".nii.gz").collect().unwrap();
+    let bold_files = layout
+        .get()
+        .suffix("bold")
+        .extension(".nii.gz")
+        .collect()
+        .unwrap();
     for f in &bold_files {
         let md = layout.get_metadata(&f.path).unwrap();
         if let Some(tr) = md.get_f64("RepetitionTime") {
@@ -160,12 +178,16 @@ fn test_eeg_examples() {
         .filter(|ds| detect_datatypes(ds).contains(&"eeg".to_string()))
         .collect();
 
-    if eeg_datasets.is_empty() { return; }
+    if eeg_datasets.is_empty() {
+        return;
+    }
     eprintln!("Testing {} EEG datasets", eeg_datasets.len());
 
     for ds in &eeg_datasets {
         let name = ds.file_name().unwrap().to_string_lossy().to_string();
-        let Ok(layout) = bids_layout::BidsLayout::builder(ds).validate(false).build() else { continue };
+        let Ok(layout) = bids_layout::BidsLayout::builder(ds).validate(false).build() else {
+            continue;
+        };
 
         let eeg = bids_eeg::EegLayout::new(&layout);
         let files = eeg.get_eeg_files().unwrap_or_default();
@@ -173,7 +195,11 @@ fn test_eeg_examples() {
 
         for f in &files {
             if let Ok(Some(channels)) = eeg.get_channels(f) {
-                assert!(!channels.is_empty(), "{name}: empty channels for {}", f.filename);
+                assert!(
+                    !channels.is_empty(),
+                    "{name}: empty channels for {}",
+                    f.filename
+                );
             }
             let _ = eeg.get_events(f);
             let _ = eeg.get_eeg_metadata(f);
@@ -191,12 +217,16 @@ fn test_meg_examples() {
         .filter(|ds| detect_datatypes(ds).contains(&"meg".to_string()))
         .collect();
 
-    if meg_datasets.is_empty() { return; }
+    if meg_datasets.is_empty() {
+        return;
+    }
     eprintln!("Testing {} MEG datasets", meg_datasets.len());
 
     for ds in &meg_datasets {
         let name = ds.file_name().unwrap().to_string_lossy().to_string();
-        let Ok(layout) = bids_layout::BidsLayout::builder(ds).validate(false).build() else { continue };
+        let Ok(layout) = bids_layout::BidsLayout::builder(ds).validate(false).build() else {
+            continue;
+        };
 
         let meg = bids_meg::MegLayout::new(&layout);
         let files = meg.get_meg_files().unwrap_or_default();
@@ -223,12 +253,16 @@ fn test_ieeg_examples() {
         .filter(|ds| detect_datatypes(ds).contains(&"ieeg".to_string()))
         .collect();
 
-    if ieeg_datasets.is_empty() { return; }
+    if ieeg_datasets.is_empty() {
+        return;
+    }
     eprintln!("Testing {} iEEG datasets", ieeg_datasets.len());
 
     for ds in &ieeg_datasets {
         let name = ds.file_name().unwrap().to_string_lossy().to_string();
-        let Ok(layout) = bids_layout::BidsLayout::builder(ds).validate(false).build() else { continue };
+        let Ok(layout) = bids_layout::BidsLayout::builder(ds).validate(false).build() else {
+            continue;
+        };
 
         let ieeg = bids_ieeg::IeegLayout::new(&layout);
         let files = ieeg.get_ieeg_files().unwrap_or_default();
@@ -252,12 +286,16 @@ fn test_pet_examples() {
         .filter(|ds| detect_datatypes(ds).contains(&"pet".to_string()))
         .collect();
 
-    if pet_datasets.is_empty() { return; }
+    if pet_datasets.is_empty() {
+        return;
+    }
     eprintln!("Testing {} PET datasets", pet_datasets.len());
 
     for ds in &pet_datasets {
         let name = ds.file_name().unwrap().to_string_lossy().to_string();
-        let Ok(layout) = bids_layout::BidsLayout::builder(ds).validate(false).build() else { continue };
+        let Ok(layout) = bids_layout::BidsLayout::builder(ds).validate(false).build() else {
+            continue;
+        };
 
         let pet = bids_pet::PetLayout::new(&layout);
         let files = pet.get_pet_files().unwrap_or_default();
@@ -284,12 +322,16 @@ fn test_perf_examples() {
         .filter(|ds| detect_datatypes(ds).contains(&"perf".to_string()))
         .collect();
 
-    if perf_datasets.is_empty() { return; }
+    if perf_datasets.is_empty() {
+        return;
+    }
     eprintln!("Testing {} perf/ASL datasets", perf_datasets.len());
 
     for ds in &perf_datasets {
         let name = ds.file_name().unwrap().to_string_lossy().to_string();
-        let Ok(layout) = bids_layout::BidsLayout::builder(ds).validate(false).build() else { continue };
+        let Ok(layout) = bids_layout::BidsLayout::builder(ds).validate(false).build() else {
+            continue;
+        };
 
         let perf = bids_perf::PerfLayout::new(&layout);
         let files = perf.get_asl_files().unwrap_or_default();
@@ -316,12 +358,16 @@ fn test_nirs_examples() {
         .filter(|ds| detect_datatypes(ds).contains(&"nirs".to_string()))
         .collect();
 
-    if nirs_datasets.is_empty() { return; }
+    if nirs_datasets.is_empty() {
+        return;
+    }
     eprintln!("Testing {} NIRS datasets", nirs_datasets.len());
 
     for ds in &nirs_datasets {
         let name = ds.file_name().unwrap().to_string_lossy().to_string();
-        let Ok(layout) = bids_layout::BidsLayout::builder(ds).validate(false).build() else { continue };
+        let Ok(layout) = bids_layout::BidsLayout::builder(ds).validate(false).build() else {
+            continue;
+        };
         let nirs = bids_nirs::NirsLayout::new(&layout);
         let files = nirs.get_nirs_files().unwrap_or_default();
         eprintln!("  {name}: {} NIRS files", files.len());
@@ -338,12 +384,16 @@ fn test_motion_examples() {
         .filter(|ds| detect_datatypes(ds).contains(&"motion".to_string()))
         .collect();
 
-    if motion_datasets.is_empty() { return; }
+    if motion_datasets.is_empty() {
+        return;
+    }
     eprintln!("Testing {} motion datasets", motion_datasets.len());
 
     for ds in &motion_datasets {
         let name = ds.file_name().unwrap().to_string_lossy().to_string();
-        let Ok(layout) = bids_layout::BidsLayout::builder(ds).validate(false).build() else { continue };
+        let Ok(layout) = bids_layout::BidsLayout::builder(ds).validate(false).build() else {
+            continue;
+        };
         let motion = bids_motion::MotionLayout::new(&layout);
         let files = motion.get_motion_files().unwrap_or_default();
         eprintln!("  {name}: {} motion files", files.len());
@@ -360,12 +410,16 @@ fn test_mrs_examples() {
         .filter(|ds| detect_datatypes(ds).contains(&"mrs".to_string()))
         .collect();
 
-    if mrs_datasets.is_empty() { return; }
+    if mrs_datasets.is_empty() {
+        return;
+    }
     eprintln!("Testing {} MRS datasets", mrs_datasets.len());
 
     for ds in &mrs_datasets {
         let name = ds.file_name().unwrap().to_string_lossy().to_string();
-        let Ok(layout) = bids_layout::BidsLayout::builder(ds).validate(false).build() else { continue };
+        let Ok(layout) = bids_layout::BidsLayout::builder(ds).validate(false).build() else {
+            continue;
+        };
         let mrs = bids_mrs::MrsLayout::new(&layout);
         let svs = mrs.get_svs_files().unwrap_or_default();
         let mrsi = mrs.get_mrsi_files().unwrap_or_default();
@@ -383,12 +437,16 @@ fn test_micr_examples() {
         .filter(|ds| detect_datatypes(ds).contains(&"micr".to_string()))
         .collect();
 
-    if micr_datasets.is_empty() { return; }
+    if micr_datasets.is_empty() {
+        return;
+    }
     eprintln!("Testing {} microscopy datasets", micr_datasets.len());
 
     for ds in &micr_datasets {
         let name = ds.file_name().unwrap().to_string_lossy().to_string();
-        let Ok(layout) = bids_layout::BidsLayout::builder(ds).validate(false).build() else { continue };
+        let Ok(layout) = bids_layout::BidsLayout::builder(ds).validate(false).build() else {
+            continue;
+        };
         let files = layout.get().datatype("micr").collect().unwrap_or_default();
         eprintln!("  {name}: {} micr files", files.len());
     }
@@ -409,12 +467,17 @@ fn test_validate_all_examples() {
         let name = ds.file_name().unwrap().to_string_lossy().to_string();
         match bids_validate::validate_dataset(ds) {
             Ok(result) => {
-                if result.is_valid() { valid += 1; }
+                if result.is_valid() {
+                    valid += 1;
+                }
                 total_errors += result.error_count();
                 total_warnings += result.warning_count();
                 if result.error_count() > 0 {
-                    eprintln!("  {name}: {} errors, {} warnings",
-                        result.error_count(), result.warning_count());
+                    eprintln!(
+                        "  {name}: {} errors, {} warnings",
+                        result.error_count(),
+                        result.warning_count()
+                    );
                 }
             }
             Err(e) => eprintln!("  {name}: validation error: {e}"),
@@ -423,11 +486,15 @@ fn test_validate_all_examples() {
 
     eprintln!(
         "Validated {} datasets: {} valid, {} total errors, {} total warnings",
-        datasets.len(), valid, total_errors, total_warnings
+        datasets.len(),
+        valid,
+        total_errors,
+        total_warnings
     );
     assert!(
         valid as f64 / datasets.len() as f64 > 0.80,
-        "Too few valid datasets: {valid}/{}", datasets.len()
+        "Too few valid datasets: {valid}/{}",
+        datasets.len()
     );
 }
 
@@ -439,21 +506,41 @@ fn test_schema_validates_example_filenames() {
     let schema = bids_schema::BidsSchema::load();
 
     for ds_name in &["ds001", "eeg_cbm", "eeg_matchingpennies"] {
-        let Some(ds) = examples.dataset(ds_name) else { continue };
+        let Some(ds) = examples.dataset(ds_name) else {
+            continue;
+        };
 
         let mut total = 0;
         let mut valid = 0;
         for entry in walkdir::WalkDir::new(&ds).into_iter().flatten() {
-            if !entry.file_type().is_file() { continue; }
-            let rel = entry.path().strip_prefix(&ds).unwrap().to_string_lossy().to_string();
-            if rel.starts_with('.') { continue; }
+            if !entry.file_type().is_file() {
+                continue;
+            }
+            let rel = entry
+                .path()
+                .strip_prefix(&ds)
+                .unwrap()
+                .to_string_lossy()
+                .to_string();
+            if rel.starts_with('.') {
+                continue;
+            }
             total += 1;
-            if schema.is_valid(&rel) { valid += 1; }
+            if schema.is_valid(&rel) {
+                valid += 1;
+            }
         }
 
-        let pct = if total > 0 { valid as f64 / total as f64 * 100.0 } else { 100.0 };
+        let pct = if total > 0 {
+            valid as f64 / total as f64 * 100.0
+        } else {
+            100.0
+        };
         eprintln!("  {ds_name}: {valid}/{total} files pass schema ({pct:.0}%)");
-        assert!(pct > 40.0, "{ds_name}: only {pct:.0}% of files pass schema validation");
+        assert!(
+            pct > 40.0,
+            "{ds_name}: only {pct:.0}% of files pass schema validation"
+        );
     }
 }
 
@@ -464,12 +551,18 @@ fn test_entity_parsing_on_examples() {
     let examples = require_examples!();
     let config = bids_core::Config::bids();
 
-    let Some(ds) = examples.dataset("eeg_cbm") else { return };
+    let Some(ds) = examples.dataset("eeg_cbm") else {
+        return;
+    };
 
     for entry in walkdir::WalkDir::new(&ds).into_iter().flatten() {
-        if !entry.file_type().is_file() { continue; }
+        if !entry.file_type().is_file() {
+            continue;
+        }
         let path = entry.path().to_string_lossy().to_string();
-        if !path.contains("sub-") { continue; }
+        if !path.contains("sub-") {
+            continue;
+        }
 
         let entities = bids_core::entities::parse_file_entities(&path, &config.entities);
         assert!(
@@ -492,7 +585,9 @@ fn test_entity_parsing_on_examples() {
 #[test]
 fn test_derivative_examples() {
     let examples = require_examples!();
-    let Some(ds) = examples.dataset("ds000001-fmriprep") else { return };
+    let Some(ds) = examples.dataset("ds000001-fmriprep") else {
+        return;
+    };
 
     let layout = bids_layout::BidsLayout::builder(&ds)
         .validate(false)
@@ -502,6 +597,9 @@ fn test_derivative_examples() {
 
     assert!(layout.is_derivative);
     let subjects = layout.get_subjects().unwrap();
-    assert!(!subjects.is_empty(), "fmriprep derivative should have subjects");
+    assert!(
+        !subjects.is_empty(),
+        "fmriprep derivative should have subjects"
+    );
     eprintln!("ds000001-fmriprep: {} subjects", subjects.len());
 }

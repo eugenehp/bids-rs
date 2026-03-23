@@ -126,16 +126,19 @@ pub fn read_channels_tsv(path: &Path) -> Result<Vec<Channel>> {
     let mut channels = Vec::with_capacity(rows.len());
 
     for row in &rows {
-        let name = row.get("name")
+        let name = row
+            .get("name")
             .ok_or_else(|| BidsError::Csv("Missing 'name' column in channels.tsv".into()))?
             .trim()
             .to_string();
 
-        let channel_type = row.get("type")
+        let channel_type = row
+            .get("type")
             .map(|s| ChannelType::parse(s.trim()))
             .unwrap_or(ChannelType::MISC);
 
-        let units = row.get("units")
+        let units = row
+            .get("units")
             .cloned()
             .unwrap_or_else(|| "n/a".to_string())
             .trim()
@@ -199,7 +202,11 @@ mod tests {
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("channels.tsv");
         let mut f = std::fs::File::create(&path).unwrap();
-        writeln!(f, "name\ttype\tunits\tsampling_frequency\tlow_cutoff\thigh_cutoff\tnotch").unwrap();
+        writeln!(
+            f,
+            "name\ttype\tunits\tsampling_frequency\tlow_cutoff\thigh_cutoff\tnotch"
+        )
+        .unwrap();
         writeln!(f, "Fp1\tEEG\tmicroV\t256\t0.5\t100\t50").unwrap();
         writeln!(f, "Fp2\tEEG\tmicroV\t256\t0.5\t100\t50").unwrap();
         writeln!(f, "EOG1\tEOG\tmicroV\t256\tn/a\tn/a\tn/a").unwrap();

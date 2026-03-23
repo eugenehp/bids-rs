@@ -86,81 +86,145 @@ pub struct GetBuilder<'a> {
 impl<'a> GetBuilder<'a> {
     pub(crate) fn new(layout: &'a BidsLayout) -> Self {
         Self {
-            layout, filters: Vec::new(), return_type: ReturnType::Object,
-            target: None, scope: Scope::All, invalid_filters: InvalidFilters::Error,
+            layout,
+            filters: Vec::new(),
+            return_type: ReturnType::Object,
+            target: None,
+            scope: Scope::All,
+            invalid_filters: InvalidFilters::Error,
         }
     }
 
     // ─── Entity filters ───
-    #[must_use] pub fn subject(self, v: &str) -> Self { self.filter("subject", v) }
-    #[must_use] pub fn session(self, v: &str) -> Self { self.filter("session", v) }
-    #[must_use] pub fn task(self, v: &str) -> Self { self.filter("task", v) }
-    #[must_use] pub fn run(self, v: &str) -> Self { self.filter("run", v) }
-    #[must_use] pub fn datatype(self, v: &str) -> Self { self.filter("datatype", v) }
-    #[must_use] pub fn acquisition(self, v: &str) -> Self { self.filter("acquisition", v) }
-    #[must_use] pub fn recording(self, v: &str) -> Self { self.filter("recording", v) }
-    #[must_use] pub fn space(self, v: &str) -> Self { self.filter("space", v) }
-    #[must_use] pub fn suffix(self, v: &str) -> Self { self.filter("suffix", v) }
+    #[must_use]
+    pub fn subject(self, v: &str) -> Self {
+        self.filter("subject", v)
+    }
+    #[must_use]
+    pub fn session(self, v: &str) -> Self {
+        self.filter("session", v)
+    }
+    #[must_use]
+    pub fn task(self, v: &str) -> Self {
+        self.filter("task", v)
+    }
+    #[must_use]
+    pub fn run(self, v: &str) -> Self {
+        self.filter("run", v)
+    }
+    #[must_use]
+    pub fn datatype(self, v: &str) -> Self {
+        self.filter("datatype", v)
+    }
+    #[must_use]
+    pub fn acquisition(self, v: &str) -> Self {
+        self.filter("acquisition", v)
+    }
+    #[must_use]
+    pub fn recording(self, v: &str) -> Self {
+        self.filter("recording", v)
+    }
+    #[must_use]
+    pub fn space(self, v: &str) -> Self {
+        self.filter("space", v)
+    }
+    #[must_use]
+    pub fn suffix(self, v: &str) -> Self {
+        self.filter("suffix", v)
+    }
 
     #[must_use]
     pub fn extension(self, value: &str) -> Self {
-        let v = if value.starts_with('.') { value.to_string() } else { format!(".{value}") };
+        let v = if value.starts_with('.') {
+            value.to_string()
+        } else {
+            format!(".{value}")
+        };
         self.filter_owned("extension", vec![v])
     }
 
     /// Set scope: "all", "raw", "derivatives", "self", or a pipeline name.
     #[must_use]
     pub fn scope(mut self, scope: &str) -> Self {
-        self.scope = Scope::parse(scope); self
+        self.scope = Scope::parse(scope);
+        self
     }
 
     /// Set invalid filter handling.
     #[must_use]
     pub fn invalid_filters(mut self, mode: InvalidFilters) -> Self {
-        self.invalid_filters = mode; self
+        self.invalid_filters = mode;
+        self
     }
 
     /// Filter by entity name and exact value.
     #[must_use]
     pub fn filter(mut self, entity: &str, value: &str) -> Self {
-        self.filters.push((entity.into(), vec![value.into()], false)); self
+        self.filters
+            .push((entity.into(), vec![value.into()], false));
+        self
     }
 
     /// Filter by entity with multiple allowed values.
     #[must_use]
     pub fn filter_any(mut self, entity: &str, values: &[&str]) -> Self {
-        self.filters.push((entity.into(), values.iter().map(std::string::ToString::to_string).collect(), false)); self
+        self.filters.push((
+            entity.into(),
+            values
+                .iter()
+                .map(std::string::ToString::to_string)
+                .collect(),
+            false,
+        ));
+        self
     }
 
     /// Filter by entity with regex.
     #[must_use]
     pub fn filter_regex(mut self, entity: &str, pattern: &str) -> Self {
-        self.filters.push((entity.into(), vec![pattern.into()], true)); self
+        self.filters
+            .push((entity.into(), vec![pattern.into()], true));
+        self
     }
 
     /// Require entity to exist (any value).
     #[must_use]
     pub fn query_any(mut self, entity: &str) -> Self {
-        self.filters.push((entity.into(), vec!["__ANY__".into()], false)); self
+        self.filters
+            .push((entity.into(), vec!["__ANY__".into()], false));
+        self
     }
 
     /// Require entity to NOT exist.
     #[must_use]
     pub fn query_none(mut self, entity: &str) -> Self {
-        self.filters.push((entity.into(), vec!["__NONE__".into()], false)); self
+        self.filters
+            .push((entity.into(), vec!["__NONE__".into()], false));
+        self
     }
 
     #[must_use]
     fn filter_owned(mut self, entity: &str, values: Vec<String>) -> Self {
-        self.filters.push((entity.into(), values, false)); self
+        self.filters.push((entity.into(), values, false));
+        self
     }
 
-    #[must_use] pub fn return_filenames(mut self) -> Self { self.return_type = ReturnType::Filename; self }
-    #[must_use] pub fn return_ids(mut self, target: &str) -> Self {
-        self.return_type = ReturnType::Id; self.target = Some(target.into()); self
+    #[must_use]
+    pub fn return_filenames(mut self) -> Self {
+        self.return_type = ReturnType::Filename;
+        self
     }
-    #[must_use] pub fn return_dirs(mut self, target: &str) -> Self {
-        self.return_type = ReturnType::Dir; self.target = Some(target.into()); self
+    #[must_use]
+    pub fn return_ids(mut self, target: &str) -> Self {
+        self.return_type = ReturnType::Id;
+        self.target = Some(target.into());
+        self
+    }
+    #[must_use]
+    pub fn return_dirs(mut self, target: &str) -> Self {
+        self.return_type = ReturnType::Dir;
+        self.target = Some(target.into());
+        self
     }
 
     // ─── Validation ───
@@ -170,7 +234,8 @@ impl<'a> GetBuilder<'a> {
             return Ok(self.filters.clone());
         }
         let entities = self.layout.get_entities()?;
-        let entity_set: std::collections::HashSet<&str> = entities.iter().map(std::string::String::as_str).collect();
+        let entity_set: std::collections::HashSet<&str> =
+            entities.iter().map(std::string::String::as_str).collect();
         let mut validated = Vec::new();
         for (name, values, regex) in &self.filters {
             if !entity_set.contains(name.as_str()) {
@@ -198,7 +263,8 @@ impl<'a> GetBuilder<'a> {
     pub fn collect(self) -> Result<Vec<BidsFile>> {
         let filters = self.validate_filters()?;
         let paths = self.layout.query_files_internal(&filters, &self.scope)?;
-        let mut files: Vec<BidsFile> = paths.iter()
+        let mut files: Vec<BidsFile> = paths
+            .iter()
             .filter_map(|p| self.layout.reconstruct_file(p).ok())
             .collect();
         files.sort();

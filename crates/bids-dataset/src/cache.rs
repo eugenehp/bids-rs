@@ -22,7 +22,7 @@
 //! contain hardlinks to blobs, so multiple versions of the same file
 //! don't waste disk space.
 
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 
 /// Default cache directory (~/.cache/bids-rs).
@@ -52,19 +52,22 @@ pub struct Cache {
 
 impl Default for Cache {
     fn default() -> Self {
-        Self { root: default_cache_dir() }
+        Self {
+            root: default_cache_dir(),
+        }
     }
 }
 
 impl Cache {
-
     /// Open a cache at a specific path.
     pub fn new(root: PathBuf) -> Self {
         Self { root }
     }
 
     /// Root path of the cache.
-    pub fn root(&self) -> &Path { &self.root }
+    pub fn root(&self) -> &Path {
+        &self.root
+    }
 
     /// Path to a dataset's directory in the cache.
     pub fn dataset_dir(&self, dataset_id: &str) -> PathBuf {
@@ -150,8 +153,11 @@ impl Cache {
     ///
     /// Returns the snapshot path of the file.
     pub fn store_file(
-        &self, dataset_id: &str, version: &str,
-        relative_path: &str, content: &[u8],
+        &self,
+        dataset_id: &str,
+        version: &str,
+        relative_path: &str,
+        content: &[u8],
     ) -> Result<PathBuf, std::io::Error> {
         // Compute blob key
         let mut hasher = Sha256::new();
@@ -184,11 +190,16 @@ impl Cache {
 
     /// Store a file from disk (already downloaded) into the cache.
     pub fn store_file_from_disk(
-        &self, dataset_id: &str, version: &str,
-        relative_path: &str, source: &Path,
+        &self,
+        dataset_id: &str,
+        version: &str,
+        relative_path: &str,
+        source: &Path,
     ) -> Result<PathBuf, std::io::Error> {
         let snap_path = self.snapshot_dir(dataset_id, version).join(relative_path);
-        if snap_path.exists() { return Ok(snap_path); }
+        if snap_path.exists() {
+            return Ok(snap_path);
+        }
 
         if let Some(parent) = snap_path.parent() {
             std::fs::create_dir_all(parent)?;
@@ -267,8 +278,13 @@ pub struct CachedDataset {
 
 impl std::fmt::Display for CachedDataset {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} ({} version(s), {:.1} MB)",
-            self.id, self.versions.len(), self.size_bytes as f64 / 1e6)
+        write!(
+            f,
+            "{} ({} version(s), {:.1} MB)",
+            self.id,
+            self.versions.len(),
+            self.size_bytes as f64 / 1e6
+        )
     }
 }
 
@@ -297,10 +313,19 @@ mod tests {
         let cache = Cache::new(dir.clone());
 
         // Store a file
-        let path = cache.store_file("ds001", "1.0.0", "dataset_description.json",
-            b"{\"Name\": \"test\"}").unwrap();
+        let path = cache
+            .store_file(
+                "ds001",
+                "1.0.0",
+                "dataset_description.json",
+                b"{\"Name\": \"test\"}",
+            )
+            .unwrap();
         assert!(path.exists());
-        assert_eq!(std::fs::read_to_string(&path).unwrap(), "{\"Name\": \"test\"}");
+        assert_eq!(
+            std::fs::read_to_string(&path).unwrap(),
+            "{\"Name\": \"test\"}"
+        );
 
         // Not complete yet
         assert!(!cache.is_cached("ds001", "1.0.0"));
@@ -335,17 +360,33 @@ mod tests {
         let cache = Cache::new(dir.clone());
 
         // Store same content in two versions
-        cache.store_file("ds001", "1.0.0", "file.txt", b"hello").unwrap();
-        cache.store_file("ds001", "2.0.0", "file.txt", b"hello").unwrap();
+        cache
+            .store_file("ds001", "1.0.0", "file.txt", b"hello")
+            .unwrap();
+        cache
+            .store_file("ds001", "2.0.0", "file.txt", b"hello")
+            .unwrap();
 
         // Should only have one blob
         let blobs: Vec<_> = std::fs::read_dir(cache.blobs_dir("ds001"))
-            .unwrap().flatten().collect();
+            .unwrap()
+            .flatten()
+            .collect();
         assert_eq!(blobs.len(), 1);
 
         // Both snapshots should have the file
-        assert!(cache.snapshot_dir("ds001", "1.0.0").join("file.txt").exists());
-        assert!(cache.snapshot_dir("ds001", "2.0.0").join("file.txt").exists());
+        assert!(
+            cache
+                .snapshot_dir("ds001", "1.0.0")
+                .join("file.txt")
+                .exists()
+        );
+        assert!(
+            cache
+                .snapshot_dir("ds001", "2.0.0")
+                .join("file.txt")
+                .exists()
+        );
 
         std::fs::remove_dir_all(&dir).unwrap();
     }

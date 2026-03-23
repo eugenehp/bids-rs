@@ -4,10 +4,10 @@
 //! specification. It contains analysis nodes (run/session/subject/dataset
 //! levels) connected by edges defining how data flows through the pipeline.
 
+use crate::node::{ContrastInfo, StatsModelsEdge, StatsModelsNode, StatsModelsNodeOutput};
+use crate::transformations::TransformSpec;
 use bids_core::error::{BidsError, Result};
 use bids_core::utils::convert_json_keys;
-use crate::node::{StatsModelsNode, StatsModelsEdge, StatsModelsNodeOutput, ContrastInfo};
-use crate::transformations::TransformSpec;
 use std::collections::HashMap;
 
 /// Rooted directed acyclic graph representing a BIDS-StatsModel specification.
@@ -54,11 +54,20 @@ impl StatsModelsGraph {
     }
 
     fn from_parsed(model: &serde_json::Value) -> Result<Self> {
-        let name = model.get("name").and_then(|v| v.as_str()).unwrap_or("unnamed").into();
-        let description = model.get("description").and_then(|v| v.as_str()).unwrap_or("").into();
+        let name = model
+            .get("name")
+            .and_then(|v| v.as_str())
+            .unwrap_or("unnamed")
+            .into();
+        let description = model
+            .get("description")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .into();
 
         // Load nodes
-        let node_specs = model.get("nodes")
+        let node_specs = model
+            .get("nodes")
             .and_then(|v| v.as_array())
             .ok_or_else(|| BidsError::Validation("Model must have 'nodes' array".into()))?;
 
@@ -67,26 +76,47 @@ impl StatsModelsGraph {
 
         for spec in node_specs {
             let level = spec.get("level").and_then(|v| v.as_str()).unwrap_or("run");
-            let node_name = spec.get("name").and_then(|v| v.as_str()).unwrap_or("unnamed");
-            let model_spec = spec.get("model").cloned().unwrap_or(serde_json::Value::Null);
-            let group_by: Vec<String> = spec.get("group_by")
+            let node_name = spec
+                .get("name")
+                .and_then(|v| v.as_str())
+                .unwrap_or("unnamed");
+            let model_spec = spec
+                .get("model")
+                .cloned()
+                .unwrap_or(serde_json::Value::Null);
+            let group_by: Vec<String> = spec
+                .get("group_by")
                 .and_then(|v| v.as_array())
-                .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_str().map(String::from))
+                        .collect()
+                })
                 .unwrap_or_default();
 
-            let transformations = spec.get("transformations").and_then(|v| {
-                serde_json::from_value::<TransformSpec>(v.clone()).ok()
-            });
+            let transformations = spec
+                .get("transformations")
+                .and_then(|v| serde_json::from_value::<TransformSpec>(v.clone()).ok());
 
-            let contrasts: Vec<serde_json::Value> = spec.get("contrasts")
-                .and_then(|v| v.as_array()).cloned().unwrap_or_default();
-            let dummy_contrasts = spec.get("dummy_contrasts").cloned()
+            let contrasts: Vec<serde_json::Value> = spec
+                .get("contrasts")
+                .and_then(|v| v.as_array())
+                .cloned()
+                .unwrap_or_default();
+            let dummy_contrasts = spec
+                .get("dummy_contrasts")
+                .cloned()
                 .filter(|v| !v.is_null() && *v != serde_json::Value::Bool(false));
 
             node_map.insert(node_name.to_string(), nodes.len());
             nodes.push(StatsModelsNode::new(
-                level, node_name, model_spec, group_by,
-                transformations, contrasts, dummy_contrasts,
+                level,
+                node_name,
+                model_spec,
+                group_by,
+                transformations,
+                contrasts,
+                dummy_contrasts,
             ));
         }
 
@@ -94,13 +124,22 @@ impl StatsModelsGraph {
         let mut edges = Vec::new();
         if let Some(edge_specs) = model.get("edges").and_then(|v| v.as_array()) {
             for edge_spec in edge_specs {
-                let src = edge_spec.get("source").and_then(|v| v.as_str()).unwrap_or("");
-                let dst = edge_spec.get("destination").and_then(|v| v.as_str()).unwrap_or("");
-                let filter: HashMap<String, String> = edge_spec.get("filter")
+                let src = edge_spec
+                    .get("source")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                let dst = edge_spec
+                    .get("destination")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                let filter: HashMap<String, String> = edge_spec
+                    .get("filter")
                     .and_then(|v| serde_json::from_value(v.clone()).ok())
                     .unwrap_or_default();
                 edges.push(StatsModelsEdge {
-                    source: src.into(), destination: dst.into(), filter,
+                    source: src.into(),
+                    destination: dst.into(),
+                    filter,
                 });
             }
         }
@@ -126,12 +165,20 @@ impl StatsModelsGraph {
             }
         }
 
-        let root_idx = model.get("root")
+        let root_idx = model
+            .get("root")
             .and_then(|v| v.as_str())
             .and_then(|name| node_map.get(name).copied())
             .unwrap_or(0);
 
-        Ok(Self { name, description, nodes, node_map, edges, root_idx })
+        Ok(Self {
+            name,
+            description,
+            nodes,
+            node_map,
+            edges,
+            root_idx,
+        })
     }
 
     /// Validate the model structure.
@@ -140,19 +187,25 @@ impl StatsModelsGraph {
         let mut names = std::collections::HashSet::new();
         for node in &self.nodes {
             if !names.insert(&node.name) {
-                return Err(BidsError::Validation(
-                    format!("Duplicate node name: '{}'", node.name)));
+                return Err(BidsError::Validation(format!(
+                    "Duplicate node name: '{}'",
+                    node.name
+                )));
             }
         }
         // Check edge references
         for edge in &self.edges {
             if !self.node_map.contains_key(&edge.source) {
-                return Err(BidsError::Validation(
-                    format!("Edge references unknown source: '{}'", edge.source)));
+                return Err(BidsError::Validation(format!(
+                    "Edge references unknown source: '{}'",
+                    edge.source
+                )));
             }
             if !self.node_map.contains_key(&edge.destination) {
-                return Err(BidsError::Validation(
-                    format!("Edge references unknown destination: '{}'", edge.destination)));
+                return Err(BidsError::Validation(format!(
+                    "Edge references unknown destination: '{}'",
+                    edge.destination
+                )));
             }
         }
         Ok(())
@@ -176,9 +229,17 @@ impl StatsModelsGraph {
                 let entities = bids_core::entities::StringEntities::new();
                 let run_colls = index.get_run_collections(&entities);
                 for rc in run_colls {
-                    let vars: Vec<bids_variables::SimpleVariable> = rc.sparse.iter()
-                        .map(|v| bids_variables::SimpleVariable::new(
-                            &v.name, &v.source, v.str_amplitude.clone(), v.index.clone()))
+                    let vars: Vec<bids_variables::SimpleVariable> = rc
+                        .sparse
+                        .iter()
+                        .map(|v| {
+                            bids_variables::SimpleVariable::new(
+                                &v.name,
+                                &v.source,
+                                v.str_amplitude.clone(),
+                                v.index.clone(),
+                            )
+                        })
                         .collect();
                     if !vars.is_empty() {
                         node.add_collections(vec![bids_variables::VariableCollection::new(vars)]);
@@ -192,11 +253,16 @@ impl StatsModelsGraph {
     pub fn write_graph(&self) -> String {
         let mut dot = format!("digraph \"{}\" {{\n  node [shape=record];\n", self.name);
         for node in &self.nodes {
-            dot.push_str(&format!("  \"{}\" [label=\"{{name: {}|level: {}}}\"];\n",
-                node.name, node.name, node.level));
+            dot.push_str(&format!(
+                "  \"{}\" [label=\"{{name: {}|level: {}}}\"];\n",
+                node.name, node.name, node.level
+            ));
         }
         for edge in &self.edges {
-            dot.push_str(&format!("  \"{}\" -> \"{}\";\n", edge.source, edge.destination));
+            dot.push_str(&format!(
+                "  \"{}\" -> \"{}\";\n",
+                edge.source, edge.destination
+            ));
         }
         dot.push_str("}\n");
         dot
@@ -234,9 +300,8 @@ impl StatsModelsGraph {
     ) {
         let node = &self.nodes[node_idx];
         let outputs = node.run(inputs, true, "TR");
-        let contrasts: Vec<ContrastInfo> = outputs.iter()
-            .flat_map(|o| o.contrasts.clone())
-            .collect();
+        let contrasts: Vec<ContrastInfo> =
+            outputs.iter().flat_map(|o| o.contrasts.clone()).collect();
         all_outputs.extend(outputs);
 
         for edge in &node.children {

@@ -60,8 +60,14 @@ pub fn read_ctf_header(ds_path: &Path) -> Result<CtfHeader> {
     let n_trials = i16::from_be_bytes([header_buf[780], header_buf[781]]) as usize;
 
     let sample_rate = f64::from_be_bytes([
-        header_buf[1840], header_buf[1841], header_buf[1842], header_buf[1843],
-        header_buf[1844], header_buf[1845], header_buf[1846], header_buf[1847],
+        header_buf[1840],
+        header_buf[1841],
+        header_buf[1842],
+        header_buf[1843],
+        header_buf[1844],
+        header_buf[1845],
+        header_buf[1846],
+        header_buf[1847],
     ]);
 
     // Read channel names: each channel record starts at offset 1848 + ch * 1352
@@ -83,7 +89,9 @@ pub fn read_ctf_header(ds_path: &Path) -> Result<CtfHeader> {
     if n_channels == 0 || sample_rate <= 0.0 {
         return Err(BidsError::DataFormat(format!(
             "Invalid CTF header in {}: n_channels={}, sample_rate={}",
-            ds_path.display(), n_channels, sample_rate
+            ds_path.display(),
+            n_channels,
+            sample_rate
         )));
     }
 
@@ -105,7 +113,8 @@ fn find_res4(ds_path: &Path) -> Result<std::path::PathBuf> {
         }
     }
     Err(BidsError::DataFormat(format!(
-        "No .res4 file found in CTF directory: {}", ds_path.display()
+        "No .res4 file found in CTF directory: {}",
+        ds_path.display()
     )))
 }
 

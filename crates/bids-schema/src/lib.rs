@@ -25,7 +25,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
-pub use version::{BidsVersion, Compatibility, SUPPORTED_BIDS_VERSION, MIN_COMPATIBLE_VERSION};
+pub use version::{BidsVersion, Compatibility, MIN_COMPATIBLE_VERSION, SUPPORTED_BIDS_VERSION};
 
 /// A BIDS entity definition from the schema.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -72,8 +72,7 @@ impl BidsSchema {
     pub fn check_dataset_version(&self, dataset_version_str: &str) -> Compatibility {
         match BidsVersion::parse(dataset_version_str) {
             Some(dv) => {
-                let lib_ver = BidsVersion::parse(&self.version)
-                    .unwrap_or(SUPPORTED_BIDS_VERSION);
+                let lib_ver = BidsVersion::parse(&self.version).unwrap_or(SUPPORTED_BIDS_VERSION);
                 lib_ver.check_compatibility(&dv)
             }
             None => Compatibility::Incompatible {
@@ -124,32 +123,87 @@ impl BidsSchema {
         ];
 
         let datatypes: HashSet<String> = [
-            "anat", "beh", "dwi", "eeg", "fmap", "func", "ieeg", "meg",
-            "micr", "motion", "mrs", "nirs", "perf", "pet",
-        ].iter().map(std::string::ToString::to_string).collect();
+            "anat", "beh", "dwi", "eeg", "fmap", "func", "ieeg", "meg", "micr", "motion", "mrs",
+            "nirs", "perf", "pet",
+        ]
+        .iter()
+        .map(std::string::ToString::to_string)
+        .collect();
 
         let suffixes: HashSet<String> = [
-            "T1w", "T2w", "T2star", "FLAIR", "PD", "PDT2", "inplaneT1", "inplaneT2",
-            "angio", "defacemask", "bold", "cbv", "sbref", "phase", "dwi",
-            "phasediff", "magnitude1", "magnitude2", "phase1", "phase2", "fieldmap", "epi",
-            "events", "physio", "stim", "channels", "electrodes", "coordsystem",
-            "eeg", "ieeg", "meg", "headshape", "photo",
-            "pet", "blood", "asl", "m0scan", "aslcontext", "asllabeling",
-            "motion", "nirs", "optodes",
-            "svs", "mrsi", "unloc", "mrsref",
-            "TEM", "SEM", "uCT", "BF", "DF", "PC", "DIC", "FLUO", "CONF",
-            "participants", "scans", "sessions", "regressors", "timeseries",
-        ].iter().map(std::string::ToString::to_string).collect();
+            "T1w",
+            "T2w",
+            "T2star",
+            "FLAIR",
+            "PD",
+            "PDT2",
+            "inplaneT1",
+            "inplaneT2",
+            "angio",
+            "defacemask",
+            "bold",
+            "cbv",
+            "sbref",
+            "phase",
+            "dwi",
+            "phasediff",
+            "magnitude1",
+            "magnitude2",
+            "phase1",
+            "phase2",
+            "fieldmap",
+            "epi",
+            "events",
+            "physio",
+            "stim",
+            "channels",
+            "electrodes",
+            "coordsystem",
+            "eeg",
+            "ieeg",
+            "meg",
+            "headshape",
+            "photo",
+            "pet",
+            "blood",
+            "asl",
+            "m0scan",
+            "aslcontext",
+            "asllabeling",
+            "motion",
+            "nirs",
+            "optodes",
+            "svs",
+            "mrsi",
+            "unloc",
+            "mrsref",
+            "TEM",
+            "SEM",
+            "uCT",
+            "BF",
+            "DF",
+            "PC",
+            "DIC",
+            "FLUO",
+            "CONF",
+            "participants",
+            "scans",
+            "sessions",
+            "regressors",
+            "timeseries",
+        ]
+        .iter()
+        .map(std::string::ToString::to_string)
+        .collect();
 
         let extensions: HashSet<String> = [
-            ".nii", ".nii.gz", ".json", ".tsv", ".tsv.gz",
-            ".bval", ".bvec",
-            ".edf", ".bdf", ".set", ".fdt", ".vhdr", ".vmrk", ".eeg",
-            ".fif", ".dat", ".pos", ".sqd", ".con", ".ds",
-            ".snirf",
-            ".mefd", ".nwb",
-            ".png", ".tif", ".ome.tif", ".ome.btf", ".jpg",
-        ].iter().map(std::string::ToString::to_string).collect();
+            ".nii", ".nii.gz", ".json", ".tsv", ".tsv.gz", ".bval", ".bvec", ".edf", ".bdf",
+            ".set", ".fdt", ".vhdr", ".vmrk", ".eeg", ".fif", ".dat", ".pos", ".sqd", ".con",
+            ".ds", ".snirf", ".mefd", ".nwb", ".png", ".tif", ".ome.tif", ".ome.btf", ".jpg",
+        ]
+        .iter()
+        .map(std::string::ToString::to_string)
+        .collect();
 
         // Core filename validation patterns
         let mut file_patterns: HashMap<String, Vec<Regex>> = HashMap::new();
@@ -161,7 +215,8 @@ impl BidsSchema {
         let ses_dir = r"(?:/ses-[a-zA-Z0-9]+)?";
         for dt in &datatypes {
             let pat = format!(
-                r"^{sub}{ses_dir}/{dt}/{sub}{ses}{entities_pat}_[a-zA-Z0-9]+\.[a-zA-Z0-9.]+$");
+                r"^{sub}{ses_dir}/{dt}/{sub}{ses}{entities_pat}_[a-zA-Z0-9]+\.[a-zA-Z0-9.]+$"
+            );
             if let Ok(re) = Regex::new(&pat) {
                 file_patterns.entry(dt.clone()).or_default().push(re);
             }
@@ -176,19 +231,36 @@ impl BidsSchema {
             Regex::new(r"^CHANGES$").unwrap(),
             Regex::new(r"^LICENSE$").unwrap(),
             // Task/acq-level sidecars
-            Regex::new(r"^(?:task-[a-zA-Z0-9]+_)?(?:acq-[a-zA-Z0-9]+_)?[a-zA-Z0-9]+\.json$").unwrap(),
+            Regex::new(r"^(?:task-[a-zA-Z0-9]+_)?(?:acq-[a-zA-Z0-9]+_)?[a-zA-Z0-9]+\.json$")
+                .unwrap(),
         ];
         file_patterns.insert("root".into(), root_patterns);
 
         // Scans files
-        let scans_pat = Regex::new(&format!(r"^{sub}(?:/ses-[a-zA-Z0-9]+)?/{sub}(?:_ses-[a-zA-Z0-9]+)?_scans\.tsv$")).unwrap();
-        file_patterns.entry("scans".into()).or_default().push(scans_pat);
+        let scans_pat = Regex::new(&format!(
+            r"^{sub}(?:/ses-[a-zA-Z0-9]+)?/{sub}(?:_ses-[a-zA-Z0-9]+)?_scans\.tsv$"
+        ))
+        .unwrap();
+        file_patterns
+            .entry("scans".into())
+            .or_default()
+            .push(scans_pat);
 
         // Session files
         let ses_pat = Regex::new(&format!(r"^{sub}/{sub}_sessions\.tsv$")).unwrap();
-        file_patterns.entry("sessions".into()).or_default().push(ses_pat);
+        file_patterns
+            .entry("sessions".into())
+            .or_default()
+            .push(ses_pat);
 
-        Self { version: SUPPORTED_BIDS_VERSION.to_string(), entities, datatypes, suffixes, extensions, file_patterns }
+        Self {
+            version: SUPPORTED_BIDS_VERSION.to_string(),
+            entities,
+            datatypes,
+            suffixes,
+            extensions,
+            file_patterns,
+        }
     }
 
     /// Validate a relative file path against BIDS naming rules.
@@ -197,7 +269,9 @@ impl BidsSchema {
 
         // Check root-level files
         if !path.contains('/') {
-            return self.file_patterns.get("root")
+            return self
+                .file_patterns
+                .get("root")
                 .is_some_and(|pats| pats.iter().any(|p| p.is_match(path)));
         }
 
@@ -221,13 +295,19 @@ impl BidsSchema {
     }
 
     /// Check if a datatype is valid.
-    pub fn is_valid_datatype(&self, dt: &str) -> bool { self.datatypes.contains(dt) }
+    pub fn is_valid_datatype(&self, dt: &str) -> bool {
+        self.datatypes.contains(dt)
+    }
 
     /// Check if a suffix is valid.
-    pub fn is_valid_suffix(&self, s: &str) -> bool { self.suffixes.contains(s) }
+    pub fn is_valid_suffix(&self, s: &str) -> bool {
+        self.suffixes.contains(s)
+    }
 
     /// Check if an extension is valid.
-    pub fn is_valid_extension(&self, e: &str) -> bool { self.extensions.contains(e) }
+    pub fn is_valid_extension(&self, e: &str) -> bool {
+        self.extensions.contains(e)
+    }
 
     /// Generate a regex pattern string for an entity.
     pub fn entity_pattern(&self, name: &str) -> Option<String> {
@@ -237,15 +317,28 @@ impl BidsSchema {
             _ => r"[a-zA-Z0-9]+",
         };
         if ent.is_directory {
-            Some(format!(r"[/\\]+{}-({value})", ent.key, value = value_pattern))
+            Some(format!(
+                r"[/\\]+{}-({value})",
+                ent.key,
+                value = value_pattern
+            ))
         } else {
-            Some(format!(r"[_/\\]+{}-({value})", ent.key, value = value_pattern))
+            Some(format!(
+                r"[_/\\]+{}-({value})",
+                ent.key,
+                value = value_pattern
+            ))
         }
     }
 }
 
 fn ent(name: &str, key: &str, format: &str, is_dir: bool) -> EntityDef {
-    EntityDef { name: name.into(), key: key.into(), format: format.into(), is_directory: is_dir }
+    EntityDef {
+        name: name.into(),
+        key: key.into(),
+        format: format.into(),
+        is_directory: is_dir,
+    }
 }
 
 #[cfg(test)]

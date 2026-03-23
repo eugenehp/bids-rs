@@ -16,18 +16,27 @@ pub struct Split {
 impl Split {
     /// Create a split with given ratios. They must sum to ≈1.0.
     pub fn ratio(train: f64, val: f64, test: f64) -> Self {
-        Self { train, val, test, seed: 42 }
+        Self {
+            train,
+            val,
+            test,
+            seed: 42,
+        }
     }
 
     /// Set the random seed for reproducibility.
-    pub fn with_seed(mut self, seed: u64) -> Self { self.seed = seed; self }
+    pub fn with_seed(mut self, seed: u64) -> Self {
+        self.seed = seed;
+        self
+    }
 
     /// Partition a list of subjects into train/val/test groups.
     ///
     /// Uses a deterministic hash-based assignment (no external RNG needed)
     /// so the split is reproducible across runs.
     pub fn partition(&self, subjects: &[String]) -> (Vec<String>, Vec<String>, Vec<String>) {
-        let mut scored: Vec<(u64, &String)> = subjects.iter()
+        let mut scored: Vec<(u64, &String)> = subjects
+            .iter()
             .map(|s| (hash_subject(s, self.seed), s))
             .collect();
         scored.sort_by_key(|(h, _)| *h);
@@ -36,16 +45,27 @@ impl Split {
         let n_train = (n as f64 * self.train).round() as usize;
         let n_val = (n as f64 * self.val).round() as usize;
 
-        let train: Vec<String> = scored[..n_train].iter().map(|(_, s)| (*s).clone()).collect();
-        let val: Vec<String> = scored[n_train..n_train + n_val].iter().map(|(_, s)| (*s).clone()).collect();
-        let test: Vec<String> = scored[n_train + n_val..].iter().map(|(_, s)| (*s).clone()).collect();
+        let train: Vec<String> = scored[..n_train]
+            .iter()
+            .map(|(_, s)| (*s).clone())
+            .collect();
+        let val: Vec<String> = scored[n_train..n_train + n_val]
+            .iter()
+            .map(|(_, s)| (*s).clone())
+            .collect();
+        let test: Vec<String> = scored[n_train + n_val..]
+            .iter()
+            .map(|(_, s)| (*s).clone())
+            .collect();
 
         (train, val, test)
     }
 }
 
 impl Default for Split {
-    fn default() -> Self { Self::ratio(0.8, 0.1, 0.1) }
+    fn default() -> Self {
+        Self::ratio(0.8, 0.1, 0.1)
+    }
 }
 
 /// Deterministic hash for subject assignment. Uses a simple FNV-like hash
@@ -70,8 +90,8 @@ mod tests {
         let (train, val, test) = split.partition(&subjects);
 
         assert_eq!(train.len(), 12); // 60%
-        assert_eq!(val.len(), 4);    // 20%
-        assert_eq!(test.len(), 4);   // 20%
+        assert_eq!(val.len(), 4); // 20%
+        assert_eq!(test.len(), 4); // 20%
 
         // No overlap
         for s in &train {

@@ -2,15 +2,21 @@
 
 use bids_core::error::Result;
 use bids_core::file::BidsFile;
-use bids_eeg::data::{Annotation, EegData, ReadOptions, read_eeg_data, read_brainvision_markers};
+use bids_eeg::data::{Annotation, EegData, ReadOptions, read_brainvision_markers, read_eeg_data};
 use bids_layout::BidsLayout;
 
-pub struct IeegLayout<'a> { layout: &'a BidsLayout }
+pub struct IeegLayout<'a> {
+    layout: &'a BidsLayout,
+}
 
 impl<'a> IeegLayout<'a> {
-    pub fn new(layout: &'a BidsLayout) -> Self { Self { layout } }
+    pub fn new(layout: &'a BidsLayout) -> Self {
+        Self { layout }
+    }
 
-    pub fn get_ieeg_files(&self) -> Result<Vec<BidsFile>> { self.layout.get().suffix("ieeg").collect() }
+    pub fn get_ieeg_files(&self) -> Result<Vec<BidsFile>> {
+        self.layout.get().suffix("ieeg").collect()
+    }
     pub fn get_ieeg_files_for_subject(&self, sub: &str) -> Result<Vec<BidsFile>> {
         self.layout.get().suffix("ieeg").subject(sub).collect()
     }
@@ -22,14 +28,21 @@ impl<'a> IeegLayout<'a> {
         bids_core::try_read_companion(&f.companion("channels", "tsv"), bids_eeg::read_channels_tsv)
     }
     pub fn get_electrodes(&self, f: &BidsFile) -> Result<Option<Vec<super::IeegElectrode>>> {
-        bids_core::try_read_companion(&f.companion("electrodes", "tsv"), super::read_ieeg_electrodes)
+        bids_core::try_read_companion(
+            &f.companion("electrodes", "tsv"),
+            super::read_ieeg_electrodes,
+        )
     }
     pub fn get_events(&self, f: &BidsFile) -> Result<Option<Vec<bids_eeg::EegEvent>>> {
         bids_core::try_read_companion(&f.companion("events", "tsv"), bids_eeg::read_events_tsv)
     }
     pub fn get_coordsystem(&self, f: &BidsFile) -> Result<Option<super::IeegCoordSystem>> {
         let p = f.companion("coordsystem", "json");
-        if p.exists() { Ok(Some(super::IeegCoordSystem::from_file(&p)?)) } else { Ok(None) }
+        if p.exists() {
+            Ok(Some(super::IeegCoordSystem::from_file(&p)?))
+        } else {
+            Ok(None)
+        }
     }
     pub fn get_metadata(&self, f: &BidsFile) -> Result<Option<super::IeegMetadata>> {
         Ok(self.layout.get_metadata(&f.path)?.deserialize_as())
@@ -45,8 +58,12 @@ impl<'a> IeegLayout<'a> {
 
     /// Read signal data selecting specific channels.
     pub fn read_data_channels(&self, f: &BidsFile, channels: &[&str]) -> Result<EegData> {
-        let opts = ReadOptions::new()
-            .with_channels(channels.iter().map(std::string::ToString::to_string).collect());
+        let opts = ReadOptions::new().with_channels(
+            channels
+                .iter()
+                .map(std::string::ToString::to_string)
+                .collect(),
+        );
         self.read_data(f, &opts)
     }
 
@@ -57,7 +74,11 @@ impl<'a> IeegLayout<'a> {
     }
 
     /// Read BrainVision markers from a .vmrk file associated with the given file.
-    pub fn get_brainvision_markers(&self, f: &BidsFile, sampling_rate: f64) -> Result<Vec<Annotation>> {
+    pub fn get_brainvision_markers(
+        &self,
+        f: &BidsFile,
+        sampling_rate: f64,
+    ) -> Result<Vec<Annotation>> {
         let vmrk_path = f.path.with_extension("vmrk");
         if vmrk_path.exists() {
             read_brainvision_markers(&vmrk_path, sampling_rate)
@@ -67,13 +88,28 @@ impl<'a> IeegLayout<'a> {
     }
 
     pub fn get_all_channels_files(&self) -> Result<Vec<BidsFile>> {
-        self.layout.get().suffix("channels").datatype("ieeg").extension("tsv").collect()
+        self.layout
+            .get()
+            .suffix("channels")
+            .datatype("ieeg")
+            .extension("tsv")
+            .collect()
     }
     pub fn get_all_electrodes_files(&self) -> Result<Vec<BidsFile>> {
-        self.layout.get().suffix("electrodes").datatype("ieeg").extension("tsv").collect()
+        self.layout
+            .get()
+            .suffix("electrodes")
+            .datatype("ieeg")
+            .extension("tsv")
+            .collect()
     }
     pub fn get_all_events_files(&self) -> Result<Vec<BidsFile>> {
-        self.layout.get().suffix("events").datatype("ieeg").extension("tsv").collect()
+        self.layout
+            .get()
+            .suffix("events")
+            .datatype("ieeg")
+            .extension("tsv")
+            .collect()
     }
     pub fn get_ieeg_subjects(&self) -> Result<Vec<String>> {
         self.layout.get().suffix("ieeg").return_unique("subject")
@@ -86,10 +122,21 @@ impl<'a> IeegLayout<'a> {
         let files = self.get_ieeg_files()?;
         let subjects = self.get_ieeg_subjects()?;
         let tasks = self.get_ieeg_tasks()?;
-        let sf = files.first().and_then(|f| self.get_metadata(f).ok().flatten()).map(|m| m.sampling_frequency);
-        let ch = files.first().and_then(|f| self.get_channels(f).ok().flatten()).map(|c| c.len());
-        Ok(super::IeegSummary { n_subjects: subjects.len(), n_recordings: files.len(), subjects, tasks, sampling_frequency: sf, channel_count: ch })
+        let sf = files
+            .first()
+            .and_then(|f| self.get_metadata(f).ok().flatten())
+            .map(|m| m.sampling_frequency);
+        let ch = files
+            .first()
+            .and_then(|f| self.get_channels(f).ok().flatten())
+            .map(|c| c.len());
+        Ok(super::IeegSummary {
+            n_subjects: subjects.len(),
+            n_recordings: files.len(),
+            subjects,
+            tasks,
+            sampling_frequency: sf,
+            channel_count: ch,
+        })
     }
 }
-
-

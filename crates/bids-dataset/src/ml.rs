@@ -38,13 +38,21 @@ impl EpochSpec {
     /// Non-overlapping windows.
     #[must_use]
     pub fn non_overlapping(window_sec: f64) -> Self {
-        Self { window_sec, stride_sec: window_sec, drop_last: true }
+        Self {
+            window_sec,
+            stride_sec: window_sec,
+            drop_last: true,
+        }
     }
 
     /// Overlapping windows with a given stride.
     #[must_use]
     pub fn overlapping(window_sec: f64, stride_sec: f64) -> Self {
-        Self { window_sec, stride_sec, drop_last: true }
+        Self {
+            window_sec,
+            stride_sec,
+            drop_last: true,
+        }
     }
 
     /// Compute the number of windows that fit in a signal of `duration_sec`.
@@ -114,7 +122,8 @@ impl KFold {
     pub fn split_subjects(&self, subjects: &[String]) -> Vec<Vec<String>> {
         use crate::split::hash_subject;
 
-        let mut scored: Vec<(u64, &String)> = subjects.iter()
+        let mut scored: Vec<(u64, &String)> = subjects
+            .iter()
             .map(|s| (hash_subject(s, self.seed), s))
             .collect();
         scored.sort_by_key(|(h, _)| *h);
@@ -129,19 +138,25 @@ impl KFold {
     /// Iterate over (train_subjects, test_subjects) for each fold.
     pub fn iter_folds<'a>(&self, subjects: &'a [String]) -> Vec<FoldPair<'a>> {
         let folds = self.split_subjects(subjects);
-        let subj_to_fold: HashMap<&str, usize> = folds.iter().enumerate()
+        let subj_to_fold: HashMap<&str, usize> = folds
+            .iter()
+            .enumerate()
             .flat_map(|(fi, fold)| fold.iter().map(move |s| (s.as_str(), fi)))
             .collect();
 
-        (0..self.k).map(|test_fold| {
-            let train: Vec<&String> = subjects.iter()
-                .filter(|s| subj_to_fold.get(s.as_str()) != Some(&test_fold))
-                .collect();
-            let test: Vec<&String> = subjects.iter()
-                .filter(|s| subj_to_fold.get(s.as_str()) == Some(&test_fold))
-                .collect();
-            (train, test)
-        }).collect()
+        (0..self.k)
+            .map(|test_fold| {
+                let train: Vec<&String> = subjects
+                    .iter()
+                    .filter(|s| subj_to_fold.get(s.as_str()) != Some(&test_fold))
+                    .collect();
+                let test: Vec<&String> = subjects
+                    .iter()
+                    .filter(|s| subj_to_fold.get(s.as_str()) == Some(&test_fold))
+                    .collect();
+                (train, test)
+            })
+            .collect()
     }
 }
 
@@ -166,7 +181,10 @@ impl StratifiedSplit {
         // Group subjects by label
         let mut by_label: HashMap<&str, Vec<String>> = HashMap::new();
         for s in subjects {
-            let label = subject_labels.get(s).map(|l| l.as_str()).unwrap_or("_unknown_");
+            let label = subject_labels
+                .get(s)
+                .map(|l| l.as_str())
+                .unwrap_or("_unknown_");
             by_label.entry(label).or_default().push(s.clone());
         }
 
@@ -231,7 +249,9 @@ impl<'a> DatasetIter<'a> {
     /// Assign labels from a closure on each file entry.
     #[must_use]
     pub fn with_label_fn<F>(mut self, f: F) -> Self
-    where F: Fn(&FileEntry) -> Option<String> + 'a {
+    where
+        F: Fn(&FileEntry) -> Option<String> + 'a,
+    {
         self.label_fn = Some(Box::new(f));
         self
     }
@@ -311,20 +331,30 @@ fn entry_metadata(entry: &FileEntry) -> HashMap<String, String> {
     m.insert("dataset".into(), entry.dataset.clone());
     m.insert("datatype".into(), entry.datatype.clone());
     m.insert("suffix".into(), entry.suffix.clone());
-    if let Some(ref t) = entry.task { m.insert("task".into(), t.clone()); }
-    if let Some(ref s) = entry.session { m.insert("session".into(), s.clone()); }
-    if let Some(ref r) = entry.run { m.insert("run".into(), r.clone()); }
+    if let Some(ref t) = entry.task {
+        m.insert("task".into(), t.clone());
+    }
+    if let Some(ref s) = entry.session {
+        m.insert("session".into(), s.clone());
+    }
+    if let Some(ref r) = entry.run {
+        m.insert("run".into(), r.clone());
+    }
     m
 }
 
 /// Fisher-Yates shuffle with a simple deterministic LCG.
 fn deterministic_shuffle<T>(items: &mut [T], seed: u64) {
     let n = items.len();
-    if n <= 1 { return; }
+    if n <= 1 {
+        return;
+    }
     let mut state = seed ^ 0x517cc1b727220a95;
     for i in (1..n).rev() {
         // LCG step
-        state = state.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        state = state
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
         let j = (state >> 33) as usize % (i + 1);
         items.swap(i, j);
     }
@@ -370,7 +400,10 @@ mod tests {
                     datatype: "eeg".into(),
                     suffix: "eeg".into(),
                     extension: ".edf".into(),
-                    path: format!("/data/ds001/sub-{s:02}/eeg/sub-{s:02}_task-rest_run-{f:02}_eeg.edf").into(),
+                    path: format!(
+                        "/data/ds001/sub-{s:02}/eeg/sub-{s:02}_task-rest_run-{f:02}_eeg.edf"
+                    )
+                    .into(),
                     size: 10_000,
                     global_subject: format!("ds001_{s:02}"),
                 });
@@ -479,7 +512,10 @@ mod tests {
 
         // Each split should have some of each class
         let count_label = |group: &[String], label: &str| -> usize {
-            group.iter().filter(|s| labels.get(*s).map(|l| l.as_str()) == Some(label)).count()
+            group
+                .iter()
+                .filter(|s| labels.get(*s).map(|l| l.as_str()) == Some(label))
+                .count()
         };
         assert!(count_label(&train, "healthy") > 0);
         assert!(count_label(&train, "patient") > 0);
@@ -488,9 +524,27 @@ mod tests {
     #[test]
     fn test_label_distribution() {
         let samples = vec![
-            Sample { path: "a".into(), subject: "s1".into(), label: Some("A".into()), window: None, metadata: HashMap::new() },
-            Sample { path: "b".into(), subject: "s2".into(), label: Some("B".into()), window: None, metadata: HashMap::new() },
-            Sample { path: "c".into(), subject: "s3".into(), label: Some("A".into()), window: None, metadata: HashMap::new() },
+            Sample {
+                path: "a".into(),
+                subject: "s1".into(),
+                label: Some("A".into()),
+                window: None,
+                metadata: HashMap::new(),
+            },
+            Sample {
+                path: "b".into(),
+                subject: "s2".into(),
+                label: Some("B".into()),
+                window: None,
+                metadata: HashMap::new(),
+            },
+            Sample {
+                path: "c".into(),
+                subject: "s3".into(),
+                label: Some("A".into()),
+                window: None,
+                metadata: HashMap::new(),
+            },
         ];
         let dist = label_distribution(&samples);
         assert_eq!(dist["A"], 2);

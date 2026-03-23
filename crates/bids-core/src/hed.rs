@@ -226,7 +226,10 @@ mod tests {
     fn test_hierarchical() {
         let tag = HedTag::simple("Item/Object/Man-made/Vehicle/Car");
         assert_eq!(tag.leaf(), "Car");
-        assert_eq!(tag.components(), vec!["Item", "Object", "Man-made", "Vehicle", "Car"]);
+        assert_eq!(
+            tag.components(),
+            vec!["Item", "Object", "Man-made", "Vehicle", "Car"]
+        );
         assert!(tag.starts_with("Item/Object"));
     }
 

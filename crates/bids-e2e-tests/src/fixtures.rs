@@ -142,10 +142,7 @@ impl BidsExamples {
             return Some(BidsExamples { root: dest });
         }
 
-        eprintln!(
-            "bids-examples: auto-downloading to {} ...",
-            dest.display()
-        );
+        eprintln!("bids-examples: auto-downloading to {} ...", dest.display());
 
         if let Some(parent) = dest.parent() {
             let _ = std::fs::create_dir_all(parent);

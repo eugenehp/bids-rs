@@ -31,8 +31,8 @@
 //! Automatic report generation is experimental. Always verify generated text
 //! before including it in a publication.
 
-pub mod report;
 pub mod parameters;
 pub mod parsing;
+pub mod report;
 
 pub use report::BidsReport;

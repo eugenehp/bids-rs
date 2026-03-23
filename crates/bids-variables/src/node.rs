@@ -6,8 +6,8 @@
 
 use bids_core::entities::StringEntities;
 
-use crate::variables::{SimpleVariable, SparseRunVariable, DenseRunVariable};
 use crate::collections::RunVariableCollection;
+use crate::variables::{DenseRunVariable, SimpleVariable, SparseRunVariable};
 
 /// Metadata about a single run in a BIDS dataset.
 ///
@@ -35,7 +35,11 @@ pub struct Node {
 
 impl Node {
     pub fn new(level: &str, entities: StringEntities) -> Self {
-        Self { level: level.to_lowercase(), entities, variables: Vec::new() }
+        Self {
+            level: level.to_lowercase(),
+            entities,
+            variables: Vec::new(),
+        }
     }
 
     pub fn add_variable(&mut self, var: SimpleVariable) {
@@ -61,20 +65,30 @@ pub struct RunNode {
 
 impl RunNode {
     pub fn new(
-        entities: StringEntities, image_file: Option<String>,
-        duration: f64, repetition_time: f64, n_vols: usize,
+        entities: StringEntities,
+        image_file: Option<String>,
+        duration: f64,
+        repetition_time: f64,
+        n_vols: usize,
     ) -> Self {
         Self {
-            level: "run".into(), entities, image_file, duration,
-            repetition_time, n_vols, sparse_variables: Vec::new(),
+            level: "run".into(),
+            entities,
+            image_file,
+            duration,
+            repetition_time,
+            n_vols,
+            sparse_variables: Vec::new(),
             dense_variables: Vec::new(),
         }
     }
 
     pub fn get_info(&self) -> RunInfo {
         RunInfo {
-            entities: self.entities.clone(), duration: self.duration,
-            tr: self.repetition_time, image: self.image_file.clone(),
+            entities: self.entities.clone(),
+            duration: self.duration,
+            tr: self.repetition_time,
+            image: self.image_file.clone(),
             n_vols: self.n_vols,
         }
     }
@@ -106,18 +120,27 @@ enum NodeEntry {
 }
 
 impl NodeIndex {
-    pub fn new() -> Self { Self::default() }
+    pub fn new() -> Self {
+        Self::default()
+    }
 
     pub fn create_run_node(
-        &mut self, entities: StringEntities, image_file: Option<String>,
-        duration: f64, tr: f64, n_vols: usize,
+        &mut self,
+        entities: StringEntities,
+        image_file: Option<String>,
+        duration: f64,
+        tr: f64,
+        n_vols: usize,
     ) -> usize {
-        self.nodes.push(NodeEntry::Run(RunNode::new(entities, image_file, duration, tr, n_vols)));
+        self.nodes.push(NodeEntry::Run(RunNode::new(
+            entities, image_file, duration, tr, n_vols,
+        )));
         self.nodes.len() - 1
     }
 
     pub fn create_node(&mut self, level: &str, entities: StringEntities) -> usize {
-        self.nodes.push(NodeEntry::Other(Node::new(level, entities)));
+        self.nodes
+            .push(NodeEntry::Other(Node::new(level, entities)));
         self.nodes.len() - 1
     }
 
@@ -138,22 +161,27 @@ impl NodeIndex {
     /// Find nodes matching level and entities, sorted by subject/session/task/run.
     pub fn find_nodes(&self, level: &str, entities: &StringEntities) -> Vec<usize> {
         let sort_keys = ["subject", "session", "task", "run"];
-        let mut results: Vec<(usize, Vec<String>)> = self.nodes.iter().enumerate()
+        let mut results: Vec<(usize, Vec<String>)> = self
+            .nodes
+            .iter()
+            .enumerate()
             .filter(|(_, entry)| {
                 let (node_level, node_ents) = match entry {
                     NodeEntry::Run(r) => (r.level.as_str(), &r.entities),
                     NodeEntry::Other(n) => (n.level.as_str(), &n.entities),
                 };
-                node_level == level && entities.iter().all(|(k, v)| {
-                    node_ents.get(k).is_none_or(|nv| nv == v)
-                })
+                node_level == level
+                    && entities
+                        .iter()
+                        .all(|(k, v)| node_ents.get(k).is_none_or(|nv| nv == v))
             })
             .map(|(i, entry)| {
                 let ents = match entry {
                     NodeEntry::Run(r) => &r.entities,
                     NodeEntry::Other(n) => &n.entities,
                 };
-                let key: Vec<String> = sort_keys.iter()
+                let key: Vec<String> = sort_keys
+                    .iter()
                     .map(|k| ents.get(*k).cloned().unwrap_or_default())
                     .collect();
                 (i, key)
@@ -166,34 +194,49 @@ impl NodeIndex {
     /// Find or create a node.
     pub fn get_or_create_node(&mut self, level: &str, entities: StringEntities) -> usize {
         let existing = self.find_nodes(level, &entities);
-        if let Some(&idx) = existing.first() { idx }
-        else { self.create_node(level, entities) }
+        if let Some(&idx) = existing.first() {
+            idx
+        } else {
+            self.create_node(level, entities)
+        }
     }
 
     /// Find or create a run node.
     pub fn get_or_create_run_node(
-        &mut self, entities: StringEntities, image_file: Option<String>,
-        duration: f64, tr: f64, n_vols: usize,
+        &mut self,
+        entities: StringEntities,
+        image_file: Option<String>,
+        duration: f64,
+        tr: f64,
+        n_vols: usize,
     ) -> usize {
         let existing = self.find_nodes("run", &entities);
-        if let Some(&idx) = existing.first() { idx }
-        else { self.create_run_node(entities, image_file, duration, tr, n_vols) }
+        if let Some(&idx) = existing.first() {
+            idx
+        } else {
+            self.create_run_node(entities, image_file, duration, tr, n_vols)
+        }
     }
 
     /// Collect run-level variables into collections.
     pub fn get_run_collections(&self, entities: &StringEntities) -> Vec<RunVariableCollection> {
         let indices = self.find_nodes("run", entities);
-        indices.iter().filter_map(|&idx| {
-            if let NodeEntry::Run(rn) = &self.nodes[idx] {
-                if rn.sparse_variables.is_empty() && rn.dense_variables.is_empty() {
-                    return None;
+        indices
+            .iter()
+            .filter_map(|&idx| {
+                if let NodeEntry::Run(rn) = &self.nodes[idx] {
+                    if rn.sparse_variables.is_empty() && rn.dense_variables.is_empty() {
+                        return None;
+                    }
+                    Some(RunVariableCollection::new(
+                        rn.sparse_variables.clone(),
+                        rn.dense_variables.clone(),
+                        None,
+                    ))
+                } else {
+                    None
                 }
-                Some(RunVariableCollection::new(
-                    rn.sparse_variables.clone(),
-                    rn.dense_variables.clone(),
-                    None,
-                ))
-            } else { None }
-        }).collect()
+            })
+            .collect()
     }
 }

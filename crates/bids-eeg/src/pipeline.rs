@@ -67,7 +67,9 @@ pub struct PipelineResult {
 impl PipelineResult {
     /// Number of epochs.
     #[must_use]
-    pub fn n_epochs(&self) -> usize { self.x.len() }
+    pub fn n_epochs(&self) -> usize {
+        self.x.len()
+    }
 
     /// Number of channels per epoch.
     #[must_use]
@@ -78,7 +80,10 @@ impl PipelineResult {
     /// Number of samples per epoch.
     #[must_use]
     pub fn n_samples(&self) -> usize {
-        self.x.first().and_then(|e| e.first()).map_or(0, |c| c.len())
+        self.x
+            .first()
+            .and_then(|e| e.first())
+            .map_or(0, |c| c.len())
     }
 
     /// Shape as (n_epochs, n_channels, n_samples).
@@ -93,9 +98,10 @@ impl PipelineResult {
     /// Shape: `(n_epochs, n_channels * n_samples)`.
     #[must_use]
     pub fn to_flat_features(&self) -> Vec<Vec<f64>> {
-        self.x.iter().map(|epoch| {
-            epoch.iter().flat_map(|ch| ch.iter().copied()).collect()
-        }).collect()
+        self.x
+            .iter()
+            .map(|epoch| epoch.iter().flat_map(|ch| ch.iter().copied()).collect())
+            .collect()
     }
 
     /// Convert to row-major contiguous array: `[n_epochs * n_channels * n_samples]`.
@@ -113,9 +119,13 @@ impl PipelineResult {
     /// Unique labels sorted.
     #[must_use]
     pub fn classes(&self) -> Vec<String> {
-        let mut c: Vec<String> = self.y.iter()
+        let mut c: Vec<String> = self
+            .y
+            .iter()
             .collect::<std::collections::HashSet<_>>()
-            .into_iter().cloned().collect();
+            .into_iter()
+            .cloned()
+            .collect();
         c.sort();
         c
     }
@@ -124,9 +134,10 @@ impl PipelineResult {
     #[must_use]
     pub fn y_encoded(&self) -> Vec<usize> {
         let classes = self.classes();
-        self.y.iter().map(|label| {
-            classes.iter().position(|c| c == label).unwrap_or(0)
-        }).collect()
+        self.y
+            .iter()
+            .map(|label| classes.iter().position(|c| c == label).unwrap_or(0))
+            .collect()
     }
 }
 
@@ -163,13 +174,19 @@ pub struct Pipeline {
 }
 
 impl Default for Pipeline {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Pipeline {
     #[must_use]
     pub fn new() -> Self {
-        Self { name: String::new(), description: String::new(), steps: Vec::new() }
+        Self {
+            name: String::new(),
+            description: String::new(),
+            steps: Vec::new(),
+        }
     }
 
     /// Set a name for this pipeline (for display / serialization).
@@ -223,13 +240,17 @@ impl Pipeline {
 
     #[must_use]
     pub fn select_channels(mut self, names: &[&str]) -> Self {
-        self.steps.push(Step::SelectChannels(names.iter().map(|s| (*s).to_string()).collect()));
+        self.steps.push(Step::SelectChannels(
+            names.iter().map(|s| (*s).to_string()).collect(),
+        ));
         self
     }
 
     #[must_use]
     pub fn exclude_channels(mut self, names: &[&str]) -> Self {
-        self.steps.push(Step::ExcludeChannels(names.iter().map(|s| (*s).to_string()).collect()));
+        self.steps.push(Step::ExcludeChannels(
+            names.iter().map(|s| (*s).to_string()).collect(),
+        ));
         self
     }
 
@@ -355,7 +376,11 @@ impl Pipeline {
         // Phase 2: epoch extraction
         let (mut epochs, labels, metas) = if epoch_specs.is_empty() {
             // No epoching — treat the entire recording as a single epoch
-            (vec![processed.data.clone()], vec!["_whole_".into()], vec![HashMap::new()])
+            (
+                vec![processed.data.clone()],
+                vec!["_whole_".into()],
+                vec![HashMap::new()],
+            )
         } else {
             extract_epochs(&processed, events, &epoch_specs)
         };
@@ -425,7 +450,9 @@ fn apply_step_to_epoch(epoch: &mut [Vec<f64>], step: &Step, sr: f64) {
         Step::ZScore => {
             for ch in epoch.iter_mut() {
                 let n = ch.len() as f64;
-                if n < 2.0 { continue; }
+                if n < 2.0 {
+                    continue;
+                }
                 let mean = ch.iter().sum::<f64>() / n;
                 let std = (ch.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / n).sqrt();
                 let std = if std > f64::EPSILON { std } else { 1.0 };
@@ -455,7 +482,11 @@ fn apply_step_to_epoch(epoch: &mut [Vec<f64>], step: &Step, sr: f64) {
 }
 
 /// Epochs, labels, and per-epoch metadata extracted from continuous data.
-type ExtractedEpochs = (Vec<Vec<Vec<f64>>>, Vec<String>, Vec<HashMap<String, String>>);
+type ExtractedEpochs = (
+    Vec<Vec<Vec<f64>>>,
+    Vec<String>,
+    Vec<HashMap<String, String>>,
+);
 
 /// Extract epochs from continuous data around events.
 fn extract_epochs(
@@ -477,23 +508,33 @@ fn extract_epochs(
 
         for event in events {
             let tt = event.trial_type.as_deref().unwrap_or("");
-            if tt != trial_type { continue; }
+            if tt != trial_type {
+                continue;
+            }
 
             let center = (event.onset * sr).round() as isize;
             let start = center - n_before as isize;
 
-            if start < 0 || start + epoch_len as isize > n_total { continue; }
+            if start < 0 || start + epoch_len as isize > n_total {
+                continue;
+            }
             let start = start as usize;
 
-            let epoch: Vec<Vec<f64>> = data.data.iter()
+            let epoch: Vec<Vec<f64>> = data
+                .data
+                .iter()
                 .map(|ch| ch[start..start + epoch_len].to_vec())
                 .collect();
 
             let mut meta = HashMap::new();
             meta.insert("trial_type".into(), trial_type.clone());
             meta.insert("onset".into(), event.onset.to_string());
-            if let Some(ref v) = event.value { meta.insert("value".into(), v.clone()); }
-            for (k, v) in &event.extra { meta.insert(k.clone(), v.clone()); }
+            if let Some(ref v) = event.value {
+                meta.insert("value".into(), v.clone());
+            }
+            for (k, v) in &event.extra {
+                meta.insert(k.clone(), v.clone());
+            }
 
             epochs.push(epoch);
             labels.push(trial_type.clone());
@@ -517,9 +558,15 @@ mod tests {
         EegData {
             channel_labels: vec!["Fz".into(), "Cz".into(), "Pz".into()],
             data: vec![
-                (0..n).map(|i| (2.0 * std::f64::consts::PI * 10.0 * i as f64 / sr).sin()).collect(),
-                (0..n).map(|i| (2.0 * std::f64::consts::PI * 20.0 * i as f64 / sr).sin()).collect(),
-                (0..n).map(|i| (2.0 * std::f64::consts::PI * 5.0 * i as f64 / sr).sin()).collect(),
+                (0..n)
+                    .map(|i| (2.0 * std::f64::consts::PI * 10.0 * i as f64 / sr).sin())
+                    .collect(),
+                (0..n)
+                    .map(|i| (2.0 * std::f64::consts::PI * 20.0 * i as f64 / sr).sin())
+                    .collect(),
+                (0..n)
+                    .map(|i| (2.0 * std::f64::consts::PI * 5.0 * i as f64 / sr).sin())
+                    .collect(),
             ],
             sampling_rates: vec![sr; 3],
             duration: dur,
@@ -532,10 +579,42 @@ mod tests {
 
     fn make_test_events() -> Vec<EegEvent> {
         vec![
-            EegEvent { onset: 1.0, duration: 0.0, trial_type: Some("left_hand".into()), value: None, sample: None, response_time: None, extra: HashMap::new() },
-            EegEvent { onset: 3.0, duration: 0.0, trial_type: Some("right_hand".into()), value: None, sample: None, response_time: None, extra: HashMap::new() },
-            EegEvent { onset: 5.0, duration: 0.0, trial_type: Some("left_hand".into()), value: None, sample: None, response_time: None, extra: HashMap::new() },
-            EegEvent { onset: 7.0, duration: 0.0, trial_type: Some("right_hand".into()), value: None, sample: None, response_time: None, extra: HashMap::new() },
+            EegEvent {
+                onset: 1.0,
+                duration: 0.0,
+                trial_type: Some("left_hand".into()),
+                value: None,
+                sample: None,
+                response_time: None,
+                extra: HashMap::new(),
+            },
+            EegEvent {
+                onset: 3.0,
+                duration: 0.0,
+                trial_type: Some("right_hand".into()),
+                value: None,
+                sample: None,
+                response_time: None,
+                extra: HashMap::new(),
+            },
+            EegEvent {
+                onset: 5.0,
+                duration: 0.0,
+                trial_type: Some("left_hand".into()),
+                value: None,
+                sample: None,
+                response_time: None,
+                extra: HashMap::new(),
+            },
+            EegEvent {
+                onset: 7.0,
+                duration: 0.0,
+                trial_type: Some("right_hand".into()),
+                value: None,
+                sample: None,
+                response_time: None,
+                extra: HashMap::new(),
+            },
         ]
     }
 
@@ -564,9 +643,7 @@ mod tests {
         let data = make_test_data();
         let events = make_test_events();
 
-        let pipeline = Pipeline::new()
-            .epoch("left_hand", 0.0, 2.0)
-            .resample(128.0);
+        let pipeline = Pipeline::new().epoch("left_hand", 0.0, 2.0).resample(128.0);
 
         let result = pipeline.transform(&data, &events);
         assert_eq!(result.n_epochs(), 2);
@@ -603,9 +680,7 @@ mod tests {
     #[test]
     fn test_no_epoch_pipeline() {
         let data = make_test_data();
-        let pipeline = Pipeline::new()
-            .select_channels(&["Fz"])
-            .z_score();
+        let pipeline = Pipeline::new().select_channels(&["Fz"]).z_score();
 
         let result = pipeline.transform(&data, &[]);
         assert_eq!(result.n_epochs(), 1);

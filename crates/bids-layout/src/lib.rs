@@ -65,6 +65,6 @@ pub mod indexer;
 pub mod layout;
 pub mod query;
 
-pub use layout::BidsLayout;
 pub use get_builder::{GetBuilder, InvalidFilters};
+pub use layout::BidsLayout;
 pub use query::{Query, QueryFilter, Scope};

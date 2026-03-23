@@ -65,9 +65,7 @@ pub fn find_sidecars(data_file: &Path, root: &Path) -> Vec<std::path::PathBuf> {
     let mut sidecars = Vec::new();
 
     // Get the suffix from the data file
-    let stem = data_file.file_stem()
-        .and_then(|s| s.to_str())
-        .unwrap_or("");
+    let stem = data_file.file_stem().and_then(|s| s.to_str()).unwrap_or("");
     // Handle .tsv.gz double extension
     let stem = stem.strip_suffix(".tsv").unwrap_or(stem);
 
@@ -84,9 +82,7 @@ pub fn find_sidecars(data_file: &Path, root: &Path) -> Vec<std::path::PathBuf> {
             for entry in entries.flatten() {
                 let path = entry.path();
                 if path.extension().is_some_and(|e| e == "json") {
-                    let json_stem = path.file_stem()
-                        .and_then(|s| s.to_str())
-                        .unwrap_or("");
+                    let json_stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
                     let json_suffix = json_stem.rsplit('_').next().unwrap_or("");
 
                     if json_suffix == suffix && is_sidecar_for(&path, data_file) {
@@ -111,12 +107,8 @@ pub fn find_sidecars(data_file: &Path, root: &Path) -> Vec<std::path::PathBuf> {
 /// containing `-`) also appear in the data file's filename. Suffix parts
 /// (without `-`) must match when both are present.
 fn is_sidecar_for(sidecar: &Path, data_file: &Path) -> bool {
-    let sc_stem = sidecar.file_stem()
-        .and_then(|s| s.to_str())
-        .unwrap_or("");
-    let df_stem = data_file.file_stem()
-        .and_then(|s| s.to_str())
-        .unwrap_or("");
+    let sc_stem = sidecar.file_stem().and_then(|s| s.to_str()).unwrap_or("");
+    let df_stem = data_file.file_stem().and_then(|s| s.to_str()).unwrap_or("");
     // Handle .tsv.gz double extension
     let df_stem = df_stem.strip_suffix(".tsv").unwrap_or(df_stem);
 

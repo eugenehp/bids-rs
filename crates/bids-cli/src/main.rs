@@ -79,10 +79,7 @@ enum Commands {
     /// Upgrade BIDS dataset metadata
     Upgrade { root: PathBuf },
     /// Generate a model report from a BIDS Stats Model JSON
-    ModelReport {
-        model: PathBuf,
-        root: PathBuf,
-    },
+    ModelReport { model: PathBuf, root: PathBuf },
     /// Search, download, and manage OpenNeuro datasets
     Dataset {
         #[command(subcommand)]
@@ -94,12 +91,24 @@ fn main() {
     let cli = Cli::parse();
     let result = match cli.command {
         Commands::Info { root, no_validate } => cmd::info::run(&root, !no_validate),
-        Commands::Ls { root, subject, session, task, suffix, datatype, extension } =>
-            cmd::ls::run(&root, subject, session, task, suffix, datatype, extension),
+        Commands::Ls {
+            root,
+            subject,
+            session,
+            task,
+            suffix,
+            datatype,
+            extension,
+        } => cmd::ls::run(&root, subject, session, task, suffix, datatype, extension),
         Commands::Eeg { root, subcmd } => cmd::eeg::run(&root, subcmd),
         Commands::Entities { root } => cmd::entities::run(&root),
-        Commands::Layout { root, db_path, reset_db, no_validate, no_index_metadata } =>
-            cmd::layout::run(&root, &db_path, reset_db, !no_validate, !no_index_metadata),
+        Commands::Layout {
+            root,
+            db_path,
+            reset_db,
+            no_validate,
+            no_index_metadata,
+        } => cmd::layout::run(&root, &db_path, reset_db, !no_validate, !no_index_metadata),
         Commands::Report { root } => cmd::report::run(&root),
         Commands::AutoModel { root } => cmd::model::auto_model(&root),
         Commands::Upgrade { root } => cmd::upgrade::run(&root),

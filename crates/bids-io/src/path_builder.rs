@@ -8,9 +8,8 @@ use bids_core::entities::{Entities, EntityValue};
 use regex::Regex;
 use std::sync::LazyLock;
 
-static PATTERN_FIND: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"\{([\w\d]*?)(?:<([^>]+)>)?(?:\|((?:\.?[\w])+))?\}").unwrap()
-});
+static PATTERN_FIND: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\{([\w\d]*?)(?:<([^>]+)>)?(?:\|((?:\.?[\w])+))?\}").unwrap());
 
 /// Build a file path given entities and a list of path patterns.
 ///
@@ -27,7 +26,11 @@ pub fn build_path(entities: &Entities, patterns: &[&str], strict: bool) -> Optio
 }
 
 /// Build potentially multiple paths when entities contain list values.
-pub fn build_path_multi(entities: &Entities, patterns: &[&str], strict: bool) -> Option<Vec<String>> {
+pub fn build_path_multi(
+    entities: &Entities,
+    patterns: &[&str],
+    strict: bool,
+) -> Option<Vec<String>> {
     // Check if any entity value contains list-like values (comma-separated)
     // For now, we just expand the single entity set
     for pattern in patterns {
@@ -85,17 +88,22 @@ fn cartesian_product(lists: &[&Vec<String>]) -> Vec<Vec<String>> {
 fn try_build_single(entities: &Entities, pattern: &str, strict: bool) -> Option<String> {
     let matches: Vec<_> = PATTERN_FIND.captures_iter(pattern).collect();
 
-    let defined: Vec<String> = matches.iter()
+    let defined: Vec<String> = matches
+        .iter()
         .filter_map(|cap| cap.get(1).map(|m| m.as_str().to_string()))
         .collect();
 
     if strict {
-        let defined_set: std::collections::HashSet<&str> = defined.iter().map(std::string::String::as_str).collect();
+        let defined_set: std::collections::HashSet<&str> =
+            defined.iter().map(std::string::String::as_str).collect();
         for key in entities.keys() {
-            if entities.get(key).is_some_and(|v| !v.as_str_lossy().is_empty())
-                && !defined_set.contains(key.as_str()) {
-                    return None;
-                }
+            if entities
+                .get(key)
+                .is_some_and(|v| !v.as_str_lossy().is_empty())
+                && !defined_set.contains(key.as_str())
+            {
+                return None;
+            }
         }
     }
 
@@ -115,15 +123,14 @@ fn try_build_single(entities: &Entities, pattern: &str, strict: bool) -> Option<
         let defval = cap.get(3).map(|m| m.as_str()).unwrap_or("");
 
         if !valid.is_empty()
-            && let Some(ent_val) = tmp_entities.get(name) {
-                let val_str = ent_val.as_str_lossy();
-                let expanded: Vec<String> = valid.split('|')
-                    .flat_map(expand_options)
-                    .collect();
-                if !expanded.iter().any(|v| v == &val_str) {
-                    return None;
-                }
+            && let Some(ent_val) = tmp_entities.get(name)
+        {
+            let val_str = ent_val.as_str_lossy();
+            let expanded: Vec<String> = valid.split('|').flat_map(expand_options).collect();
+            if !expanded.iter().any(|v| v == &val_str) {
+                return None;
             }
+        }
 
         if !defval.is_empty() && !tmp_entities.contains_key(name) {
             tmp_entities.insert(name.to_string(), EntityValue::Str(defval.to_string()));
@@ -137,17 +144,21 @@ fn try_build_single(entities: &Entities, pattern: &str, strict: bool) -> Option<
     static PH_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\{(\w+)\}").unwrap());
     loop {
         let before = new_path.clone();
-        new_path = OPT_RE.replace_all(&new_path, |caps: &regex::Captures| {
-            let inner = &caps[1];
-            for pcap in PH_RE.captures_iter(inner) {
-                let ent_name = &pcap[1];
-                if tmp_entities.contains_key(ent_name) {
-                    return inner.to_string();
+        new_path = OPT_RE
+            .replace_all(&new_path, |caps: &regex::Captures| {
+                let inner = &caps[1];
+                for pcap in PH_RE.captures_iter(inner) {
+                    let ent_name = &pcap[1];
+                    if tmp_entities.contains_key(ent_name) {
+                        return inner.to_string();
+                    }
                 }
-            }
-            String::new()
-        }).to_string();
-        if new_path == before { break; }
+                String::new()
+            })
+            .to_string();
+        if new_path == before {
+            break;
+        }
     }
 
     // Check all remaining placeholders have values
@@ -162,8 +173,7 @@ fn try_build_single(entities: &Entities, pattern: &str, strict: bool) -> Option<
     if let Some(ext_val) = tmp_entities.get("extension") {
         let ext_str = ext_val.as_str_lossy();
         if !ext_str.starts_with('.') {
-            tmp_entities.insert("extension".into(),
-                EntityValue::Str(format!(".{ext_str}")));
+            tmp_entities.insert("extension".into(), EntityValue::Str(format!(".{ext_str}")));
         }
     }
 
@@ -173,7 +183,11 @@ fn try_build_single(entities: &Entities, pattern: &str, strict: bool) -> Option<
         new_path = new_path.replace(&placeholder, &val.as_str_lossy());
     }
 
-    if new_path.is_empty() { None } else { Some(new_path) }
+    if new_path.is_empty() {
+        None
+    } else {
+        Some(new_path)
+    }
 }
 
 /// Expand bracket options in value strings.
@@ -184,7 +198,8 @@ pub fn expand_options(value: &str) -> Vec<String> {
         return vec![value.to_string()];
     }
 
-    let parts: Vec<Vec<char>> = bracket_re.captures_iter(value)
+    let parts: Vec<Vec<char>> = bracket_re
+        .captures_iter(value)
         .map(|cap| cap[1].chars().collect())
         .collect();
 
@@ -259,13 +274,14 @@ mod tests {
     #[test]
     fn test_build_paths_expanded() {
         let mut entities = std::collections::HashMap::new();
-        entities.insert("subject".to_string(), vec!["01".to_string(), "02".to_string()]);
+        entities.insert(
+            "subject".to_string(),
+            vec!["01".to_string(), "02".to_string()],
+        );
         entities.insert("suffix".to_string(), vec!["T1w".to_string()]);
         entities.insert("extension".to_string(), vec![".nii.gz".to_string()]);
 
-        let patterns = &[
-            "sub-{subject}/anat/sub-{subject}_{suffix}{extension}",
-        ];
+        let patterns = &["sub-{subject}/anat/sub-{subject}_{suffix}{extension}"];
         let results = build_paths_expanded(&entities, patterns, false);
         assert_eq!(results.len(), 2);
         assert!(results[0].contains("sub-01"));

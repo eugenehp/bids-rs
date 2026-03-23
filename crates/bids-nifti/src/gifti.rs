@@ -58,7 +58,10 @@ pub fn read_gifti_header(path: &Path) -> Result<GiftiImage> {
     // Parse DataArray elements
     for da_match in text.match_indices("<DataArray") {
         let start = da_match.0;
-        let end = text[start..].find('>').map(|e| start + e).unwrap_or(text.len());
+        let end = text[start..]
+            .find('>')
+            .map(|e| start + e)
+            .unwrap_or(text.len());
         let attrs = &text[start..end];
 
         let intent = extract_int_attr(attrs, "Intent").unwrap_or(0);
@@ -92,12 +95,18 @@ pub fn read_gifti_header(path: &Path) -> Result<GiftiImage> {
         let mut pos = 0;
         while let Some(name_start) = md_section[pos..].find("<Name>") {
             let name_s = pos + name_start + 6;
-            let name_e = md_section[name_s..].find("</Name>").map(|e| name_s + e).unwrap_or(name_s);
+            let name_e = md_section[name_s..]
+                .find("</Name>")
+                .map(|e| name_s + e)
+                .unwrap_or(name_s);
             let name = md_section[name_s..name_e].trim().to_string();
 
             if let Some(val_start) = md_section[name_e..].find("<Value>") {
                 let val_s = name_e + val_start + 7;
-                let val_e = md_section[val_s..].find("</Value>").map(|e| val_s + e).unwrap_or(val_s);
+                let val_e = md_section[val_s..]
+                    .find("</Value>")
+                    .map(|e| val_s + e)
+                    .unwrap_or(val_s);
                 let value = md_section[val_s..val_e].trim().to_string();
                 metadata.push((name, value));
                 pos = val_e;

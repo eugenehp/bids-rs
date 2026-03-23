@@ -181,7 +181,10 @@ impl std::ops::Index<&str> for BidsMetadata {
 
 impl From<IndexMap<String, Value>> for BidsMetadata {
     fn from(map: IndexMap<String, Value>) -> Self {
-        Self { inner: map, source_file: None }
+        Self {
+            inner: map,
+            source_file: None,
+        }
     }
 }
 
@@ -267,7 +270,9 @@ mod tests {
         let md: BidsMetadata = vec![
             ("A".to_string(), json!(1)),
             ("B".to_string(), json!("hello")),
-        ].into_iter().collect();
+        ]
+        .into_iter()
+        .collect();
         assert_eq!(md.len(), 2);
         assert_eq!(md.get_i64("A"), Some(1));
     }

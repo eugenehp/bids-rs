@@ -6,7 +6,7 @@
 
 use bids_core::error::{BidsError, Result};
 use bids_core::file::BidsFile;
-use rusqlite::{Connection, params, functions::FunctionFlags};
+use rusqlite::{Connection, functions::FunctionFlags, params};
 use std::path::Path;
 
 /// Convert a `rusqlite::Error` into a `BidsError::Database`.
@@ -43,8 +43,7 @@ pub struct Database {
 impl Database {
     /// Create a new in-memory database.
     pub fn in_memory() -> Result<Self> {
-        let conn = Connection::open_in_memory()
-            .map_err(db_err)?;
+        let conn = Connection::open_in_memory().map_err(db_err)?;
         let db = Self { conn };
         db.register_regexp()?;
         db.create_tables()?;
@@ -56,8 +55,7 @@ impl Database {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
         }
-        let conn = Connection::open(path)
-            .map_err(db_err)?;
+        let conn = Connection::open(path).map_err(db_err)?;
         let db = Self { conn };
         db.register_regexp()?;
         db.create_tables()?;
@@ -83,37 +81,41 @@ impl Database {
             static CACHE: RefCell<HashMap<String, regex::Regex>> = RefCell::new(HashMap::new());
         }
 
-        self.conn.create_scalar_function(
-            "regexp",
-            2,
-            FunctionFlags::SQLITE_UTF8 | FunctionFlags::SQLITE_DETERMINISTIC,
-            |ctx| {
-                let pattern = ctx.get_raw(0).as_str().map_err(|e| {
-                    rusqlite::Error::UserFunctionError(Box::new(e))
-                })?;
-                let value = ctx.get_raw(1).as_str().map_err(|e| {
-                    rusqlite::Error::UserFunctionError(Box::new(e))
-                })?;
-                CACHE.with(|cache| {
-                    let mut cache = cache.borrow_mut();
-                    if let Some(re) = cache.get(pattern) {
-                        return Ok(re.is_match(value));
-                    }
-                    let re = regex::Regex::new(pattern).map_err(|e| {
-                        rusqlite::Error::UserFunctionError(Box::new(e))
-                    })?;
-                    let result = re.is_match(value);
-                    cache.insert(pattern.to_string(), re);
-                    Ok(result)
-                })
-            },
-        ).map_err(db_err)?;
+        self.conn
+            .create_scalar_function(
+                "regexp",
+                2,
+                FunctionFlags::SQLITE_UTF8 | FunctionFlags::SQLITE_DETERMINISTIC,
+                |ctx| {
+                    let pattern = ctx
+                        .get_raw(0)
+                        .as_str()
+                        .map_err(|e| rusqlite::Error::UserFunctionError(Box::new(e)))?;
+                    let value = ctx
+                        .get_raw(1)
+                        .as_str()
+                        .map_err(|e| rusqlite::Error::UserFunctionError(Box::new(e)))?;
+                    CACHE.with(|cache| {
+                        let mut cache = cache.borrow_mut();
+                        if let Some(re) = cache.get(pattern) {
+                            return Ok(re.is_match(value));
+                        }
+                        let re = regex::Regex::new(pattern)
+                            .map_err(|e| rusqlite::Error::UserFunctionError(Box::new(e)))?;
+                        let result = re.is_match(value);
+                        cache.insert(pattern.to_string(), re);
+                        Ok(result)
+                    })
+                },
+            )
+            .map_err(db_err)?;
         Ok(())
     }
 
     fn create_tables(&self) -> Result<()> {
-        self.conn.execute_batch(
-            "CREATE TABLE IF NOT EXISTS files (
+        self.conn
+            .execute_batch(
+                "CREATE TABLE IF NOT EXISTS files (
                 path TEXT PRIMARY KEY,
                 filename TEXT NOT NULL,
                 dirname TEXT NOT NULL,
@@ -144,8 +146,9 @@ impl Database {
             CREATE INDEX IF NOT EXISTS idx_tags_value ON tags(value);
             CREATE INDEX IF NOT EXISTS idx_assoc_src ON associations(src);
             CREATE INDEX IF NOT EXISTS idx_assoc_dst ON associations(dst);
-            "
-        ).map_err(db_err)?;
+            ",
+            )
+            .map_err(db_err)?;
         Ok(())
     }
 
@@ -154,7 +157,9 @@ impl Database {
     /// Wrapping many inserts in a single transaction avoids per-statement
     /// fsyncs, giving ~100× better insert throughput on large datasets.
     pub fn begin_transaction(&self) -> Result<()> {
-        self.conn.execute_batch("BEGIN TRANSACTION").map_err(db_err)?;
+        self.conn
+            .execute_batch("BEGIN TRANSACTION")
+            .map_err(db_err)?;
         Ok(())
     }
 
@@ -172,67 +177,86 @@ impl Database {
 
     /// Insert a file into the database.
     pub fn insert_file(&self, file: &BidsFile) -> Result<()> {
-        self.conn.execute(
-            "INSERT OR REPLACE INTO files (path, filename, dirname, is_dir, file_type)
+        self.conn
+            .execute(
+                "INSERT OR REPLACE INTO files (path, filename, dirname, is_dir, file_type)
              VALUES (?1, ?2, ?3, ?4, ?5)",
-            params![
-                file.path.to_string_lossy().as_ref(),
-                file.filename,
-                file.dirname.to_string_lossy().as_ref(),
-                file.is_dir as i32,
-                format!("{:?}", file.file_type),
-            ],
-        ).map_err(db_err)?;
+                params![
+                    file.path.to_string_lossy().as_ref(),
+                    file.filename,
+                    file.dirname.to_string_lossy().as_ref(),
+                    file.is_dir as i32,
+                    format!("{:?}", file.file_type),
+                ],
+            )
+            .map_err(db_err)?;
         Ok(())
     }
 
     /// Insert a tag (entity-value pair for a file).
-    pub fn insert_tag(&self, file_path: &str, entity_name: &str, value: &str,
-                      dtype: &str, is_metadata: bool) -> Result<()> {
-        self.conn.execute(
-            "INSERT OR REPLACE INTO tags (file_path, entity_name, value, dtype, is_metadata)
+    pub fn insert_tag(
+        &self,
+        file_path: &str,
+        entity_name: &str,
+        value: &str,
+        dtype: &str,
+        is_metadata: bool,
+    ) -> Result<()> {
+        self.conn
+            .execute(
+                "INSERT OR REPLACE INTO tags (file_path, entity_name, value, dtype, is_metadata)
              VALUES (?1, ?2, ?3, ?4, ?5)",
-            params![file_path, entity_name, value, dtype, is_metadata as i32],
-        ).map_err(db_err)?;
+                params![file_path, entity_name, value, dtype, is_metadata as i32],
+            )
+            .map_err(db_err)?;
         Ok(())
     }
 
     /// Insert a file association.
     pub fn insert_association(&self, src: &str, dst: &str, kind: &str) -> Result<()> {
-        self.conn.execute(
-            "INSERT OR IGNORE INTO associations (src, dst, kind) VALUES (?1, ?2, ?3)",
-            params![src, dst, kind],
-        ).map_err(db_err)?;
+        self.conn
+            .execute(
+                "INSERT OR IGNORE INTO associations (src, dst, kind) VALUES (?1, ?2, ?3)",
+                params![src, dst, kind],
+            )
+            .map_err(db_err)?;
         Ok(())
     }
 
     /// Store layout info.
     pub fn set_layout_info(&self, root: &str, config: &str) -> Result<()> {
-        self.conn.execute(
-            "INSERT OR REPLACE INTO layout_info (root, config) VALUES (?1, ?2)",
-            params![root, config],
-        ).map_err(db_err)?;
+        self.conn
+            .execute(
+                "INSERT OR REPLACE INTO layout_info (root, config) VALUES (?1, ?2)",
+                params![root, config],
+            )
+            .map_err(db_err)?;
         Ok(())
     }
 
     /// Get layout info (root, config).
     pub fn get_layout_info(&self) -> Result<Option<(String, String)>> {
-        let mut stmt = self.conn.prepare(
-            "SELECT root, config FROM layout_info LIMIT 1"
-        ).map_err(db_err)?;
+        let mut stmt = self
+            .conn
+            .prepare("SELECT root, config FROM layout_info LIMIT 1")
+            .map_err(db_err)?;
 
-        let result = stmt.query_row([], |row| {
-            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
-        }).ok();
+        let result = stmt
+            .query_row([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })
+            .ok();
         Ok(result)
     }
 
     /// Query all file paths.
     pub fn all_file_paths(&self) -> Result<Vec<String>> {
-        let mut stmt = self.conn.prepare(
-            "SELECT path FROM files WHERE is_dir = 0"
-        ).map_err(db_err)?;
-        let paths: std::result::Result<Vec<String>, _> = stmt.query_map([], |row| row.get(0))
+        let mut stmt = self
+            .conn
+            .prepare("SELECT path FROM files WHERE is_dir = 0")
+            .map_err(db_err)?;
+        let paths: std::result::Result<Vec<String>, _> = stmt
+            .query_map([], |row| row.get(0))
             .map_err(db_err)?
             .collect();
         paths.map_err(db_err)
@@ -240,27 +264,32 @@ impl Database {
 
     /// Get tags for a specific file.
     pub fn get_tags(&self, file_path: &str) -> Result<Vec<(String, String, String, bool)>> {
-        let mut stmt = self.conn.prepare(
-            "SELECT entity_name, value, dtype, is_metadata FROM tags WHERE file_path = ?1"
-        ).map_err(db_err)?;
-        let tags: std::result::Result<Vec<_>, _> = stmt.query_map(params![file_path], |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, String>(2)?,
-                row.get::<_, bool>(3)?,
-            ))
-        }).map_err(db_err)?
+        let mut stmt = self
+            .conn
+            .prepare("SELECT entity_name, value, dtype, is_metadata FROM tags WHERE file_path = ?1")
+            .map_err(db_err)?;
+        let tags: std::result::Result<Vec<_>, _> = stmt
+            .query_map(params![file_path], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                    row.get::<_, bool>(3)?,
+                ))
+            })
+            .map_err(db_err)?
             .collect();
         tags.map_err(db_err)
     }
 
     /// Get all unique values for a given entity.
     pub fn get_unique_entity_values(&self, entity_name: &str) -> Result<Vec<String>> {
-        let mut stmt = self.conn.prepare(
-            "SELECT DISTINCT value FROM tags WHERE entity_name = ?1 ORDER BY value"
-        ).map_err(db_err)?;
-        let values: std::result::Result<Vec<String>, _> = stmt.query_map(params![entity_name], |row| row.get(0))
+        let mut stmt = self
+            .conn
+            .prepare("SELECT DISTINCT value FROM tags WHERE entity_name = ?1 ORDER BY value")
+            .map_err(db_err)?;
+        let values: std::result::Result<Vec<String>, _> = stmt
+            .query_map(params![entity_name], |row| row.get(0))
             .map_err(db_err)?
             .collect();
         values.map_err(db_err)
@@ -268,10 +297,12 @@ impl Database {
 
     /// Get all unique entity names.
     pub fn get_entity_names(&self) -> Result<Vec<String>> {
-        let mut stmt = self.conn.prepare(
-            "SELECT DISTINCT entity_name FROM tags ORDER BY entity_name"
-        ).map_err(db_err)?;
-        let names: std::result::Result<Vec<String>, _> = stmt.query_map([], |row| row.get(0))
+        let mut stmt = self
+            .conn
+            .prepare("SELECT DISTINCT entity_name FROM tags ORDER BY entity_name")
+            .map_err(db_err)?;
+        let names: std::result::Result<Vec<String>, _> = stmt
+            .query_map([], |row| row.get(0))
             .map_err(db_err)?
             .collect();
         names.map_err(db_err)
@@ -332,9 +363,9 @@ impl Database {
 
         sql.push_str(" ORDER BY f.path");
 
-        let mut stmt = self.conn.prepare(&sql)
-            .map_err(db_err)?;
-        let params: Vec<&dyn rusqlite::types::ToSql> = bind_values.iter()
+        let mut stmt = self.conn.prepare(&sql).map_err(db_err)?;
+        let params: Vec<&dyn rusqlite::types::ToSql> = bind_values
+            .iter()
             .map(|v| v as &dyn rusqlite::types::ToSql)
             .collect();
         let paths: std::result::Result<Vec<String>, _> = stmt
@@ -345,17 +376,21 @@ impl Database {
     }
 
     /// Get distinct directories for files matching filters and having a target entity.
-    pub fn query_directories(&self, target_entity: &str,
-                              filters: &[(String, Vec<String>, bool)]) -> Result<Vec<String>> {
+    pub fn query_directories(
+        &self,
+        target_entity: &str,
+        filters: &[(String, Vec<String>, bool)],
+    ) -> Result<Vec<String>> {
         let paths = self.query_files(filters)?;
         let mut dirs = std::collections::BTreeSet::new();
         for path_str in &paths {
             // Check if the file has the target entity
             let tags = self.get_tags(path_str)?;
             if tags.iter().any(|(n, _, _, _)| n == target_entity)
-                && let Some(parent) = std::path::Path::new(path_str).parent() {
-                    dirs.insert(parent.to_string_lossy().to_string());
-                }
+                && let Some(parent) = std::path::Path::new(path_str).parent()
+            {
+                dirs.insert(parent.to_string_lossy().to_string());
+            }
         }
         Ok(dirs.into_iter().collect())
     }
@@ -363,31 +398,38 @@ impl Database {
     /// Get associated files for a given source file.
     pub fn get_associations(&self, src: &str, kind: Option<&str>) -> Result<Vec<(String, String)>> {
         let (sql, params_vec): (String, Vec<String>) = if let Some(k) = kind {
-            ("SELECT dst, kind FROM associations WHERE src = ?1 AND kind = ?2".to_string(),
-             vec![src.to_string(), k.to_string()])
+            (
+                "SELECT dst, kind FROM associations WHERE src = ?1 AND kind = ?2".to_string(),
+                vec![src.to_string(), k.to_string()],
+            )
         } else {
-            ("SELECT dst, kind FROM associations WHERE src = ?1".to_string(),
-             vec![src.to_string()])
+            (
+                "SELECT dst, kind FROM associations WHERE src = ?1".to_string(),
+                vec![src.to_string()],
+            )
         };
 
-        let mut stmt = self.conn.prepare(&sql)
-            .map_err(db_err)?;
-        let params: Vec<&dyn rusqlite::types::ToSql> = params_vec.iter()
+        let mut stmt = self.conn.prepare(&sql).map_err(db_err)?;
+        let params: Vec<&dyn rusqlite::types::ToSql> = params_vec
+            .iter()
             .map(|v| v as &dyn rusqlite::types::ToSql)
             .collect();
-        let assocs: std::result::Result<Vec<_>, _> = stmt.query_map(params.as_slice(), |row| {
-            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
-        }).map_err(db_err)?
+        let assocs: std::result::Result<Vec<_>, _> = stmt
+            .query_map(params.as_slice(), |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })
+            .map_err(db_err)?
             .collect();
         assocs.map_err(db_err)
     }
 
     /// Get the total number of indexed files.
     pub fn file_count(&self) -> Result<usize> {
-        let mut stmt = self.conn.prepare("SELECT COUNT(*) FROM files WHERE is_dir = 0")
+        let mut stmt = self
+            .conn
+            .prepare("SELECT COUNT(*) FROM files WHERE is_dir = 0")
             .map_err(db_err)?;
-        let count: i64 = stmt.query_row([], |row| row.get(0))
-            .map_err(db_err)?;
+        let count: i64 = stmt.query_row([], |row| row.get(0)).map_err(db_err)?;
         Ok(count as usize)
     }
 
@@ -396,10 +438,8 @@ impl Database {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
         }
-        let mut backup = Connection::open(path)
-            .map_err(db_err)?;
-        let b = rusqlite::backup::Backup::new(&self.conn, &mut backup)
-            .map_err(db_err)?;
+        let mut backup = Connection::open(path).map_err(db_err)?;
+        let b = rusqlite::backup::Backup::new(&self.conn, &mut backup).map_err(db_err)?;
         b.step(-1).map_err(db_err)?;
         Ok(())
     }
@@ -415,8 +455,22 @@ mod tests {
         let db = Database::in_memory().unwrap();
         let file = BidsFile::new("/data/sub-01/eeg/sub-01_task-rest_eeg.edf");
         db.insert_file(&file).unwrap();
-        db.insert_tag("/data/sub-01/eeg/sub-01_task-rest_eeg.edf", "subject", "01", "str", false).unwrap();
-        db.insert_tag("/data/sub-01/eeg/sub-01_task-rest_eeg.edf", "task", "rest", "str", false).unwrap();
+        db.insert_tag(
+            "/data/sub-01/eeg/sub-01_task-rest_eeg.edf",
+            "subject",
+            "01",
+            "str",
+            false,
+        )
+        .unwrap();
+        db.insert_tag(
+            "/data/sub-01/eeg/sub-01_task-rest_eeg.edf",
+            "task",
+            "rest",
+            "str",
+            false,
+        )
+        .unwrap();
 
         let paths = db.all_file_paths().unwrap();
         assert_eq!(paths.len(), 1);
@@ -436,9 +490,24 @@ mod tests {
         let f2 = BidsFile::new("/data/sub-02_eeg.edf");
         db.insert_file(&f1).unwrap();
         db.insert_file(&f2).unwrap();
-        db.insert_tag("/data/sub-01_task-rest_eeg.edf", "subject", "01", "str", false).unwrap();
-        db.insert_tag("/data/sub-01_task-rest_eeg.edf", "task", "rest", "str", false).unwrap();
-        db.insert_tag("/data/sub-02_eeg.edf", "subject", "02", "str", false).unwrap();
+        db.insert_tag(
+            "/data/sub-01_task-rest_eeg.edf",
+            "subject",
+            "01",
+            "str",
+            false,
+        )
+        .unwrap();
+        db.insert_tag(
+            "/data/sub-01_task-rest_eeg.edf",
+            "task",
+            "rest",
+            "str",
+            false,
+        )
+        .unwrap();
+        db.insert_tag("/data/sub-02_eeg.edf", "subject", "02", "str", false)
+            .unwrap();
 
         // Query::Any — task must exist
         let filters = vec![("task".to_string(), vec!["__ANY__".to_string()], false)];
@@ -462,7 +531,8 @@ mod tests {
             let path = format!("/data/sub-{:03}_eeg.edf", i);
             let f = BidsFile::new(&path);
             db.insert_file(&f).unwrap();
-            db.insert_tag(&path, "subject", &format!("{:03}", i), "str", false).unwrap();
+            db.insert_tag(&path, "subject", &format!("{:03}", i), "str", false)
+                .unwrap();
         }
 
         db.commit_transaction().unwrap();
@@ -498,8 +568,10 @@ mod tests {
         let f2 = BidsFile::new("/data/sub-02_eeg.edf");
         db.insert_file(&f1).unwrap();
         db.insert_file(&f2).unwrap();
-        db.insert_tag("/data/sub-01_eeg.edf", "subject", "01", "str", false).unwrap();
-        db.insert_tag("/data/sub-02_eeg.edf", "subject", "02", "str", false).unwrap();
+        db.insert_tag("/data/sub-01_eeg.edf", "subject", "01", "str", false)
+            .unwrap();
+        db.insert_tag("/data/sub-02_eeg.edf", "subject", "02", "str", false)
+            .unwrap();
 
         let filters = vec![("subject".to_string(), vec!["0[12]".to_string()], true)];
         let results = db.query_files(&filters).unwrap();

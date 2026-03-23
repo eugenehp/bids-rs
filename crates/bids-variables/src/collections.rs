@@ -4,8 +4,8 @@
 //! providing operations like variable lookup, wildcard matching, filtering,
 //! and merging across runs or subjects.
 
+use crate::variables::{DenseRunVariable, SimpleVariable, SparseRunVariable, merge_simple};
 use bids_core::entities::StringEntities;
-use crate::variables::{SimpleVariable, SparseRunVariable, DenseRunVariable, merge_simple};
 use std::collections::HashMap;
 
 fn source_to_level(source: &str) -> &str {
@@ -37,7 +37,8 @@ pub struct VariableCollection {
 
 impl VariableCollection {
     pub fn new(vars: Vec<SimpleVariable>) -> Self {
-        let level = vars.first()
+        let level = vars
+            .first()
             .map(|v| source_to_level(&v.source).to_string())
             .unwrap_or_default();
 
@@ -54,29 +55,49 @@ impl VariableCollection {
         }
 
         let entities = index_common_entities(&variables);
-        Self { variables, level, entities }
+        Self {
+            variables,
+            level,
+            entities,
+        }
     }
 
-    pub fn get(&self, name: &str) -> Option<&SimpleVariable> { self.variables.get(name) }
+    pub fn get(&self, name: &str) -> Option<&SimpleVariable> {
+        self.variables.get(name)
+    }
 
     pub fn names(&self) -> Vec<&str> {
-        self.variables.keys().map(std::string::String::as_str).collect()
+        self.variables
+            .keys()
+            .map(std::string::String::as_str)
+            .collect()
     }
 
     /// Match variable names against a pattern (regex or glob).
     pub fn match_variables(&self, pattern: &str, use_regex: bool) -> Vec<&str> {
         if use_regex {
-            let re = regex::Regex::new(pattern)
-                .unwrap_or_else(|_| regex::Regex::new("$^").unwrap());
-            self.variables.keys().filter(|k| re.is_match(k)).map(std::string::String::as_str).collect()
+            let re =
+                regex::Regex::new(pattern).unwrap_or_else(|_| regex::Regex::new("$^").unwrap());
+            self.variables
+                .keys()
+                .filter(|k| re.is_match(k))
+                .map(std::string::String::as_str)
+                .collect()
         } else {
-            self.variables.keys().filter(|k| glob_match(pattern, k)).map(std::string::String::as_str).collect()
+            self.variables
+                .keys()
+                .filter(|k| glob_match(pattern, k))
+                .map(std::string::String::as_str)
+                .collect()
         }
     }
 
     /// Convert all variables to tabular rows (long format).
     pub fn to_rows(&self) -> Vec<StringEntities> {
-        self.variables.values().flat_map(super::variables::SimpleVariable::to_rows).collect()
+        self.variables
+            .values()
+            .flat_map(super::variables::SimpleVariable::to_rows)
+            .collect()
     }
 
     /// Convert to wide format: each variable becomes a column.
@@ -94,7 +115,11 @@ impl VariableCollection {
         col_names.extend(var_names.iter().cloned());
 
         // Build rows grouped by entity combination
-        let n_rows = self.variables.values().next().map_or(0, super::variables::SimpleVariable::len);
+        let n_rows = self
+            .variables
+            .values()
+            .next()
+            .map_or(0, super::variables::SimpleVariable::len);
         let mut rows = Vec::with_capacity(n_rows);
         for i in 0..n_rows {
             let mut row = Vec::with_capacity(col_names.len());
@@ -104,14 +129,19 @@ impl VariableCollection {
             for col in &col_names {
                 if self.variables.contains_key(col) {
                     // Variable column
-                    let val = self.variables.get(col)
+                    let val = self
+                        .variables
+                        .get(col)
                         .and_then(|v| v.str_values.get(i))
                         .cloned()
                         .unwrap_or_default();
                     row.push(val);
                 } else {
                     // Entity column
-                    let val = ent_row.and_then(|r| r.get(col)).cloned().unwrap_or_default();
+                    let val = ent_row
+                        .and_then(|r| r.get(col))
+                        .cloned()
+                        .unwrap_or_default();
                     row.push(val);
                 }
             }
@@ -124,9 +154,13 @@ impl VariableCollection {
     pub fn from_rows(rows: &[StringEntities], source: &str) -> Self {
         let mut by_name: HashMap<String, (Vec<String>, Vec<StringEntities>)> = HashMap::new();
         for row in rows {
-            let name = row.get("condition").cloned().unwrap_or_else(|| "unknown".into());
+            let name = row
+                .get("condition")
+                .cloned()
+                .unwrap_or_else(|| "unknown".into());
             let amp = row.get("amplitude").cloned().unwrap_or_default();
-            let ents: StringEntities = row.iter()
+            let ents: StringEntities = row
+                .iter()
                 .filter(|(k, _)| k.as_str() != "condition" && k.as_str() != "amplitude")
                 .map(|(k, v)| (k.clone(), v.clone()))
                 .collect();
@@ -134,7 +168,8 @@ impl VariableCollection {
             entry.0.push(amp);
             entry.1.push(ents);
         }
-        let vars: Vec<SimpleVariable> = by_name.into_iter()
+        let vars: Vec<SimpleVariable> = by_name
+            .into_iter()
             .map(|(name, (values, index))| SimpleVariable::new(&name, source, values, index))
             .collect();
         Self::new(vars)
@@ -150,8 +185,16 @@ pub struct RunVariableCollection {
 }
 
 impl RunVariableCollection {
-    pub fn new(sparse: Vec<SparseRunVariable>, dense: Vec<DenseRunVariable>, sampling_rate: Option<f64>) -> Self {
-        Self { sparse, dense, sampling_rate: sampling_rate.unwrap_or(10.0) }
+    pub fn new(
+        sparse: Vec<SparseRunVariable>,
+        dense: Vec<DenseRunVariable>,
+        sampling_rate: Option<f64>,
+    ) -> Self {
+        Self {
+            sparse,
+            dense,
+            sampling_rate: sampling_rate.unwrap_or(10.0),
+        }
     }
 
     pub fn get_sparse(&self, name: &str) -> Option<&SparseRunVariable> {
@@ -161,14 +204,25 @@ impl RunVariableCollection {
         self.dense.iter().find(|v| v.name == name)
     }
 
-    pub fn sparse_names(&self) -> Vec<&str> { self.sparse.iter().map(|v| v.name.as_str()).collect() }
-    pub fn dense_names(&self) -> Vec<&str> { self.dense.iter().map(|v| v.name.as_str()).collect() }
-    pub fn all_sparse(&self) -> bool { self.dense.is_empty() }
-    pub fn all_dense(&self) -> bool { self.sparse.is_empty() }
+    pub fn sparse_names(&self) -> Vec<&str> {
+        self.sparse.iter().map(|v| v.name.as_str()).collect()
+    }
+    pub fn dense_names(&self) -> Vec<&str> {
+        self.dense.iter().map(|v| v.name.as_str()).collect()
+    }
+    pub fn all_sparse(&self) -> bool {
+        self.dense.is_empty()
+    }
+    pub fn all_dense(&self) -> bool {
+        self.sparse.is_empty()
+    }
 
     pub fn names(&self) -> Vec<&str> {
-        let mut n: Vec<&str> = self.sparse_names().into_iter()
-            .chain(self.dense_names()).collect();
+        let mut n: Vec<&str> = self
+            .sparse_names()
+            .into_iter()
+            .chain(self.dense_names())
+            .collect();
         n.sort();
         n.dedup();
         n
@@ -188,23 +242,43 @@ impl RunVariableCollection {
 
     /// Resample all dense variables.
     pub fn resample(&mut self, sampling_rate: f64) {
-        self.dense = self.dense.iter().map(|v| v.resample(sampling_rate)).collect();
+        self.dense = self
+            .dense
+            .iter()
+            .map(|v| v.resample(sampling_rate))
+            .collect();
         self.sampling_rate = sampling_rate;
     }
 
     /// Combined densify + resample pipeline.
-    pub fn densify_and_resample(&mut self, sampling_rate: Option<f64>, force_dense: bool, resample_dense: bool) {
+    pub fn densify_and_resample(
+        &mut self,
+        sampling_rate: Option<f64>,
+        force_dense: bool,
+        resample_dense: bool,
+    ) {
         let sr = sampling_rate.unwrap_or(self.sampling_rate);
-        if force_dense { self.to_dense(Some(sr)); }
-        if resample_dense { self.resample(sr); }
+        if force_dense {
+            self.to_dense(Some(sr));
+        }
+        if resample_dense {
+            self.resample(sr);
+        }
         self.sampling_rate = sr;
     }
 
     /// Convert to rows with sampling rate option.
-    pub fn to_rows_with_options(&self, include_sparse: bool, include_dense: bool, sampling_rate: Option<f64>) -> Vec<StringEntities> {
+    pub fn to_rows_with_options(
+        &self,
+        include_sparse: bool,
+        include_dense: bool,
+        sampling_rate: Option<f64>,
+    ) -> Vec<StringEntities> {
         let mut all_rows = Vec::new();
         if include_sparse {
-            for var in &self.sparse { all_rows.extend(var.to_rows()); }
+            for var in &self.sparse {
+                all_rows.extend(var.to_rows());
+            }
         }
         if include_dense {
             let dense_vars: Vec<_> = if let Some(sr) = sampling_rate {
@@ -212,7 +286,9 @@ impl RunVariableCollection {
             } else {
                 self.dense.clone()
             };
-            for var in &dense_vars { all_rows.extend(var.to_rows()); }
+            for var in &dense_vars {
+                all_rows.extend(var.to_rows());
+            }
         }
         all_rows
     }
@@ -221,15 +297,21 @@ impl RunVariableCollection {
     pub fn resolve_sampling_rate(&self, requested: Option<&str>) -> f64 {
         match requested {
             Some("TR") => {
-                let trs: std::collections::HashSet<i64> = self.dense.iter()
+                let trs: std::collections::HashSet<i64> = self
+                    .dense
+                    .iter()
                     .flat_map(|v| v.run_info.iter())
                     .map(|r| (r.tr * 1_000_000.0).round() as i64)
                     .collect();
                 if trs.len() == 1 {
                     1.0 / (trs.into_iter().next().unwrap() as f64 / 1_000_000.0)
-                } else { self.sampling_rate }
+                } else {
+                    self.sampling_rate
+                }
             }
-            Some("highest") => self.dense.iter()
+            Some("highest") => self
+                .dense
+                .iter()
                 .map(|v| v.sampling_rate)
                 .fold(self.sampling_rate, f64::max),
             Some(s) => s.parse().unwrap_or(self.sampling_rate),
@@ -240,8 +322,11 @@ impl RunVariableCollection {
 
 /// Merge multiple variable collections.
 pub fn merge_collections(collections: &[VariableCollection]) -> Option<VariableCollection> {
-    if collections.is_empty() { return None; }
-    let all_vars: Vec<SimpleVariable> = collections.iter()
+    if collections.is_empty() {
+        return None;
+    }
+    let all_vars: Vec<SimpleVariable> = collections
+        .iter()
         .flat_map(|c| c.variables.values().cloned())
         .collect();
     Some(VariableCollection::new(all_vars))
@@ -263,8 +348,13 @@ fn index_common_entities(variables: &HashMap<String, SimpleVariable>) -> StringE
 }
 
 fn glob_match(pattern: &str, text: &str) -> bool {
-    let re_str = format!("^{}$",
-        pattern.replace('.', r"\.").replace('*', ".*").replace('?', "."));
+    let re_str = format!(
+        "^{}$",
+        pattern
+            .replace('.', r"\.")
+            .replace('*', ".*")
+            .replace('?', ".")
+    );
     regex::Regex::new(&re_str).is_ok_and(|re| re.is_match(text))
 }
 
@@ -279,8 +369,7 @@ mod tests {
             HashMap::from([("subject".into(), "01".into())]),
             HashMap::from([("subject".into(), "02".into())]),
         ];
-        let v = SimpleVariable::new("age", "participants",
-            vec!["25".into(), "30".into()], idx);
+        let v = SimpleVariable::new("age", "participants", vec!["25".into(), "30".into()], idx);
         let col = VariableCollection::new(vec![v]);
         assert_eq!(col.level, "dataset");
         assert!(col.get("age").is_some());
@@ -298,12 +387,18 @@ mod tests {
 
     #[test]
     fn test_merge_collections() {
-        let v1 = SimpleVariable::new("age", "participants",
+        let v1 = SimpleVariable::new(
+            "age",
+            "participants",
             vec!["25".into()],
-            vec![HashMap::from([("subject".into(), "01".into())])]);
-        let v2 = SimpleVariable::new("age", "participants",
+            vec![HashMap::from([("subject".into(), "01".into())])],
+        );
+        let v2 = SimpleVariable::new(
+            "age",
+            "participants",
             vec!["30".into()],
-            vec![HashMap::from([("subject".into(), "02".into())])]);
+            vec![HashMap::from([("subject".into(), "02".into())])],
+        );
         let c1 = VariableCollection::new(vec![v1]);
         let c2 = VariableCollection::new(vec![v2]);
         let merged = merge_collections(&[c1, c2]).unwrap();

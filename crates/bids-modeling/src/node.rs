@@ -64,28 +64,42 @@ pub struct StatsModelsNode {
 
 impl StatsModelsNode {
     pub fn new(
-        level: &str, name: &str, model: serde_json::Value,
+        level: &str,
+        name: &str,
+        model: serde_json::Value,
         group_by: Vec<String>,
         transformations: Option<crate::transformations::TransformSpec>,
         contrasts: Vec<serde_json::Value>,
         dummy_contrasts: Option<serde_json::Value>,
     ) -> Self {
         Self {
-            level: level.to_lowercase(), name: name.into(), model,
-            group_by, transformations, contrasts, dummy_contrasts,
-            children: Vec::new(), parents: Vec::new(),
+            level: level.to_lowercase(),
+            name: name.into(),
+            model,
+            group_by,
+            transformations,
+            contrasts,
+            dummy_contrasts,
+            children: Vec::new(),
+            parents: Vec::new(),
             collections: Vec::new(),
         }
     }
 
-    pub fn add_child(&mut self, edge: StatsModelsEdge) { self.children.push(edge); }
-    pub fn add_parent(&mut self, edge: StatsModelsEdge) { self.parents.push(edge); }
+    pub fn add_child(&mut self, edge: StatsModelsEdge) {
+        self.children.push(edge);
+    }
+    pub fn add_parent(&mut self, edge: StatsModelsEdge) {
+        self.parents.push(edge);
+    }
 
     pub fn add_collections(&mut self, collections: Vec<VariableCollection>) {
         self.collections.extend(collections);
     }
 
-    pub fn get_collections(&self) -> &[VariableCollection] { &self.collections }
+    pub fn get_collections(&self) -> &[VariableCollection] {
+        &self.collections
+    }
 
     /// Run this node, producing outputs.
     pub fn run(
@@ -111,13 +125,22 @@ impl StatsModelsNode {
             }
 
             // Extract X variable names from model
-            let x_vars: Vec<String> = self.model.get("x")
+            let x_vars: Vec<String> = self
+                .model
+                .get("x")
                 .or_else(|| self.model.get("X"))
                 .and_then(|v| v.as_array())
-                .map(|arr| arr.iter().filter_map(|v| {
-                    if v.is_number() { Some("intercept".into()) }
-                    else { v.as_str().map(String::from) }
-                }).collect())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| {
+                            if v.is_number() {
+                                Some("intercept".into())
+                            } else {
+                                v.as_str().map(String::from)
+                            }
+                        })
+                        .collect()
+                })
                 .unwrap_or_default();
 
             // Build contrasts
@@ -125,12 +148,16 @@ impl StatsModelsNode {
 
             // Dummy contrasts
             if let Some(ref dc) = self.dummy_contrasts {
-                let test = dc.get("test").or(dc.get("Test"))
+                let test = dc
+                    .get("test")
+                    .or(dc.get("Test"))
                     .and_then(|v| v.as_str())
                     .unwrap_or("t")
                     .to_string();
                 for var_name in &x_vars {
-                    if var_name == "intercept" { continue; }
+                    if var_name == "intercept" {
+                        continue;
+                    }
                     contrasts.push(ContrastInfo {
                         name: var_name.clone(),
                         conditions: vec![var_name.clone()],
@@ -143,25 +170,42 @@ impl StatsModelsNode {
 
             // Explicit contrasts
             for con_spec in &self.contrasts {
-                let name = con_spec.get("name").or(con_spec.get("Name"))
-                    .and_then(|v| v.as_str()).unwrap_or("unnamed");
-                let conditions: Vec<String> = con_spec.get("condition_list")
+                let name = con_spec
+                    .get("name")
+                    .or(con_spec.get("Name"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("unnamed");
+                let conditions: Vec<String> = con_spec
+                    .get("condition_list")
                     .or(con_spec.get("ConditionList"))
                     .and_then(|v| v.as_array())
-                    .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|v| v.as_str().map(String::from))
+                            .collect()
+                    })
                     .unwrap_or_default();
-                let weights: Vec<f64> = con_spec.get("weights").or(con_spec.get("Weights"))
+                let weights: Vec<f64> = con_spec
+                    .get("weights")
+                    .or(con_spec.get("Weights"))
                     .and_then(|v| v.as_array())
                     .map(|arr| arr.iter().filter_map(serde_json::Value::as_f64).collect())
                     .unwrap_or_default();
-                let test = con_spec.get("test").or(con_spec.get("Test"))
-                    .and_then(|v| v.as_str()).map(String::from);
+                let test = con_spec
+                    .get("test")
+                    .or(con_spec.get("Test"))
+                    .and_then(|v| v.as_str())
+                    .map(String::from);
 
                 let mut entities = collection.entities.clone();
                 entities.insert("contrast".into(), name.into());
 
                 contrasts.push(ContrastInfo {
-                    name: name.into(), conditions, weights, test, entities,
+                    name: name.into(),
+                    conditions,
+                    weights,
+                    test,
+                    entities,
                 });
             }
 
@@ -171,7 +215,11 @@ impl StatsModelsNode {
                 let mut col_names = Vec::new();
                 for var_name in &x_vars {
                     if var_name == "intercept" {
-                        let n = coll.variables.values().next().map_or(0, bids_variables::SimpleVariable::len);
+                        let n = coll
+                            .variables
+                            .values()
+                            .next()
+                            .map_or(0, bids_variables::SimpleVariable::len);
                         cols.push(vec![1.0; n]);
                         col_names.push("intercept".into());
                     } else if let Some(var) = coll.variables.get(var_name) {
@@ -179,8 +227,14 @@ impl StatsModelsNode {
                         col_names.push(var_name.clone());
                     }
                 }
-                if !cols.is_empty() { Some((col_names, cols)) } else { None }
-            } else { None };
+                if !cols.is_empty() {
+                    Some((col_names, cols))
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
 
             results.push(StatsModelsNodeOutput {
                 node_name: self.name.clone(),
@@ -223,7 +277,8 @@ pub fn build_groups(
     entity_maps: &[StringEntities],
     group_by: &[String],
 ) -> std::collections::HashMap<Vec<(String, String)>, Vec<usize>> {
-    let mut groups: std::collections::HashMap<Vec<(String, String)>, Vec<usize>> = std::collections::HashMap::new();
+    let mut groups: std::collections::HashMap<Vec<(String, String)>, Vec<usize>> =
+        std::collections::HashMap::new();
 
     if group_by.is_empty() {
         groups.insert(vec![], (0..entity_maps.len()).collect());
@@ -231,9 +286,11 @@ pub fn build_groups(
     }
 
     // Get unique values for each grouping variable
-    let mut unique_vals: std::collections::HashMap<&str, Vec<String>> = std::collections::HashMap::new();
+    let mut unique_vals: std::collections::HashMap<&str, Vec<String>> =
+        std::collections::HashMap::new();
     for col in group_by {
-        let vals: std::collections::BTreeSet<String> = entity_maps.iter()
+        let vals: std::collections::BTreeSet<String> = entity_maps
+            .iter()
             .filter_map(|e| e.get(col.as_str()).cloned())
             .collect();
         unique_vals.insert(col.as_str(), vals.into_iter().collect());

@@ -32,7 +32,9 @@ pub struct NirsData {
 impl NirsData {
     /// Sampling frequency derived from time vector (1 / median dt).
     pub fn sfreq(&self) -> f64 {
-        if self.time.len() < 2 { return 0.0; }
+        if self.time.len() < 2 {
+            return 0.0;
+        }
         let dt = self.time[1] - self.time[0];
         if dt > 0.0 { 1.0 / dt } else { 0.0 }
     }
@@ -44,12 +46,24 @@ impl NirsData {
 }
 
 impl bids_core::timeseries::TimeSeries for NirsData {
-    fn n_channels(&self) -> usize { self.n_channels }
-    fn n_samples(&self) -> usize { self.n_samples }
-    fn channel_names(&self) -> &[String] { &self.channel_names }
-    fn sampling_rate(&self) -> f64 { self.sfreq() }
-    fn channel_data(&self, index: usize) -> Option<&[f64]> { self.data.get(index).map(|v| v.as_slice()) }
-    fn duration(&self) -> f64 { self.time.last().copied().unwrap_or(0.0) - self.time.first().copied().unwrap_or(0.0) }
+    fn n_channels(&self) -> usize {
+        self.n_channels
+    }
+    fn n_samples(&self) -> usize {
+        self.n_samples
+    }
+    fn channel_names(&self) -> &[String] {
+        &self.channel_names
+    }
+    fn sampling_rate(&self) -> f64 {
+        self.sfreq()
+    }
+    fn channel_data(&self, index: usize) -> Option<&[f64]> {
+        self.data.get(index).map(|v| v.as_slice())
+    }
+    fn duration(&self) -> f64 {
+        self.time.last().copied().unwrap_or(0.0) - self.time.first().copied().unwrap_or(0.0)
+    }
 }
 
 /// Read NIRS data from a SNIRF (.snirf) file.
@@ -57,33 +71,42 @@ impl bids_core::timeseries::TimeSeries for NirsData {
 /// Reads the first nirs group (`/nirs/data1`). The data is returned as a
 /// channels × samples matrix (transposed from SNIRF's samples × channels layout).
 pub fn read_snirf(path: &Path) -> Result<NirsData> {
-    let file = hdf5::File::open(path)
-        .map_err(|e| BidsError::Io(std::io::Error::new(
-            std::io::ErrorKind::Other, format!("HDF5 error: {}", e)
-        )))?;
+    let file = hdf5::File::open(path).map_err(|e| {
+        BidsError::Io(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!("HDF5 error: {}", e),
+        ))
+    })?;
 
     // Navigate to /nirs or /nirs1
-    let nirs_group = file.group("nirs")
+    let nirs_group = file
+        .group("nirs")
         .or_else(|_| file.group("nirs1"))
         .map_err(|e| BidsError::Csv(format!("Cannot find /nirs group: {}", e)))?;
 
     // Read data from data1
-    let data_group = nirs_group.group("data1")
+    let data_group = nirs_group
+        .group("data1")
         .map_err(|e| BidsError::Csv(format!("Cannot find /nirs/data1: {}", e)))?;
 
     // dataTimeSeries: samples × channels (f64 or f32)
-    let ts_dataset = data_group.dataset("dataTimeSeries")
+    let ts_dataset = data_group
+        .dataset("dataTimeSeries")
         .map_err(|e| BidsError::Csv(format!("Cannot find dataTimeSeries: {}", e)))?;
 
     let shape = ts_dataset.shape();
     if shape.len() != 2 {
-        return Err(BidsError::Csv(format!("Expected 2D dataTimeSeries, got {}D", shape.len())));
+        return Err(BidsError::Csv(format!(
+            "Expected 2D dataTimeSeries, got {}D",
+            shape.len()
+        )));
     }
     let n_samples = shape[0];
     let n_channels = shape[1];
 
     // Read as flat f64 array, then reshape
-    let flat: Vec<f64> = ts_dataset.read_raw()
+    let flat: Vec<f64> = ts_dataset
+        .read_raw()
         .map_err(|e| BidsError::Csv(format!("Cannot read dataTimeSeries: {}", e)))?;
 
     // Transpose: SNIRF is samples×channels (row-major), we want channels×samples
@@ -95,9 +118,11 @@ pub fn read_snirf(path: &Path) -> Result<NirsData> {
     }
 
     // Read time vector
-    let time_dataset = data_group.dataset("time")
+    let time_dataset = data_group
+        .dataset("time")
         .map_err(|e| BidsError::Csv(format!("Cannot find time dataset: {}", e)))?;
-    let time: Vec<f64> = time_dataset.read_raw()
+    let time: Vec<f64> = time_dataset
+        .read_raw()
         .map_err(|e| BidsError::Csv(format!("Cannot read time: {}", e)))?;
 
     // Read measurement list (best effort)
@@ -105,12 +130,18 @@ pub fn read_snirf(path: &Path) -> Result<NirsData> {
     for i in 1..=n_channels {
         let ml_name = format!("measurementList{}", i);
         if let Ok(ml_i) = data_group.group(&ml_name) {
-            let src = ml_i.dataset("sourceIndex")
-                .and_then(|d| d.read_scalar::<i32>()).unwrap_or(0) as u32;
-            let det = ml_i.dataset("detectorIndex")
-                .and_then(|d| d.read_scalar::<i32>()).unwrap_or(0) as u32;
-            let wl = ml_i.dataset("wavelengthIndex")
-                .and_then(|d| d.read_scalar::<i32>()).unwrap_or(0) as f64;
+            let src = ml_i
+                .dataset("sourceIndex")
+                .and_then(|d| d.read_scalar::<i32>())
+                .unwrap_or(0) as u32;
+            let det = ml_i
+                .dataset("detectorIndex")
+                .and_then(|d| d.read_scalar::<i32>())
+                .unwrap_or(0) as u32;
+            let wl = ml_i
+                .dataset("wavelengthIndex")
+                .and_then(|d| d.read_scalar::<i32>())
+                .unwrap_or(0) as f64;
             measurement_list.push((src, det, wl));
         } else {
             measurement_list.push((0, 0, 0.0));

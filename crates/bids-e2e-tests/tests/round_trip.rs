@@ -152,13 +152,15 @@ fn test_metadata_inheritance() {
     std::fs::write(
         tmp.join("dataset_description.json"),
         r#"{"Name": "inherit-test", "BIDSVersion": "1.9.0"}"#,
-    ).unwrap();
+    )
+    .unwrap();
 
     // Root-level sidecar: applies to all EEG files
     std::fs::write(
         tmp.join("task-rest_eeg.json"),
         r#"{"EEGReference": "Cz", "PowerLineFrequency": 50, "Manufacturer": "BioSemi"}"#,
-    ).unwrap();
+    )
+    .unwrap();
 
     // Subject-level sidecar: overrides PowerLineFrequency for sub-01
     let sub01_eeg = tmp.join("sub-01/eeg");
@@ -166,7 +168,8 @@ fn test_metadata_inheritance() {
     std::fs::write(
         sub01_eeg.join("sub-01_task-rest_eeg.json"),
         r#"{"SamplingFrequency": 256, "PowerLineFrequency": 60}"#,
-    ).unwrap();
+    )
+    .unwrap();
     std::fs::write(sub01_eeg.join("sub-01_task-rest_eeg.edf"), b"FAKE").unwrap();
 
     // sub-02: no file-level sidecar, should only get root-level
@@ -177,26 +180,62 @@ fn test_metadata_inheritance() {
     let layout = bids_layout::BidsLayout::new(&tmp).unwrap();
 
     // sub-01: file-level PowerLineFrequency=60 should override root-level 50
-    let sub01_files = layout.get()
-        .subject("01").suffix("eeg").extension(".edf")
-        .collect().unwrap();
+    let sub01_files = layout
+        .get()
+        .subject("01")
+        .suffix("eeg")
+        .extension(".edf")
+        .collect()
+        .unwrap();
     assert_eq!(sub01_files.len(), 1);
     let md1 = layout.get_metadata(&sub01_files[0].path).unwrap();
-    assert_eq!(md1.get_f64("SamplingFrequency"), Some(256.0), "File-level SamplingFrequency");
-    assert_eq!(md1.get_i64("PowerLineFrequency"), Some(60), "Overridden PowerLineFrequency");
-    assert_eq!(md1.get_str("EEGReference"), Some("Cz"), "Inherited EEGReference from root");
-    assert_eq!(md1.get_str("Manufacturer"), Some("BioSemi"), "Inherited Manufacturer from root");
+    assert_eq!(
+        md1.get_f64("SamplingFrequency"),
+        Some(256.0),
+        "File-level SamplingFrequency"
+    );
+    assert_eq!(
+        md1.get_i64("PowerLineFrequency"),
+        Some(60),
+        "Overridden PowerLineFrequency"
+    );
+    assert_eq!(
+        md1.get_str("EEGReference"),
+        Some("Cz"),
+        "Inherited EEGReference from root"
+    );
+    assert_eq!(
+        md1.get_str("Manufacturer"),
+        Some("BioSemi"),
+        "Inherited Manufacturer from root"
+    );
 
     // sub-02: should get root-level metadata only
-    let sub02_files = layout.get()
-        .subject("02").suffix("eeg").extension(".edf")
-        .collect().unwrap();
+    let sub02_files = layout
+        .get()
+        .subject("02")
+        .suffix("eeg")
+        .extension(".edf")
+        .collect()
+        .unwrap();
     assert_eq!(sub02_files.len(), 1);
     let md2 = layout.get_metadata(&sub02_files[0].path).unwrap();
-    assert_eq!(md2.get_i64("PowerLineFrequency"), Some(50), "Root-level PowerLineFrequency");
-    assert_eq!(md2.get_str("EEGReference"), Some("Cz"), "Root-level EEGReference");
+    assert_eq!(
+        md2.get_i64("PowerLineFrequency"),
+        Some(50),
+        "Root-level PowerLineFrequency"
+    );
+    assert_eq!(
+        md2.get_str("EEGReference"),
+        Some("Cz"),
+        "Root-level EEGReference"
+    );
     // sub-02 should NOT have SamplingFrequency (it's only in sub-01's sidecar)
-    assert_eq!(md2.get_f64("SamplingFrequency"), None, "No SamplingFrequency for sub-02");
+    assert_eq!(
+        md2.get_f64("SamplingFrequency"),
+        None,
+        "No SamplingFrequency for sub-02"
+    );
 
     let _ = std::fs::remove_dir_all(&tmp);
 }
@@ -240,7 +279,8 @@ fn test_query_return_types() {
     let layout = bids_layout::BidsLayout::new(&tmp).unwrap();
 
     // return_unique: get unique subject values for EEG files
-    let subjects = layout.get()
+    let subjects = layout
+        .get()
         .suffix("eeg")
         .extension(".edf")
         .return_unique("subject")
@@ -250,7 +290,8 @@ fn test_query_return_types() {
     assert!(subjects.contains(&"02".to_string()));
 
     // return_unique: get unique tasks
-    let tasks = layout.get()
+    let tasks = layout
+        .get()
         .subject("01")
         .suffix("eeg")
         .return_unique("task")
@@ -260,7 +301,8 @@ fn test_query_return_types() {
     assert!(tasks.contains(&"motor".to_string()));
 
     // return_paths: get file paths
-    let paths = layout.get()
+    let paths = layout
+        .get()
         .subject("01")
         .task("rest")
         .suffix("eeg")
@@ -271,22 +313,24 @@ fn test_query_return_types() {
     assert!(paths[0].to_string_lossy().contains("sub-01"));
 
     // Query::None — files WITHOUT a task entity (e.g., participants.tsv)
-    let no_task = layout.get()
-        .query_none("task")
-        .collect()
-        .unwrap();
+    let no_task = layout.get().query_none("task").collect().unwrap();
     // Should exclude all task-* files
     for f in &no_task {
-        assert!(!f.filename.contains("task-"), "File {} should not have task", f.filename);
+        assert!(
+            !f.filename.contains("task-"),
+            "File {} should not have task",
+            f.filename
+        );
     }
 
     // Query::Any — files WITH any task entity
-    let has_task = layout.get()
-        .query_any("task")
-        .collect()
-        .unwrap();
+    let has_task = layout.get().query_any("task").collect().unwrap();
     for f in &has_task {
-        assert!(f.entities.contains_key("task"), "File {} should have task", f.filename);
+        assert!(
+            f.entities.contains_key("task"),
+            "File {} should have task",
+            f.filename
+        );
     }
 
     let _ = std::fs::remove_dir_all(&tmp);
@@ -301,7 +345,8 @@ fn test_regex_filter() {
     let layout = bids_layout::BidsLayout::new(&tmp).unwrap();
 
     // Regex filter: subject matching "0[12]"
-    let files = layout.get()
+    let files = layout
+        .get()
         .filter_regex("subject", "0[12]")
         .suffix("eeg")
         .extension(".edf")
@@ -310,14 +355,21 @@ fn test_regex_filter() {
     assert!(files.len() >= 2, "Should match both sub-01 and sub-02");
 
     // Regex filter: task starting with "r"
-    let rest_files = layout.get()
+    let rest_files = layout
+        .get()
         .filter_regex("task", "^r")
         .suffix("eeg")
         .extension(".edf")
         .collect()
         .unwrap();
     for f in &rest_files {
-        assert!(f.entities.get("task").unwrap().as_str_lossy().starts_with("r"));
+        assert!(
+            f.entities
+                .get("task")
+                .unwrap()
+                .as_str_lossy()
+                .starts_with("r")
+        );
     }
 
     let _ = std::fs::remove_dir_all(&tmp);
@@ -334,8 +386,11 @@ fn test_parse_and_build_path() {
     // Parse entities from a full relative path (config regexes need path context)
     let entities = layout.parse_file_entities("sub-01/eeg/sub-01_task-rest_eeg.edf");
     // At minimum, subject and task should be parsed
-    assert!(entities.get("subject").is_some(),
-        "Expected 'subject' entity, got: {:?}", entities.keys().collect::<Vec<_>>());
+    assert!(
+        entities.get("subject").is_some(),
+        "Expected 'subject' entity, got: {:?}",
+        entities.keys().collect::<Vec<_>>()
+    );
     assert_eq!(entities.get("subject").unwrap().as_str_lossy(), "01");
 
     if let Some(task) = entities.get("task") {
@@ -347,9 +402,9 @@ fn test_parse_and_build_path() {
 
 #[test]
 fn test_bidsfile_builder() {
+    use bids_core::entities::Entities;
     use bids_core::entities::EntityValue;
     use bids_core::file::BidsFile;
-    use bids_core::entities::Entities;
 
     let mut entities = Entities::new();
     entities.insert("subject".to_string(), EntityValue::Str("01".to_string()));
@@ -357,9 +412,6 @@ fn test_bidsfile_builder() {
 
     let bf = BidsFile::new("/data/sub-01_task-rest_eeg.edf").with_entities(entities);
 
-    assert_eq!(
-        bf.entities.get("subject").unwrap().as_str_lossy(),
-        "01"
-    );
+    assert_eq!(bf.entities.get("subject").unwrap().as_str_lossy(), "01");
     assert_eq!(bf.entities.get("task").unwrap().as_str_lossy(), "rest");
 }

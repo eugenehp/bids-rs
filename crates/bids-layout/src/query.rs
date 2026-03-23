@@ -65,23 +65,62 @@ impl QueryFilter {
         filters.iter().map(QueryFilter::to_tuple).collect()
     }
 
-    #[must_use] pub fn eq(entity: &str, value: &str) -> Self {
-        Self { entity: entity.into(), values: vec![value.into()], regex: false, query: None }
+    #[must_use]
+    pub fn eq(entity: &str, value: &str) -> Self {
+        Self {
+            entity: entity.into(),
+            values: vec![value.into()],
+            regex: false,
+            query: None,
+        }
     }
-    #[must_use] pub fn one_of(entity: &str, values: &[&str]) -> Self {
-        Self { entity: entity.into(), values: values.iter().map(std::string::ToString::to_string).collect(), regex: false, query: None }
+    #[must_use]
+    pub fn one_of(entity: &str, values: &[&str]) -> Self {
+        Self {
+            entity: entity.into(),
+            values: values
+                .iter()
+                .map(std::string::ToString::to_string)
+                .collect(),
+            regex: false,
+            query: None,
+        }
     }
-    #[must_use] pub fn regex(entity: &str, pattern: &str) -> Self {
-        Self { entity: entity.into(), values: vec![pattern.into()], regex: true, query: None }
+    #[must_use]
+    pub fn regex(entity: &str, pattern: &str) -> Self {
+        Self {
+            entity: entity.into(),
+            values: vec![pattern.into()],
+            regex: true,
+            query: None,
+        }
     }
-    #[must_use] pub fn any(entity: &str) -> Self {
-        Self { entity: entity.into(), values: vec!["__ANY__".into()], regex: false, query: Some(Query::Any) }
+    #[must_use]
+    pub fn any(entity: &str) -> Self {
+        Self {
+            entity: entity.into(),
+            values: vec!["__ANY__".into()],
+            regex: false,
+            query: Some(Query::Any),
+        }
     }
-    #[must_use] pub fn none(entity: &str) -> Self {
-        Self { entity: entity.into(), values: vec!["__NONE__".into()], regex: false, query: Some(Query::None) }
+    #[must_use]
+    pub fn none(entity: &str) -> Self {
+        Self {
+            entity: entity.into(),
+            values: vec!["__NONE__".into()],
+            regex: false,
+            query: Some(Query::None),
+        }
     }
-    #[must_use] pub fn optional(entity: &str) -> Self {
-        Self { entity: entity.into(), values: vec!["__OPTIONAL__".into()], regex: false, query: Some(Query::Optional) }
+    #[must_use]
+    pub fn optional(entity: &str) -> Self {
+        Self {
+            entity: entity.into(),
+            values: vec!["__OPTIONAL__".into()],
+            regex: false,
+            query: Some(Query::Optional),
+        }
     }
 }
 
@@ -138,7 +177,12 @@ impl std::fmt::Display for Scope {
 
 impl From<(String, Vec<String>, bool)> for QueryFilter {
     fn from((entity, values, regex): (String, Vec<String>, bool)) -> Self {
-        Self { entity, values, regex, query: None }
+        Self {
+            entity,
+            values,
+            regex,
+            query: None,
+        }
     }
 }
 

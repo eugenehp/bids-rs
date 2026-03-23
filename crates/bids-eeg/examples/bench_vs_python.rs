@@ -77,10 +77,14 @@ fn main() {
 
     // Extract first/last 10 samples per channel for correctness check
     let n_peek = 10;
-    let first_samples: Vec<Vec<f64>> = data.data.iter()
+    let first_samples: Vec<Vec<f64>> = data
+        .data
+        .iter()
         .map(|ch| ch.iter().take(n_peek).copied().collect())
         .collect();
-    let last_samples: Vec<Vec<f64>> = data.data.iter()
+    let last_samples: Vec<Vec<f64>> = data
+        .data
+        .iter()
         .map(|ch| {
             let start = ch.len().saturating_sub(n_peek);
             ch[start..].to_vec()
@@ -88,9 +92,7 @@ fn main() {
         .collect();
 
     // Checksum: sum of all values (for quick correctness check)
-    let checksum: f64 = data.data.iter()
-        .flat_map(|ch| ch.iter())
-        .sum();
+    let checksum: f64 = data.data.iter().flat_map(|ch| ch.iter()).sum();
 
     // Output JSON
     println!("{{");

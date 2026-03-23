@@ -4,9 +4,9 @@
 //! create a complete BIDS-StatsModels JSON specification. This is useful
 //! as a starting point that can be manually refined.
 
-use bids_layout::BidsLayout;
 use bids_core::error::Result;
-use serde_json::{json, Value};
+use bids_layout::BidsLayout;
+use serde_json::{Value, json};
 
 /// Auto-generate a BIDS Stats Model for each task in a dataset.
 ///
@@ -34,7 +34,9 @@ pub fn auto_model(layout: &BidsLayout) -> Result<Vec<Value>> {
     let tasks = layout.get_tasks()?;
     let subjects = layout.get_subjects()?;
     let sessions = layout.get_sessions()?;
-    let root_name = layout.root().file_name()
+    let root_name = layout
+        .root()
+        .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or("dataset");
 
@@ -44,8 +46,11 @@ pub fn auto_model(layout: &BidsLayout) -> Result<Vec<Value>> {
         let model_name = format!("{root_name}_{task_name}");
 
         // Get trial types from events files for this task
-        let event_files = layout.get()
-            .suffix("events").extension("tsv").task(task_name)
+        let event_files = layout
+            .get()
+            .suffix("events")
+            .extension("tsv")
+            .task(task_name)
             .collect()?;
 
         let mut trial_types = std::collections::BTreeSet::new();
@@ -53,14 +58,16 @@ pub fn auto_model(layout: &BidsLayout) -> Result<Vec<Value>> {
             if let Ok(rows) = ef.get_df() {
                 for row in &rows {
                     if let Some(tt) = row.get("trial_type")
-                        && !tt.is_empty() {
-                            trial_types.insert(tt.clone());
-                        }
+                        && !tt.is_empty()
+                    {
+                        trial_types.insert(tt.clone());
+                    }
                 }
             }
         }
 
-        let trial_type_factors: Vec<String> = trial_types.iter()
+        let trial_type_factors: Vec<String> = trial_types
+            .iter()
             .map(|tt| format!("trial_type.{tt}"))
             .collect();
 

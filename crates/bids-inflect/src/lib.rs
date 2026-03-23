@@ -18,8 +18,8 @@ pub fn singularize(word: &str) -> Option<String> {
 
     // Exact irregular mappings
     let irregular: &[(&str, &str)] = &[
-        ("vertices", "vertice"),  // matches Python inflect behavior
-        ("matrices", "matrice"),  // matches Python inflect behavior
+        ("vertices", "vertice"), // matches Python inflect behavior
+        ("matrices", "matrice"), // matches Python inflect behavior
         ("indices", "index"),
         ("analyses", "analysis"),
         ("atlases", "atlas"),
@@ -33,18 +33,46 @@ pub fn singularize(word: &str) -> Option<String> {
         ("phenomena", "phenomenon"),
     ];
     for &(plural, singular) in irregular {
-        if w == plural { return Some(singular.into()); }
+        if w == plural {
+            return Some(singular.into());
+        }
     }
 
     // Don't singularize if already singular (common BIDS entities)
     let already_singular = [
-        "subject", "session", "task", "run", "acquisition", "reconstruction",
-        "direction", "space", "split", "recording", "echo", "flip", "part",
-        "sample", "staining", "tracer", "modality", "chunk", "atlas",
-        "resolution", "density", "label", "description", "suffix",
-        "extension", "datatype", "ceagent", "hemisphere", "tracksys",
+        "subject",
+        "session",
+        "task",
+        "run",
+        "acquisition",
+        "reconstruction",
+        "direction",
+        "space",
+        "split",
+        "recording",
+        "echo",
+        "flip",
+        "part",
+        "sample",
+        "staining",
+        "tracer",
+        "modality",
+        "chunk",
+        "atlas",
+        "resolution",
+        "density",
+        "label",
+        "description",
+        "suffix",
+        "extension",
+        "datatype",
+        "ceagent",
+        "hemisphere",
+        "tracksys",
     ];
-    if already_singular.contains(&w.as_str()) { return Some(w); }
+    if already_singular.contains(&w.as_str()) {
+        return Some(w);
+    }
 
     // Rules (most specific first)
     if w.ends_with("oes") && w.len() > 3 {
@@ -100,14 +128,20 @@ pub fn pluralize(word: &str) -> String {
         ("phenomenon", "phenomena"),
     ];
     for &(singular, plural) in irregular {
-        if w == singular { return plural.into(); }
+        if w == singular {
+            return plural.into();
+        }
     }
 
     if w.ends_with('y') && w.len() > 1 && !is_vowel(w.as_bytes()[w.len() - 2]) {
         return format!("{}ies", &w[..w.len() - 1]);
     }
-    if w.ends_with('s') || w.ends_with('x') || w.ends_with('z')
-        || w.ends_with("ch") || w.ends_with("sh") {
+    if w.ends_with('s')
+        || w.ends_with('x')
+        || w.ends_with('z')
+        || w.ends_with("ch")
+        || w.ends_with("sh")
+    {
         return format!("{w}es");
     }
     if w.ends_with('f') {
@@ -177,10 +211,21 @@ mod tests {
     #[test]
     fn test_roundtrip() {
         // Note: vertex→vertices→vertice due to matching Python inflect behavior
-        for word in &["subject", "session", "run", "task", "acquisition", "analysis"] {
+        for word in &[
+            "subject",
+            "session",
+            "run",
+            "task",
+            "acquisition",
+            "analysis",
+        ] {
             let plural = pluralize(word);
             let back = singularize(&plural).unwrap();
-            assert_eq!(&back, word, "roundtrip failed: {} -> {} -> {}", word, plural, back);
+            assert_eq!(
+                &back, word,
+                "roundtrip failed: {} -> {} -> {}",
+                word, plural, back
+            );
         }
     }
 }

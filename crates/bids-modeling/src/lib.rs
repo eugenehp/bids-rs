@@ -56,17 +56,23 @@
 //! }
 //! ```
 
-pub mod graph;
-pub mod node;
-pub mod hrf;
-pub mod transformations;
 pub mod auto_model;
+pub mod graph;
+pub mod hrf;
+pub mod node;
 pub mod spec;
+pub mod transformations;
 
-pub use graph::StatsModelsGraph;
-pub use node::{StatsModelsNode, StatsModelsEdge, StatsModelsNodeOutput, ContrastInfo, build_groups};
-pub use hrf::{spm_hrf, glover_hrf, compute_regressor, HrfModel};
 pub use auto_model::auto_model;
-pub use transformations::{TransformSpec, TransformerManager, apply_transformations, expand_wildcards};
-pub use spec::{GlmSpec, MetaAnalysisSpec, Term, dummies_to_vec, compute_vif,
-               format_design_matrix, format_correlation_matrix};
+pub use graph::StatsModelsGraph;
+pub use hrf::{HrfModel, compute_regressor, glover_hrf, spm_hrf};
+pub use node::{
+    ContrastInfo, StatsModelsEdge, StatsModelsNode, StatsModelsNodeOutput, build_groups,
+};
+pub use spec::{
+    GlmSpec, MetaAnalysisSpec, Term, compute_vif, dummies_to_vec, format_correlation_matrix,
+    format_design_matrix,
+};
+pub use transformations::{
+    TransformSpec, TransformerManager, apply_transformations, expand_wildcards,
+};

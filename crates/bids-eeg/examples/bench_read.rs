@@ -100,7 +100,11 @@ fn main() {
         file_mb
     );
 
-    println!("EDF Read All Channels ({} ch × {} samples):", n_ch, n_rec * spr);
+    println!(
+        "EDF Read All Channels ({} ch × {} samples):",
+        n_ch,
+        n_rec * spr
+    );
     for i in 0..3 {
         let t = Instant::now();
         let data = bids_eeg::read_edf(&path, &bids_eeg::ReadOptions::default()).unwrap();
@@ -120,8 +124,7 @@ fn main() {
         let t = Instant::now();
         let data = bids_eeg::read_edf(
             &path,
-            &bids_eeg::ReadOptions::new()
-                .with_channels(vec!["EEG1".into(), "EEG32".into()]),
+            &bids_eeg::ReadOptions::new().with_channels(vec!["EEG1".into(), "EEG32".into()]),
         )
         .unwrap();
         let e = t.elapsed();
@@ -161,8 +164,7 @@ fn main() {
     let t = Instant::now();
     create_test_bv(&dir, n_ch, n_bv_samples);
     let bv_path = dir.join("bench.vhdr");
-    let bv_mb =
-        std::fs::metadata(dir.join("bench.eeg")).unwrap().len() as f64 / 1e6;
+    let bv_mb = std::fs::metadata(dir.join("bench.eeg")).unwrap().len() as f64 / 1e6;
     println!(
         "  Created in {:.2}s ({:.0} MB)\n",
         t.elapsed().as_secs_f64(),
@@ -175,8 +177,7 @@ fn main() {
     );
     for i in 0..3 {
         let t = Instant::now();
-        let data =
-            bids_eeg::read_brainvision(&bv_path, &bids_eeg::ReadOptions::default()).unwrap();
+        let data = bids_eeg::read_brainvision(&bv_path, &bids_eeg::ReadOptions::default()).unwrap();
         let e = t.elapsed();
         println!(
             "  run {}: {:.3}s ({:.0} MB/s) → {}ch × {} samples",

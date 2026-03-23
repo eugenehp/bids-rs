@@ -60,19 +60,29 @@ pub fn read_cifti_header(path: &Path) -> Result<CiftiHeader> {
     let vox_offset = nifti_header.vox_offset;
     let file = std::fs::File::open(path)?;
     let mut reader = BufReader::new(file);
-    reader.seek(SeekFrom::Start(if nifti_header.version == 2 { 544 } else { 352 }))?;
+    reader.seek(SeekFrom::Start(if nifti_header.version == 2 {
+        544
+    } else {
+        352
+    }))?;
 
     let mut cifti_xml = String::new();
 
     // Extensions start after header, before vox_offset
-    let mut pos = if nifti_header.version == 2 { 544u64 } else { 352u64 };
+    let mut pos = if nifti_header.version == 2 {
+        544u64
+    } else {
+        352u64
+    };
     while pos + 8 < vox_offset {
         let mut ext_header = [0u8; 8];
         if reader.read_exact(&mut ext_header).is_err() {
             break;
         }
-        let esize = i32::from_le_bytes([ext_header[0], ext_header[1], ext_header[2], ext_header[3]]) as usize;
-        let ecode = i32::from_le_bytes([ext_header[4], ext_header[5], ext_header[6], ext_header[7]]);
+        let esize = i32::from_le_bytes([ext_header[0], ext_header[1], ext_header[2], ext_header[3]])
+            as usize;
+        let ecode =
+            i32::from_le_bytes([ext_header[4], ext_header[5], ext_header[6], ext_header[7]]);
 
         if esize < 8 {
             break;
@@ -139,7 +149,8 @@ fn parse_brain_models(xml: &str) -> Vec<BrainModel> {
 
     for bm_start in xml.match_indices("<BrainModel") {
         let start = bm_start.0;
-        let end = xml[start..].find("/>")
+        let end = xml[start..]
+            .find("/>")
             .or_else(|| xml[start..].find('>'))
             .map(|e| start + e)
             .unwrap_or(xml.len());
@@ -177,7 +188,10 @@ impl std::fmt::Display for CiftiHeader {
         write!(
             f,
             "CIFTI-2 {}: {} maps × {} brainordinates, {} brain models",
-            self.intent_name, self.n_maps, self.n_brainordinates, self.brain_models.len()
+            self.intent_name,
+            self.n_maps,
+            self.n_brainordinates,
+            self.brain_models.len()
         )
     }
 }

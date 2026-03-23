@@ -61,11 +61,14 @@ pub mod pipeline;
 
 pub use channels::{Channel, ChannelType, read_channels_tsv};
 pub use coordsystem::CoordinateSystem;
-pub use data::{Annotation, EegData, ReadOptions, read_edf, read_brainvision, read_eeg_data, read_brainvision_markers};
-pub use eeg_layout::{EegLayout, EdfHeader, PhysioData, EegDatasetSummary};
+pub use csp::CSP;
+pub use data::{
+    Annotation, EegData, ReadOptions, read_brainvision, read_brainvision_markers, read_edf,
+    read_eeg_data,
+};
+pub use eeg_layout::{EdfHeader, EegDatasetSummary, EegLayout, PhysioData};
 pub use electrodes::{Electrode, read_electrodes_tsv};
 pub use events::{EegEvent, read_events_tsv};
+pub use harmonize::{ChannelStrategy, HarmonizationPlan, apply_harmonization, plan_harmonization};
 pub use metadata::EegMetadata;
 pub use pipeline::{Pipeline as EegPipeline, PipelineResult};
-pub use harmonize::{ChannelStrategy, HarmonizationPlan, plan_harmonization, apply_harmonization};
-pub use csp::CSP;

@@ -34,18 +34,16 @@ pub struct SplitIndices {
 /// generalization is measured.
 ///
 /// Corresponds to MOABB's `WithinSessionEvaluation`.
-pub fn within_session_splits(
-    metadata: &[SampleMeta],
-    k: usize,
-    seed: u64,
-) -> Vec<SplitIndices> {
+pub fn within_session_splits(metadata: &[SampleMeta], k: usize, seed: u64) -> Vec<SplitIndices> {
     let mut results = Vec::new();
 
     // Group indices by (subject, session)
     let mut groups: HashMap<(&str, &str), Vec<usize>> = HashMap::new();
     for (i, m) in metadata.iter().enumerate() {
-        groups.entry((m.subject.as_str(), m.session.as_str()))
-            .or_default().push(i);
+        groups
+            .entry((m.subject.as_str(), m.session.as_str()))
+            .or_default()
+            .push(i);
     }
 
     let mut group_keys: Vec<_> = groups.keys().cloned().collect();
@@ -54,7 +52,9 @@ pub fn within_session_splits(
     for (subj, sess) in group_keys {
         let indices = &groups[&(subj, sess)];
         let n = indices.len();
-        if n < k { continue; }
+        if n < k {
+            continue;
+        }
 
         // Deterministic shuffle
         let mut shuffled = indices.clone();
@@ -63,15 +63,22 @@ pub fn within_session_splits(
         let fold_size = n / k;
         for fold in 0..k {
             let test_start = fold * fold_size;
-            let test_end = if fold == k - 1 { n } else { test_start + fold_size };
+            let test_end = if fold == k - 1 {
+                n
+            } else {
+                test_start + fold_size
+            };
 
             let test: Vec<usize> = shuffled[test_start..test_end].to_vec();
-            let train: Vec<usize> = shuffled[..test_start].iter()
+            let train: Vec<usize> = shuffled[..test_start]
+                .iter()
                 .chain(shuffled[test_end..].iter())
-                .copied().collect();
+                .copied()
+                .collect();
 
             results.push(SplitIndices {
-                train, test,
+                train,
+                test,
                 description: format!("within_session sub={subj} ses={sess} fold={fold}"),
             });
         }
@@ -105,22 +112,30 @@ pub fn cross_session_splits(metadata: &[SampleMeta]) -> Vec<SplitIndices> {
         let subj_indices = &by_subject[subj];
 
         // Find unique sessions for this subject
-        let sessions: BTreeSet<&str> = subj_indices.iter()
+        let sessions: BTreeSet<&str> = subj_indices
+            .iter()
             .map(|&i| metadata[i].session.as_str())
             .collect();
 
-        if sessions.len() < 2 { continue; }
+        if sessions.len() < 2 {
+            continue;
+        }
 
         for test_session in &sessions {
-            let train: Vec<usize> = subj_indices.iter()
+            let train: Vec<usize> = subj_indices
+                .iter()
                 .filter(|&&i| metadata[i].session.as_str() != *test_session)
-                .copied().collect();
-            let test: Vec<usize> = subj_indices.iter()
+                .copied()
+                .collect();
+            let test: Vec<usize> = subj_indices
+                .iter()
                 .filter(|&&i| metadata[i].session.as_str() == *test_session)
-                .copied().collect();
+                .copied()
+                .collect();
 
             results.push(SplitIndices {
-                train, test,
+                train,
+                test,
                 description: format!("cross_session sub={subj} test_ses={test_session}"),
             });
         }
@@ -146,20 +161,27 @@ pub fn cross_subject_splits(metadata: &[SampleMeta]) -> Vec<SplitIndices> {
         subjects.insert(m.subject.as_str());
     }
 
-    if subjects.len() < 2 { return results; }
+    if subjects.len() < 2 {
+        return results;
+    }
 
     for &test_subject in &subjects {
-        let train: Vec<usize> = metadata.iter().enumerate()
+        let train: Vec<usize> = metadata
+            .iter()
+            .enumerate()
             .filter(|(_, m)| m.subject.as_str() != test_subject)
             .map(|(i, _)| i)
             .collect();
-        let test: Vec<usize> = metadata.iter().enumerate()
+        let test: Vec<usize> = metadata
+            .iter()
+            .enumerate()
             .filter(|(_, m)| m.subject.as_str() == test_subject)
             .map(|(i, _)| i)
             .collect();
 
         results.push(SplitIndices {
-            train, test,
+            train,
+            test,
             description: format!("cross_subject test_sub={test_subject}"),
         });
     }
@@ -178,12 +200,16 @@ pub fn cross_subject_kfold_splits(
     k: usize,
     seed: u64,
 ) -> Vec<SplitIndices> {
-    let mut subjects: Vec<String> = metadata.iter()
+    let mut subjects: Vec<String> = metadata
+        .iter()
         .map(|m| m.subject.clone())
         .collect::<BTreeSet<_>>()
-        .into_iter().collect();
+        .into_iter()
+        .collect();
 
-    if subjects.len() < k { return Vec::new(); }
+    if subjects.len() < k {
+        return Vec::new();
+    }
 
     deterministic_shuffle(&mut subjects, seed);
 
@@ -192,21 +218,37 @@ pub fn cross_subject_kfold_splits(
 
     for fold in 0..k {
         let test_start = fold * fold_size;
-        let test_end = if fold == k - 1 { subjects.len() } else { test_start + fold_size };
+        let test_end = if fold == k - 1 {
+            subjects.len()
+        } else {
+            test_start + fold_size
+        };
         let test_subjects: BTreeSet<&str> = subjects[test_start..test_end]
-            .iter().map(|s| s.as_str()).collect();
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
 
-        let train: Vec<usize> = metadata.iter().enumerate()
+        let train: Vec<usize> = metadata
+            .iter()
+            .enumerate()
             .filter(|(_, m)| !test_subjects.contains(m.subject.as_str()))
-            .map(|(i, _)| i).collect();
-        let test: Vec<usize> = metadata.iter().enumerate()
+            .map(|(i, _)| i)
+            .collect();
+        let test: Vec<usize> = metadata
+            .iter()
+            .enumerate()
             .filter(|(_, m)| test_subjects.contains(m.subject.as_str()))
-            .map(|(i, _)| i).collect();
+            .map(|(i, _)| i)
+            .collect();
 
         let test_list: Vec<&str> = test_subjects.into_iter().collect();
         results.push(SplitIndices {
-            train, test,
-            description: format!("cross_subject_kfold fold={fold} test=[{}]", test_list.join(",")),
+            train,
+            test,
+            description: format!(
+                "cross_subject_kfold fold={fold} test=[{}]",
+                test_list.join(",")
+            ),
         });
     }
 
@@ -217,10 +259,14 @@ pub fn cross_subject_kfold_splits(
 
 fn deterministic_shuffle<T>(items: &mut [T], seed: u64) {
     let n = items.len();
-    if n <= 1 { return; }
+    if n <= 1 {
+        return;
+    }
     let mut state = seed ^ 0x517cc1b727220a95;
     for i in (1..n).rev() {
-        state = state.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        state = state
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
         let j = (state >> 33) as usize % (i + 1);
         items.swap(i, j);
     }
@@ -279,15 +325,24 @@ mod tests {
         assert_eq!(splits.len(), 8);
         for split in &splits {
             // Test samples should all be from one session
-            let test_sessions: BTreeSet<_> = split.test.iter()
-                .map(|&i| meta[i].session.as_str()).collect();
+            let test_sessions: BTreeSet<_> = split
+                .test
+                .iter()
+                .map(|&i| meta[i].session.as_str())
+                .collect();
             assert_eq!(test_sessions.len(), 1);
 
             // Train samples should be from the other session of the same subject
-            let test_subject: BTreeSet<_> = split.test.iter()
-                .map(|&i| meta[i].subject.as_str()).collect();
-            let train_subject: BTreeSet<_> = split.train.iter()
-                .map(|&i| meta[i].subject.as_str()).collect();
+            let test_subject: BTreeSet<_> = split
+                .test
+                .iter()
+                .map(|&i| meta[i].subject.as_str())
+                .collect();
+            let train_subject: BTreeSet<_> = split
+                .train
+                .iter()
+                .map(|&i| meta[i].subject.as_str())
+                .collect();
             assert_eq!(test_subject, train_subject);
         }
     }
@@ -298,13 +353,19 @@ mod tests {
         let splits = cross_subject_splits(&meta);
         assert_eq!(splits.len(), 4); // 4 subjects, leave-one-out
         for split in &splits {
-            let test_subjects: BTreeSet<_> = split.test.iter()
-                .map(|&i| meta[i].subject.as_str()).collect();
+            let test_subjects: BTreeSet<_> = split
+                .test
+                .iter()
+                .map(|&i| meta[i].subject.as_str())
+                .collect();
             assert_eq!(test_subjects.len(), 1);
 
             // No subject overlap
-            let train_subjects: BTreeSet<_> = split.train.iter()
-                .map(|&i| meta[i].subject.as_str()).collect();
+            let train_subjects: BTreeSet<_> = split
+                .train
+                .iter()
+                .map(|&i| meta[i].subject.as_str())
+                .collect();
             for ts in &test_subjects {
                 assert!(!train_subjects.contains(ts));
             }

@@ -73,7 +73,9 @@ pub struct BenchmarkResults {
 
 impl BenchmarkResults {
     #[must_use]
-    pub fn new() -> Self { Self::default() }
+    pub fn new() -> Self {
+        Self::default()
+    }
 
     /// Add a result.
     pub fn push(&mut self, result: BenchmarkResult) {
@@ -82,22 +84,28 @@ impl BenchmarkResults {
 
     /// Number of results.
     #[must_use]
-    pub fn len(&self) -> usize { self.results.len() }
+    pub fn len(&self) -> usize {
+        self.results.len()
+    }
 
     /// Whether empty.
     #[must_use]
-    pub fn is_empty(&self) -> bool { self.results.is_empty() }
+    pub fn is_empty(&self) -> bool {
+        self.results.is_empty()
+    }
 
     /// Compute mean score per pipeline across all subjects/sessions/folds.
     #[must_use]
     pub fn mean_scores_by_pipeline(&self) -> Vec<(String, f64, usize)> {
-        let mut sums: std::collections::HashMap<&str, (f64, usize)> = std::collections::HashMap::new();
+        let mut sums: std::collections::HashMap<&str, (f64, usize)> =
+            std::collections::HashMap::new();
         for r in &self.results {
             let e = sums.entry(r.pipeline.as_str()).or_insert((0.0, 0));
             e.0 += r.score;
             e.1 += 1;
         }
-        let mut out: Vec<(String, f64, usize)> = sums.into_iter()
+        let mut out: Vec<(String, f64, usize)> = sums
+            .into_iter()
             .map(|(name, (sum, count))| (name.to_string(), sum / count as f64, count))
             .collect();
         out.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
@@ -108,7 +116,10 @@ impl BenchmarkResults {
     #[must_use]
     pub fn summary(&self) -> String {
         let means = self.mean_scores_by_pipeline();
-        let mut lines = vec![format!("{:<30} {:>10} {:>8}", "Pipeline", "Mean Score", "N")];
+        let mut lines = vec![format!(
+            "{:<30} {:>10} {:>8}",
+            "Pipeline", "Mean Score", "N"
+        )];
         lines.push("-".repeat(50));
         for (name, mean, n) in &means {
             lines.push(format!("{:<30} {:>10.4} {:>8}", name, mean, n));
@@ -132,7 +143,9 @@ impl BenchmarkResults {
     pub fn append_csv(&self, path: &str) -> std::io::Result<()> {
         let exists = std::path::Path::new(path).exists();
         let mut f = std::fs::OpenOptions::new()
-            .create(true).append(true).open(path)?;
+            .create(true)
+            .append(true)
+            .open(path)?;
         if !exists {
             writeln!(f, "{}", Self::csv_header())?;
         }
@@ -150,9 +163,13 @@ impl BenchmarkResults {
         let _header = lines.next(); // skip header
 
         for line in lines {
-            if line.trim().is_empty() { continue; }
+            if line.trim().is_empty() {
+                continue;
+            }
             let cols: Vec<&str> = line.split(',').collect();
-            if cols.len() < 15 { continue; }
+            if cols.len() < 15 {
+                continue;
+            }
             results.push(BenchmarkResult {
                 dataset: cols[0].to_string(),
                 subject: cols[1].to_string(),
@@ -179,10 +196,24 @@ impl BenchmarkResults {
     }
 
     fn csv_row(r: &BenchmarkResult) -> String {
-        format!("{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}",
-            r.dataset, r.subject, r.session, r.pipeline, r.paradigm,
-            r.eval_type, r.score, r.scoring, r.time_seconds,
-            r.n_train, r.n_test, r.n_channels, r.n_classes, r.fold, r.notes)
+        format!(
+            "{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}",
+            r.dataset,
+            r.subject,
+            r.session,
+            r.pipeline,
+            r.paradigm,
+            r.eval_type,
+            r.score,
+            r.scoring,
+            r.time_seconds,
+            r.n_train,
+            r.n_test,
+            r.n_channels,
+            r.n_classes,
+            r.fold,
+            r.notes
+        )
     }
 
     // ── Parquet Export ──────────────────────────────────────────────────
@@ -250,23 +281,27 @@ impl BenchmarkResults {
             notes_b.append_value(&r.notes);
         }
 
-        let batch = arrow::RecordBatch::try_new(schema.clone(), vec![
-            Arc::new(dataset_b.finish()),
-            Arc::new(subject_b.finish()),
-            Arc::new(session_b.finish()),
-            Arc::new(pipeline_b.finish()),
-            Arc::new(paradigm_b.finish()),
-            Arc::new(eval_b.finish()),
-            Arc::new(score_b.finish()),
-            Arc::new(scoring_b.finish()),
-            Arc::new(time_b.finish()),
-            Arc::new(n_train_b.finish()),
-            Arc::new(n_test_b.finish()),
-            Arc::new(n_chan_b.finish()),
-            Arc::new(n_class_b.finish()),
-            Arc::new(fold_b.finish()),
-            Arc::new(notes_b.finish()),
-        ]).map_err(|e| crate::Error::Network(e.to_string()))?;
+        let batch = arrow::RecordBatch::try_new(
+            schema.clone(),
+            vec![
+                Arc::new(dataset_b.finish()),
+                Arc::new(subject_b.finish()),
+                Arc::new(session_b.finish()),
+                Arc::new(pipeline_b.finish()),
+                Arc::new(paradigm_b.finish()),
+                Arc::new(eval_b.finish()),
+                Arc::new(score_b.finish()),
+                Arc::new(scoring_b.finish()),
+                Arc::new(time_b.finish()),
+                Arc::new(n_train_b.finish()),
+                Arc::new(n_test_b.finish()),
+                Arc::new(n_chan_b.finish()),
+                Arc::new(n_class_b.finish()),
+                Arc::new(fold_b.finish()),
+                Arc::new(notes_b.finish()),
+            ],
+        )
+        .map_err(|e| crate::Error::Network(e.to_string()))?;
 
         let file = std::fs::File::create(path)?;
         let props = parquet::file::properties::WriterProperties::builder()
@@ -274,8 +309,12 @@ impl BenchmarkResults {
             .build();
         let mut writer = parquet::arrow::ArrowWriter::try_new(file, schema, Some(props))
             .map_err(|e| crate::Error::Network(e.to_string()))?;
-        writer.write(&batch).map_err(|e| crate::Error::Network(e.to_string()))?;
-        writer.close().map_err(|e| crate::Error::Network(e.to_string()))?;
+        writer
+            .write(&batch)
+            .map_err(|e| crate::Error::Network(e.to_string()))?;
+        writer
+            .close()
+            .map_err(|e| crate::Error::Network(e.to_string()))?;
 
         Ok(())
     }
@@ -283,7 +322,12 @@ impl BenchmarkResults {
 
 impl std::fmt::Display for BenchmarkResults {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "BenchmarkResults({} results)\n{}", self.results.len(), self.summary())
+        write!(
+            f,
+            "BenchmarkResults({} results)\n{}",
+            self.results.len(),
+            self.summary()
+        )
     }
 }
 

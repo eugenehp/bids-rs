@@ -315,12 +315,38 @@ pub type StringEntities = HashMap<String, String>;
 
 /// Standard BIDS entities in their canonical order.
 pub const ENTITY_ORDER: &[&str] = &[
-    "subject", "session", "sample", "task", "tracksys", "acquisition",
-    "ceagent", "staining", "tracer", "reconstruction", "direction", "run",
-    "modality", "echo", "flip", "inversion", "mtransfer", "part",
-    "processing", "hemisphere", "space", "split", "recording", "chunk",
-    "atlas", "resolution", "density", "label", "description",
-    "suffix", "extension", "datatype",
+    "subject",
+    "session",
+    "sample",
+    "task",
+    "tracksys",
+    "acquisition",
+    "ceagent",
+    "staining",
+    "tracer",
+    "reconstruction",
+    "direction",
+    "run",
+    "modality",
+    "echo",
+    "flip",
+    "inversion",
+    "mtransfer",
+    "part",
+    "processing",
+    "hemisphere",
+    "space",
+    "split",
+    "recording",
+    "chunk",
+    "atlas",
+    "resolution",
+    "density",
+    "label",
+    "description",
+    "suffix",
+    "extension",
+    "datatype",
 ];
 
 /// Parse entities from a filename using the provided entity definitions.
@@ -341,12 +367,14 @@ pub fn parse_file_entities(path: &str, entities: &[Entity]) -> Entities {
 /// Sort entity keys according to the canonical BIDS ordering.
 #[must_use]
 pub fn sort_entities(entities: &Entities) -> Vec<(String, EntityValue)> {
-    let mut pairs: Vec<_> = entities.iter()
+    let mut pairs: Vec<_> = entities
+        .iter()
         .map(|(k, v)| (k.clone(), v.clone()))
         .collect();
 
     pairs.sort_by_key(|(k, _)| {
-        ENTITY_ORDER.iter()
+        ENTITY_ORDER
+            .iter()
             .position(|&e| e == k.as_str())
             .unwrap_or(ENTITY_ORDER.len())
     });

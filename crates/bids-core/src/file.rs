@@ -5,8 +5,8 @@
 //! and provides methods for reading JSON/TSV content, finding companion files,
 //! and copying/symlinking.
 
-use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
 
 use crate::entities::{Entities, EntityValue};
 use crate::metadata::BidsMetadata;
@@ -34,7 +34,11 @@ pub enum CopyMode {
 impl From<bool> for CopyMode {
     /// `true` → `Symlink`, `false` → `Copy` (backwards compatibility).
     fn from(symbolic: bool) -> Self {
-        if symbolic { CopyMode::Symlink } else { CopyMode::Copy }
+        if symbolic {
+            CopyMode::Symlink
+        } else {
+            CopyMode::Copy
+        }
     }
 }
 
@@ -95,22 +99,32 @@ impl std::fmt::Display for FileType {
 /// Compound extensions (`.nii.gz`) must come before simple ones (`.nii`)
 /// so that `ends_with` matching works correctly.
 const EXTENSION_MAP: &[(&[&str], FileType)] = &[
-    (&[".dtseries.nii", ".func.gii", ".nii.gz", ".nii", ".gii"], FileType::Image),
+    (
+        &[".dtseries.nii", ".func.gii", ".nii.gz", ".nii", ".gii"],
+        FileType::Image,
+    ),
     (&[".tsv.gz", ".tsv"], FileType::Data),
     (&[".json"], FileType::Json),
-    (&[".edf", ".bdf", ".set", ".vhdr", ".eeg", ".fdt"], FileType::Eeg),
-    (&[".fif", ".ds", ".sqd", ".con", ".raw", ".pdf"], FileType::Meg),
+    (
+        &[".edf", ".bdf", ".set", ".vhdr", ".eeg", ".fdt"],
+        FileType::Eeg,
+    ),
+    (
+        &[".fif", ".ds", ".sqd", ".con", ".raw", ".pdf"],
+        FileType::Meg,
+    ),
     (&[".snirf"], FileType::Nirs),
-    (&[".ome.tif", ".ome.tiff", ".tif", ".tiff", ".svs"], FileType::Microscopy),
+    (
+        &[".ome.tif", ".ome.tiff", ".tif", ".tiff", ".svs"],
+        FileType::Microscopy,
+    ),
 ];
 
 impl FileType {
     /// Infer file type from the file extension(s).
     #[must_use]
     pub fn from_path(path: &Path) -> Self {
-        let name = path.file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("");
+        let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
         for &(extensions, file_type) in EXTENSION_MAP {
             if extensions.iter().any(|ext| name.ends_with(ext)) {
@@ -164,10 +178,12 @@ impl BidsFile {
     /// Create a new BidsFile from a path.
     pub fn new(path: impl AsRef<Path>) -> Self {
         let path = path.as_ref().to_path_buf();
-        let filename = path.file_name()
+        let filename = path
+            .file_name()
             .map(|n| n.to_string_lossy().to_string())
             .unwrap_or_default();
-        let dirname = path.parent()
+        let dirname = path
+            .parent()
             .map(std::path::Path::to_path_buf)
             .unwrap_or_default();
         let is_dir = filename.is_empty();
@@ -201,7 +217,10 @@ impl BidsFile {
     /// Get the path relative to a root directory.
     #[must_use]
     pub fn relpath(&self, root: &Path) -> Option<PathBuf> {
-        self.path.strip_prefix(root).ok().map(std::path::Path::to_path_buf)
+        self.path
+            .strip_prefix(root)
+            .ok()
+            .map(std::path::Path::to_path_buf)
     }
 
     /// Get a combined view of filename entities and metadata.
@@ -210,7 +229,8 @@ impl BidsFile {
         match metadata {
             Some(true) => {
                 // Only metadata entities
-                self.metadata.iter()
+                self.metadata
+                    .iter()
                     .map(|(k, v)| (k.clone(), EntityValue::Json(v.clone())))
                     .collect()
             }
@@ -239,8 +259,12 @@ impl BidsFile {
     #[must_use]
     pub fn extension(&self) -> &str {
         const COMPOUND_EXTENSIONS: &[&str] = &[
-            ".dtseries.nii", ".func.gii", ".ome.tif", ".ome.tiff",
-            ".nii.gz", ".tsv.gz",
+            ".dtseries.nii",
+            ".func.gii",
+            ".ome.tif",
+            ".ome.tiff",
+            ".nii.gz",
+            ".tsv.gz",
         ];
         let name = &self.filename;
         for ext in COMPOUND_EXTENSIONS {
@@ -248,9 +272,7 @@ impl BidsFile {
                 return ext;
             }
         }
-        name.rfind('.')
-            .map(|start| &name[start..])
-            .unwrap_or("")
+        name.rfind('.').map(|start| &name[start..]).unwrap_or("")
     }
 
     /// Get the suffix (the part before the extension, after the last underscore).
@@ -279,9 +301,10 @@ impl BidsFile {
     /// an I/O / JSON parse error.
     pub fn get_json(&self) -> Result<serde_json::Value, crate::error::BidsError> {
         if self.file_type != FileType::Json {
-            return Err(crate::error::BidsError::FileType(
-                format!("{} is not a JSON file", self.path.display())
-            ));
+            return Err(crate::error::BidsError::FileType(format!(
+                "{} is not a JSON file",
+                self.path.display()
+            )));
         }
         let contents = std::fs::read_to_string(&self.path)?;
         let val: serde_json::Value = serde_json::from_str(&contents)?;
@@ -294,15 +317,17 @@ impl BidsFile {
     ///
     /// Returns an error if the file is not JSON, can't be read, or the
     /// top-level JSON value is not an object.
-    pub fn get_dict(&self) -> Result<std::collections::HashMap<String, serde_json::Value>, crate::error::BidsError> {
+    pub fn get_dict(
+        &self,
+    ) -> Result<std::collections::HashMap<String, serde_json::Value>, crate::error::BidsError> {
         let val = self.get_json()?;
         match val {
-            serde_json::Value::Object(map) => {
-                Ok(map.into_iter().collect())
-            }
-            _ => Err(crate::error::BidsError::FileType(
-                format!("{} is a JSON containing {}, not an object", self.path.display(), val)
-            )),
+            serde_json::Value::Object(map) => Ok(map.into_iter().collect()),
+            _ => Err(crate::error::BidsError::FileType(format!(
+                "{} is a JSON containing {}, not an object",
+                self.path.display(),
+                val
+            ))),
         }
     }
 
@@ -329,7 +354,9 @@ impl BidsFile {
     ///     println!("onset={}, type={}", row["onset"], row["trial_type"]);
     /// }
     /// ```
-    pub fn get_df(&self) -> Result<Vec<std::collections::HashMap<String, String>>, crate::error::BidsError> {
+    pub fn get_df(
+        &self,
+    ) -> Result<Vec<std::collections::HashMap<String, String>>, crate::error::BidsError> {
         let file = std::fs::File::open(&self.path)?;
         let reader: Box<dyn std::io::Read> = if self.filename.ends_with(".tsv.gz") {
             Box::new(flate2::read::GzDecoder::new(file))
@@ -413,11 +440,21 @@ fn natural_cmp(a: &str, b: &str) -> std::cmp::Ordering {
                 if ac.is_ascii_digit() && bc.is_ascii_digit() {
                     let mut an = String::new();
                     while let Some(&c) = ai.peek() {
-                        if c.is_ascii_digit() { an.push(c); ai.next(); } else { break; }
+                        if c.is_ascii_digit() {
+                            an.push(c);
+                            ai.next();
+                        } else {
+                            break;
+                        }
                     }
                     let mut bn = String::new();
                     while let Some(&c) = bi.peek() {
-                        if c.is_ascii_digit() { bn.push(c); bi.next(); } else { break; }
+                        if c.is_ascii_digit() {
+                            bn.push(c);
+                            bi.next();
+                        } else {
+                            break;
+                        }
                     }
                     let av: u64 = an.parse().unwrap_or(0);
                     let bv: u64 = bn.parse().unwrap_or(0);
@@ -429,7 +466,10 @@ fn natural_cmp(a: &str, b: &str) -> std::cmp::Ordering {
                     let al = ac.to_lowercase().next().unwrap_or(ac);
                     let bl = bc.to_lowercase().next().unwrap_or(bc);
                     match al.cmp(&bl) {
-                        Ordering::Equal => { ai.next(); bi.next(); }
+                        Ordering::Equal => {
+                            ai.next();
+                            bi.next();
+                        }
                         ord => return ord,
                     }
                 }
@@ -441,23 +481,38 @@ fn natural_cmp(a: &str, b: &str) -> std::cmp::Ordering {
 /// Parse TSV rows from any reader. Shared logic for `BidsFile::get_df()`.
 ///
 /// The `n/a` sentinel is converted to empty strings per BIDS convention.
-pub(crate) fn parse_tsv_reader(reader: impl std::io::Read) -> Result<Vec<std::collections::HashMap<String, String>>, crate::error::BidsError> {
+pub(crate) fn parse_tsv_reader(
+    reader: impl std::io::Read,
+) -> Result<Vec<std::collections::HashMap<String, String>>, crate::error::BidsError> {
     use std::io::{BufRead, BufReader};
 
     let mut lines = BufReader::new(reader).lines();
-    let header_line = lines.next()
+    let header_line = lines
+        .next()
         .ok_or_else(|| crate::error::BidsError::Csv("Empty TSV file".into()))??;
-    let headers: Vec<String> = header_line.split('\t').map(|s| s.trim().to_string()).collect();
+    let headers: Vec<String> = header_line
+        .split('\t')
+        .map(|s| s.trim().to_string())
+        .collect();
 
     let mut rows = Vec::new();
     for line_result in lines {
         let line = line_result?;
-        if line.trim().is_empty() { continue; }
+        if line.trim().is_empty() {
+            continue;
+        }
         let values: Vec<&str> = line.split('\t').collect();
         let mut row = std::collections::HashMap::new();
         for (i, header) in headers.iter().enumerate() {
             let val = values.get(i).copied().unwrap_or("").trim();
-            row.insert(header.clone(), if val == "n/a" { String::new() } else { val.to_string() });
+            row.insert(
+                header.clone(),
+                if val == "n/a" {
+                    String::new()
+                } else {
+                    val.to_string()
+                },
+            );
         }
         rows.push(row);
     }
@@ -470,14 +525,38 @@ mod tests {
 
     #[test]
     fn test_file_type_detection() {
-        assert_eq!(FileType::from_path(Path::new("sub-01_T1w.nii.gz")), FileType::Image);
-        assert_eq!(FileType::from_path(Path::new("sub-01_events.tsv")), FileType::Data);
-        assert_eq!(FileType::from_path(Path::new("sub-01_eeg.json")), FileType::Json);
-        assert_eq!(FileType::from_path(Path::new("sub-01_eeg.edf")), FileType::Eeg);
-        assert_eq!(FileType::from_path(Path::new("sub-01_eeg.bdf")), FileType::Eeg);
-        assert_eq!(FileType::from_path(Path::new("sub-01_meg.fif")), FileType::Meg);
-        assert_eq!(FileType::from_path(Path::new("sub-01_nirs.snirf")), FileType::Nirs);
-        assert_eq!(FileType::from_path(Path::new("sub-01_sample-A_FLUO.tif")), FileType::Microscopy);
+        assert_eq!(
+            FileType::from_path(Path::new("sub-01_T1w.nii.gz")),
+            FileType::Image
+        );
+        assert_eq!(
+            FileType::from_path(Path::new("sub-01_events.tsv")),
+            FileType::Data
+        );
+        assert_eq!(
+            FileType::from_path(Path::new("sub-01_eeg.json")),
+            FileType::Json
+        );
+        assert_eq!(
+            FileType::from_path(Path::new("sub-01_eeg.edf")),
+            FileType::Eeg
+        );
+        assert_eq!(
+            FileType::from_path(Path::new("sub-01_eeg.bdf")),
+            FileType::Eeg
+        );
+        assert_eq!(
+            FileType::from_path(Path::new("sub-01_meg.fif")),
+            FileType::Meg
+        );
+        assert_eq!(
+            FileType::from_path(Path::new("sub-01_nirs.snirf")),
+            FileType::Nirs
+        );
+        assert_eq!(
+            FileType::from_path(Path::new("sub-01_sample-A_FLUO.tif")),
+            FileType::Microscopy
+        );
         assert_eq!(FileType::from_path(Path::new("README")), FileType::Generic);
     }
 
@@ -493,7 +572,10 @@ mod tests {
     #[test]
     fn test_natural_sort() {
         let mut files: Vec<String> = vec![
-            "sub-10".into(), "sub-2".into(), "sub-1".into(), "sub-20".into(),
+            "sub-10".into(),
+            "sub-2".into(),
+            "sub-1".into(),
+            "sub-20".into(),
         ];
         files.sort_by(|a, b| natural_cmp(a, b));
         assert_eq!(files, vec!["sub-1", "sub-2", "sub-10", "sub-20"]);

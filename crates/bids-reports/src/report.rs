@@ -1,9 +1,9 @@
 //! Report generation: auto-produce methods sections from BIDS datasets.
 
+use crate::parsing;
 use bids_core::error::Result;
 use bids_core::file::BidsFile;
 use bids_layout::BidsLayout;
-use crate::parsing;
 
 /// Generate publication-quality data acquisition methods from a BIDS dataset.
 ///
@@ -44,7 +44,10 @@ impl<'a> BidsReport<'a> {
 
         // Dataset info
         if let Some(desc) = self.layout.description() {
-            sections.push(format!("Data from the \"{}\" dataset were used.", desc.name));
+            sections.push(format!(
+                "Data from the \"{}\" dataset were used.",
+                desc.name
+            ));
         }
 
         // Collect datatypes and their files
@@ -53,7 +56,9 @@ impl<'a> BidsReport<'a> {
 
         for dt in &datatypes {
             let files = self.layout.get().datatype(dt).collect()?;
-            if files.is_empty() { continue; }
+            if files.is_empty() {
+                continue;
+            }
 
             // Get metadata from first file of each suffix
             let mut by_suffix: std::collections::HashMap<String, Vec<BidsFile>> =
@@ -67,11 +72,17 @@ impl<'a> BidsReport<'a> {
             for (suffix, suffix_files) in &by_suffix {
                 let md = self.layout.get_metadata(&suffix_files[0].path)?;
                 // Skip JSON sidecars
-                if suffix.as_str() == "description" { continue; }
-                let data_files: Vec<BidsFile> = suffix_files.iter()
+                if suffix.as_str() == "description" {
+                    continue;
+                }
+                let data_files: Vec<BidsFile> = suffix_files
+                    .iter()
                     .filter(|f| f.file_type != bids_core::file::FileType::Json)
-                    .cloned().collect();
-                if data_files.is_empty() { continue; }
+                    .cloned()
+                    .collect();
+                if data_files.is_empty() {
+                    continue;
+                }
                 datatype_info.push((dt.clone(), data_files, md));
             }
         }
@@ -93,7 +104,9 @@ impl<'a> BidsReport<'a> {
         let mut by_datatype: std::collections::HashMap<String, Vec<BidsFile>> =
             std::collections::HashMap::new();
         for f in files {
-            let dt = f.entities.get("datatype")
+            let dt = f
+                .entities
+                .get("datatype")
                 .map(|v| v.as_str_lossy().into_owned())
                 .unwrap_or_else(|| "unknown".into());
             by_datatype.entry(dt).or_default().push(f.clone());

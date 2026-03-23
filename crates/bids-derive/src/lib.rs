@@ -21,7 +21,9 @@ pub struct DerivativeManager {
 
 impl DerivativeManager {
     pub fn new() -> Self {
-        Self { derivatives: HashMap::new() }
+        Self {
+            derivatives: HashMap::new(),
+        }
     }
 
     /// Add a derivatives directory.
@@ -30,8 +32,9 @@ impl DerivativeManager {
         if desc_path.exists() {
             let name = bids_validate::validate_derivative_path(path)?;
             if self.derivatives.contains_key(&name) {
-                return Err(BidsError::DerivativesValidation(
-                    format!("Pipeline '{name}' already added")));
+                return Err(BidsError::DerivativesValidation(format!(
+                    "Pipeline '{name}' already added"
+                )));
             }
             let layout = BidsLayout::builder(path)
                 .validate(false)
@@ -53,11 +56,22 @@ impl DerivativeManager {
         Ok(())
     }
 
-    pub fn get(&self, name: &str) -> Option<&BidsLayout> { self.derivatives.get(name) }
-    pub fn names(&self) -> Vec<&str> { self.derivatives.keys().map(std::string::String::as_str).collect() }
-    pub fn all(&self) -> &HashMap<String, BidsLayout> { &self.derivatives }
+    pub fn get(&self, name: &str) -> Option<&BidsLayout> {
+        self.derivatives.get(name)
+    }
+    pub fn names(&self) -> Vec<&str> {
+        self.derivatives
+            .keys()
+            .map(std::string::String::as_str)
+            .collect()
+    }
+    pub fn all(&self) -> &HashMap<String, BidsLayout> {
+        &self.derivatives
+    }
 }
 
 impl Default for DerivativeManager {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }

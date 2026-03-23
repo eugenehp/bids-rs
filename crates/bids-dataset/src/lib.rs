@@ -40,28 +40,31 @@
 //! agg.export_split("/tmp/splits", Split::ratio(0.8, 0.1, 0.1)).unwrap();
 //! ```
 
-pub mod cache;
-pub mod http;
-pub mod openneuro;
-pub mod ratelimit;
-pub mod filter;
 pub mod aggregate;
-pub mod split;
-pub mod ml;
-pub mod paradigm;
-pub mod evaluation;
 pub mod benchmark;
+pub mod cache;
+pub mod evaluation;
+pub mod filter;
+pub mod http;
+pub mod ml;
+pub mod openneuro;
+pub mod paradigm;
+pub mod ratelimit;
+pub mod split;
 
-pub use cache::Cache;
-pub use openneuro::{OpenNeuro, DatasetInfo, RemoteFile, SearchBuilder, DownloadReport};
-pub use ratelimit::RateLimitConfig;
-pub use filter::DatasetFilter;
 pub use aggregate::{Aggregator, FileEntry};
-pub use split::Split;
-pub use ml::{EpochSpec, Sample, KFold, StratifiedSplit, DatasetIter};
-pub use paradigm::{Paradigm, ParadigmType, EvalStrategy};
-pub use evaluation::{SampleMeta, SplitIndices, within_session_splits, cross_session_splits, cross_subject_splits, cross_subject_kfold_splits};
 pub use benchmark::{BenchmarkResult, BenchmarkResults};
+pub use cache::Cache;
+pub use evaluation::{
+    SampleMeta, SplitIndices, cross_session_splits, cross_subject_kfold_splits,
+    cross_subject_splits, within_session_splits,
+};
+pub use filter::DatasetFilter;
+pub use ml::{DatasetIter, EpochSpec, KFold, Sample, StratifiedSplit};
+pub use openneuro::{DatasetInfo, DownloadReport, OpenNeuro, RemoteFile, SearchBuilder};
+pub use paradigm::{EvalStrategy, Paradigm, ParadigmType};
+pub use ratelimit::RateLimitConfig;
+pub use split::Split;
 
 /// Error type for this crate — re-exports [`bids_core::BidsError`].
 pub use bids_core::BidsError as Error;

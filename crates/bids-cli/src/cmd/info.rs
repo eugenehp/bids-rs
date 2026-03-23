@@ -9,10 +9,16 @@ pub fn run(root: &PathBuf, validate: bool) -> bids_core::error::Result<()> {
     if let Some(desc) = layout.description() {
         println!("  Name: {}", desc.name);
         println!("  BIDS Version: {}", desc.bids_version);
-        if let Some(ref license) = desc.license { println!("  License: {license}"); }
-        if let Some(ref authors) = desc.authors { println!("  Authors: {}", authors.join(", ")); }
+        if let Some(ref license) = desc.license {
+            println!("  License: {license}");
+        }
+        if let Some(ref authors) = desc.authors {
+            println!("  Authors: {}", authors.join(", "));
+        }
     }
     let datatypes = layout.get_datatypes()?;
-    if !datatypes.is_empty() { println!("  Datatypes: {}", datatypes.join(", ")); }
+    if !datatypes.is_empty() {
+        println!("  Datatypes: {}", datatypes.join(", "));
+    }
     Ok(())
 }

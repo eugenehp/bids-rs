@@ -49,26 +49,26 @@
 //! assert_eq!(entities.get("task").unwrap().as_str_lossy(), "rest");
 //! ```
 
+pub mod config;
+pub mod dataset_description;
 pub mod entities;
 pub mod error;
 pub mod file;
 pub mod genetic;
 pub mod hed;
 pub mod metadata;
-pub mod config;
-pub mod dataset_description;
 pub mod padded_int;
 pub mod timeseries;
 pub mod utils;
 
-pub use entities::{Entity, EntityValue, Entities, StringEntities};
-pub use error::{BidsError, Result};
-pub use file::{BidsFile, FileType, CopyMode};
-pub use metadata::BidsMetadata;
 pub use config::Config;
 pub use dataset_description::DatasetDescription;
+pub use entities::{Entities, Entity, EntityValue, StringEntities};
+pub use error::{BidsError, Result};
+pub use file::{BidsFile, CopyMode, FileType};
+pub use metadata::BidsMetadata;
 pub use padded_int::PaddedInt;
-pub use utils::{matches_entities, collect_associated_files, convert_json_keys};
+pub use utils::{collect_associated_files, convert_json_keys, matches_entities};
 
 /// Helper for modality crates: try to read from a companion file path.
 ///
@@ -78,7 +78,11 @@ pub fn try_read_companion<T, F>(path: &std::path::Path, reader: F) -> Result<Opt
 where
     F: FnOnce(&std::path::Path) -> Result<T>,
 {
-    if path.exists() { Ok(Some(reader(path)?)) } else { Ok(None) }
+    if path.exists() {
+        Ok(Some(reader(path)?))
+    } else {
+        Ok(None)
+    }
 }
 
 /// Convenience macro for building an [`Entities`] map inline.

@@ -29,15 +29,15 @@
 //! let val = img.get_voxel(&[32, 32, 16, 0]);
 //! ```
 
+pub mod cifti;
+pub mod gifti;
 #[allow(unsafe_code)]
 pub mod mmap;
 pub mod qmri;
-pub mod gifti;
-pub mod cifti;
 
-pub use qmri::QmriMetadata;
+pub use cifti::{BrainModel, CiftiHeader, read_cifti_header};
 pub use gifti::{GiftiImage, read_gifti_header};
-pub use cifti::{CiftiHeader, BrainModel, read_cifti_header};
+pub use qmri::QmriMetadata;
 
 use std::io::{BufReader, Read, Seek, SeekFrom};
 use std::path::Path;
@@ -159,11 +159,9 @@ impl NiftiHeader {
         reader.read_exact(&mut buf)?;
 
         let f32_at = |off: usize| -> f64 {
-            f32::from_le_bytes([buf[off], buf[off+1], buf[off+2], buf[off+3]]) as f64
+            f32::from_le_bytes([buf[off], buf[off + 1], buf[off + 2], buf[off + 3]]) as f64
         };
-        let i16_at = |off: usize| -> i16 {
-            i16::from_le_bytes([buf[off], buf[off+1]])
-        };
+        let i16_at = |off: usize| -> i16 { i16::from_le_bytes([buf[off], buf[off + 1]]) };
 
         let mut dim = [0i64; 8];
         for (i, d) in dim.iter_mut().enumerate() {
@@ -205,21 +203,21 @@ impl NiftiHeader {
             let qz = f32_at(276); // Note: overlaps with sform — only used when sform_code==0
             // Actually qoffset_x/y/z are at different offsets for NIfTI-1:
             // qoffset_x=268, qoffset_y=272, qoffset_z=276
-            let qa = (1.0 - qb*qb - qc*qc - qd*qd).max(0.0).sqrt();
+            let qa = (1.0 - qb * qb - qc * qc - qd * qd).max(0.0).sqrt();
             let (i, j, k) = (pixdim[1], pixdim[2], pixdim[3]);
             let qfac = if pixdim[0] < 0.0 { -1.0 } else { 1.0 };
 
-            affine[0][0] = (qa*qa + qb*qb - qc*qc - qd*qd) * i;
-            affine[0][1] = 2.0*(qb*qc - qa*qd) * j;
-            affine[0][2] = 2.0*(qb*qd + qa*qc) * k * qfac;
+            affine[0][0] = (qa * qa + qb * qb - qc * qc - qd * qd) * i;
+            affine[0][1] = 2.0 * (qb * qc - qa * qd) * j;
+            affine[0][2] = 2.0 * (qb * qd + qa * qc) * k * qfac;
             affine[0][3] = qx;
-            affine[1][0] = 2.0*(qb*qc + qa*qd) * i;
-            affine[1][1] = (qa*qa + qc*qc - qb*qb - qd*qd) * j;
-            affine[1][2] = 2.0*(qc*qd - qa*qb) * k * qfac;
+            affine[1][0] = 2.0 * (qb * qc + qa * qd) * i;
+            affine[1][1] = (qa * qa + qc * qc - qb * qb - qd * qd) * j;
+            affine[1][2] = 2.0 * (qc * qd - qa * qb) * k * qfac;
             affine[1][3] = qy;
-            affine[2][0] = 2.0*(qb*qd - qa*qc) * i;
-            affine[2][1] = 2.0*(qc*qd + qa*qb) * j;
-            affine[2][2] = (qa*qa + qd*qd - qb*qb - qc*qc) * k * qfac;
+            affine[2][0] = 2.0 * (qb * qd - qa * qc) * i;
+            affine[2][1] = 2.0 * (qc * qd + qa * qb) * j;
+            affine[2][2] = (qa * qa + qd * qd - qb * qb - qc * qc) * k * qfac;
             affine[2][3] = qz;
             affine[3][3] = 1.0;
         } else {
@@ -233,8 +231,18 @@ impl NiftiHeader {
         let ndim = dim[0].clamp(0, 7) as usize;
 
         Ok(Self {
-            ndim, dim, pixdim, datatype, bitpix, version: 1,
-            vox_offset, scl_slope, scl_inter, affine, sform_code, qform_code,
+            ndim,
+            dim,
+            pixdim,
+            datatype,
+            bitpix,
+            version: 1,
+            vox_offset,
+            scl_slope,
+            scl_inter,
+            affine,
+            sform_code,
+            qform_code,
         })
     }
 
@@ -242,24 +250,24 @@ impl NiftiHeader {
         let mut buf = [0u8; 536];
         reader.read_exact(&mut buf)?;
 
-        let f64_at = |off: usize| -> f64 {
-            f64::from_le_bytes(buf[off..off+8].try_into().unwrap())
-        };
-        let i16_at = |off: usize| -> i16 {
-            i16::from_le_bytes([buf[off], buf[off+1]])
-        };
-        let i64_at = |off: usize| -> i64 {
-            i64::from_le_bytes(buf[off..off+8].try_into().unwrap())
-        };
+        let f64_at =
+            |off: usize| -> f64 { f64::from_le_bytes(buf[off..off + 8].try_into().unwrap()) };
+        let i16_at = |off: usize| -> i16 { i16::from_le_bytes([buf[off], buf[off + 1]]) };
+        let i64_at =
+            |off: usize| -> i64 { i64::from_le_bytes(buf[off..off + 8].try_into().unwrap()) };
 
         let datatype = i16_at(8);
         let bitpix = i16_at(10);
 
         let mut dim = [0i64; 8];
-        for (i, d) in dim.iter_mut().enumerate() { *d = i64_at(12 + i * 8); }
+        for (i, d) in dim.iter_mut().enumerate() {
+            *d = i64_at(12 + i * 8);
+        }
 
         let mut pixdim = [0.0f64; 8];
-        for (i, p) in pixdim.iter_mut().enumerate() { *p = f64_at(100 + i * 8); }
+        for (i, p) in pixdim.iter_mut().enumerate() {
+            *p = f64_at(100 + i * 8);
+        }
 
         let vox_offset = i64_at(164) as u64;
         let scl_slope = f64_at(172);
@@ -288,14 +296,28 @@ impl NiftiHeader {
         let ndim = dim[0].clamp(0, 7) as usize;
 
         Ok(Self {
-            ndim, dim, pixdim, datatype, bitpix, version: 2,
-            vox_offset, scl_slope, scl_inter, affine, sform_code, qform_code,
+            ndim,
+            dim,
+            pixdim,
+            datatype,
+            bitpix,
+            version: 2,
+            vox_offset,
+            scl_slope,
+            scl_inter,
+            affine,
+            sform_code,
+            qform_code,
         })
     }
 
     /// Number of volumes (4th dimension). Returns 1 for 3D images.
     pub fn n_vols(&self) -> usize {
-        if self.ndim >= 4 { self.dim[4].max(1) as usize } else { 1 }
+        if self.ndim >= 4 {
+            self.dim[4].max(1) as usize
+        } else {
+            1
+        }
     }
 
     /// Voxel dimensions in mm: (x, y, z).
@@ -305,7 +327,11 @@ impl NiftiHeader {
 
     /// Matrix size: (nx, ny, nz).
     pub fn matrix_size(&self) -> (usize, usize, usize) {
-        (self.dim[1].max(0) as usize, self.dim[2].max(0) as usize, self.dim[3].max(0) as usize)
+        (
+            self.dim[1].max(0) as usize,
+            self.dim[2].max(0) as usize,
+            self.dim[3].max(0) as usize,
+        )
     }
 
     /// Repetition time in seconds (`pixdim[4]` for 4D time series).
@@ -328,7 +354,9 @@ impl NiftiHeader {
 
     /// Shape as a Vec (dims 1..ndim).
     pub fn shape(&self) -> Vec<usize> {
-        (1..=self.ndim).map(|i| self.dim[i].max(0) as usize).collect()
+        (1..=self.ndim)
+            .map(|i| self.dim[i].max(0) as usize)
+            .collect()
     }
 
     /// Whether slope/intercept scaling should be applied.
@@ -441,7 +469,10 @@ impl NiftiImage {
         if vol_header.ndim >= 4 {
             vol_header.dim[4] = 1;
         }
-        Ok(Self { header: vol_header, data })
+        Ok(Self {
+            header: vol_header,
+            data,
+        })
     }
 
     fn load_gz(path: &Path) -> Result<Self, NiftiError> {
@@ -465,13 +496,21 @@ impl NiftiImage {
 
     fn extract_volume_in_place(&mut self, volume: usize) -> Result<(), NiftiError> {
         if self.header.ndim < 4 {
-            return if volume == 0 { Ok(()) } else {
-                Err(NiftiError::VolumeOutOfRange { requested: volume, available: 1 })
+            return if volume == 0 {
+                Ok(())
+            } else {
+                Err(NiftiError::VolumeOutOfRange {
+                    requested: volume,
+                    available: 1,
+                })
             };
         }
         let n_vols = self.header.n_vols();
         if volume >= n_vols {
-            return Err(NiftiError::VolumeOutOfRange { requested: volume, available: n_vols });
+            return Err(NiftiError::VolumeOutOfRange {
+                requested: volume,
+                available: n_vols,
+            });
         }
         let vol_size = self.header.n_voxels() / n_vols;
         let start = volume * vol_size;
@@ -501,12 +540,20 @@ impl NiftiImage {
 
         let mut metadata = HashMap::new();
         metadata.insert("shape".to_string(), format!("{:?}", shape));
-        metadata.insert("voxel_size".to_string(), format!("{:?}", self.header.voxel_size()));
+        metadata.insert(
+            "voxel_size".to_string(),
+            format!("{:?}", self.header.voxel_size()),
+        );
         if let Some(tr) = self.header.tr() {
             metadata.insert("tr".to_string(), tr.to_string());
         }
         // Flatten affine to string
-        let aff: Vec<f64> = self.header.affine.iter().flat_map(|r| r.iter().copied()).collect();
+        let aff: Vec<f64> = self
+            .header
+            .affine
+            .iter()
+            .flat_map(|r| r.iter().copied())
+            .collect();
         metadata.insert("affine".to_string(), format!("{:?}", aff));
 
         let bytes = safetensors::tensor::serialize(&tensors, &Some(metadata))
@@ -515,15 +562,16 @@ impl NiftiImage {
     }
 
     /// Shape of the image as a Vec.
-    pub fn shape(&self) -> Vec<usize> { self.header.shape() }
+    pub fn shape(&self) -> Vec<usize> {
+        self.header.shape()
+    }
 
     /// Convert to an ndarray ArrayD<f64> with the image's native shape.
     #[cfg(feature = "ndarray")]
     pub fn to_ndarray(&self) -> ndarray::ArrayD<f64> {
         let shape: Vec<usize> = self.header.shape();
-        ndarray::ArrayD::from_shape_vec(
-            ndarray::IxDyn(&shape), self.data.clone()
-        ).unwrap_or_else(|_| ndarray::ArrayD::zeros(ndarray::IxDyn(&shape)))
+        ndarray::ArrayD::from_shape_vec(ndarray::IxDyn(&shape), self.data.clone())
+            .unwrap_or_else(|_| ndarray::ArrayD::zeros(ndarray::IxDyn(&shape)))
     }
 
     /// Get a voxel value by multi-dimensional index [x, y, z] or [x, y, z, t].
@@ -538,7 +586,9 @@ impl NiftiImage {
         let (nx, ny, nz) = self.header.matrix_size();
         let vol_size = nx * ny * nz;
         let n_vols = self.header.n_vols();
-        if t >= n_vols { return None; }
+        if t >= n_vols {
+            return None;
+        }
         let start = t * vol_size;
         let end = start + vol_size;
         if end <= self.data.len() {
@@ -551,7 +601,9 @@ impl NiftiImage {
     /// Extract a time series for a single voxel [x, y, z] across all volumes.
     pub fn get_timeseries(&self, x: usize, y: usize, z: usize) -> Option<Vec<f64>> {
         let (nx, ny, nz) = self.header.matrix_size();
-        if x >= nx || y >= ny || z >= nz { return None; }
+        if x >= nx || y >= ny || z >= nz {
+            return None;
+        }
         let vol_size = nx * ny * nz;
         let n_vols = self.header.n_vols();
         let voxel_offset = x + nx * (y + ny * z);
@@ -564,7 +616,9 @@ impl NiftiImage {
 
     /// Compute the mean across all voxels (useful for QC).
     pub fn mean(&self) -> f64 {
-        if self.data.is_empty() { return 0.0; }
+        if self.data.is_empty() {
+            return 0.0;
+        }
         self.data.iter().sum::<f64>() / self.data.len() as f64
     }
 
@@ -573,30 +627,45 @@ impl NiftiImage {
         let (nx, ny, nz) = self.header.matrix_size();
         let vol_size = nx * ny * nz;
         let n_vols = self.header.n_vols();
-        if n_vols <= 1 { return self.data.clone(); }
+        if n_vols <= 1 {
+            return self.data.clone();
+        }
         let mut mean = vec![0.0f64; vol_size];
         for t in 0..n_vols {
             let start = t * vol_size;
-            for (m, &d) in mean.iter_mut().zip(self.data[start..start + vol_size].iter()) {
+            for (m, &d) in mean
+                .iter_mut()
+                .zip(self.data[start..start + vol_size].iter())
+            {
                 *m += d;
             }
         }
         let scale = 1.0 / n_vols as f64;
-        for v in &mut mean { *v *= scale; }
+        for v in &mut mean {
+            *v *= scale;
+        }
         mean
     }
 
     fn linear_index(&self, idx: &[usize]) -> Option<usize> {
-        if idx.len() > self.header.ndim { return None; }
+        if idx.len() > self.header.ndim {
+            return None;
+        }
         let mut linear = 0;
         let mut stride = 1;
         for (i, &ix) in idx.iter().enumerate() {
             let dim_size = self.header.dim[i + 1] as usize;
-            if ix >= dim_size { return None; }
+            if ix >= dim_size {
+                return None;
+            }
             linear += ix * stride;
             stride *= dim_size;
         }
-        if linear < self.data.len() { Some(linear) } else { None }
+        if linear < self.data.len() {
+            Some(linear)
+        } else {
+            None
+        }
     }
 }
 
@@ -604,31 +673,47 @@ impl NiftiImage {
 
 /// Read voxel data from a seekable reader (uncompressed .nii).
 fn read_voxel_data_seekable<R: Read + Seek>(
-    reader: &mut R, header: &NiftiHeader,
+    reader: &mut R,
+    header: &NiftiHeader,
 ) -> Result<Vec<f64>, NiftiError> {
     let hdr_size = if header.version == 1 { 348u64 } else { 540 };
-    let offset = if header.vox_offset > hdr_size { header.vox_offset } else { hdr_size };
+    let offset = if header.vox_offset > hdr_size {
+        header.vox_offset
+    } else {
+        hdr_size
+    };
     reader.seek(SeekFrom::Start(offset))?;
     decode_voxels(reader, header)
 }
 
 /// Read a single volume from a seekable reader.
 fn read_single_volume_seekable<R: Read + Seek>(
-    reader: &mut R, header: &NiftiHeader, volume: usize,
+    reader: &mut R,
+    header: &NiftiHeader,
+    volume: usize,
 ) -> Result<Vec<f64>, NiftiError> {
     let n_vols = header.n_vols();
     if volume >= n_vols {
-        return Err(NiftiError::VolumeOutOfRange { requested: volume, available: n_vols });
+        return Err(NiftiError::VolumeOutOfRange {
+            requested: volume,
+            available: n_vols,
+        });
     }
     let dt = DataType::from_code(header.datatype);
     let bpv = dt.bytes_per_voxel();
-    if bpv == 0 { return Err(NiftiError::UnsupportedDataType(header.datatype)); }
+    if bpv == 0 {
+        return Err(NiftiError::UnsupportedDataType(header.datatype));
+    }
 
     let vol_voxels = header.n_voxels() / n_vols;
     let vol_bytes = vol_voxels * bpv;
 
     let hdr_size = if header.version == 1 { 348u64 } else { 540 };
-    let offset = if header.vox_offset > hdr_size { header.vox_offset } else { hdr_size };
+    let offset = if header.vox_offset > hdr_size {
+        header.vox_offset
+    } else {
+        hdr_size
+    };
     reader.seek(SeekFrom::Start(offset + volume as u64 * vol_bytes as u64))?;
 
     let mut raw = vec![0u8; vol_bytes];
@@ -638,12 +723,17 @@ fn read_single_volume_seekable<R: Read + Seek>(
 
 /// Read voxel data from a streaming reader (gzip, .img pair).
 fn read_voxel_data_stream<R: Read>(
-    reader: &mut R, header: &NiftiHeader,
+    reader: &mut R,
+    header: &NiftiHeader,
 ) -> Result<Vec<f64>, NiftiError> {
     // Skip to vox_offset (for .nii.gz the header was already consumed by parse_reader,
     // so we need to skip: vox_offset - header_size bytes)
     let hdr_size = if header.version == 1 { 348u64 } else { 540 };
-    let offset = if header.vox_offset > hdr_size { header.vox_offset } else { hdr_size };
+    let offset = if header.vox_offset > hdr_size {
+        header.vox_offset
+    } else {
+        hdr_size
+    };
     let skip = offset - hdr_size;
     if skip > 0 {
         let mut discard = vec![0u8; skip as usize];
@@ -656,7 +746,9 @@ fn read_voxel_data_stream<R: Read>(
 fn decode_voxels<R: Read>(reader: &mut R, header: &NiftiHeader) -> Result<Vec<f64>, NiftiError> {
     let dt = DataType::from_code(header.datatype);
     let bpv = dt.bytes_per_voxel();
-    if bpv == 0 { return Err(NiftiError::UnsupportedDataType(header.datatype)); }
+    if bpv == 0 {
+        return Err(NiftiError::UnsupportedDataType(header.datatype));
+    }
 
     let n_voxels = header.n_voxels();
     let total_bytes = n_voxels * bpv;
@@ -670,7 +762,10 @@ fn decode_voxels<R: Read>(reader: &mut R, header: &NiftiHeader) -> Result<Vec<f6
 /// with no branch in the inner loop.
 #[inline(never)]
 pub(crate) fn decode_raw_to_f64(
-    raw: &[u8], dt: DataType, scl_slope: f64, scl_inter: f64,
+    raw: &[u8],
+    dt: DataType,
+    scl_slope: f64,
+    scl_inter: f64,
 ) -> Result<Vec<f64>, NiftiError> {
     let bpv = dt.bytes_per_voxel();
     let n = raw.len() / bpv;
@@ -691,58 +786,102 @@ pub(crate) fn decode_raw_to_f64(
             u16::from_le_bytes([$src[$off], $src[$off + 1]])
         };
         (i32, $src:expr, $off:expr) => {
-            i32::from_le_bytes([$src[$off], $src[$off+1], $src[$off+2], $src[$off+3]])
+            i32::from_le_bytes([$src[$off], $src[$off + 1], $src[$off + 2], $src[$off + 3]])
         };
         (u32, $src:expr, $off:expr) => {
-            u32::from_le_bytes([$src[$off], $src[$off+1], $src[$off+2], $src[$off+3]])
+            u32::from_le_bytes([$src[$off], $src[$off + 1], $src[$off + 2], $src[$off + 3]])
         };
         (f32, $src:expr, $off:expr) => {
-            f32::from_le_bytes([$src[$off], $src[$off+1], $src[$off+2], $src[$off+3]])
+            f32::from_le_bytes([$src[$off], $src[$off + 1], $src[$off + 2], $src[$off + 3]])
         };
         (f64, $src:expr, $off:expr) => {
-            f64::from_le_bytes([$src[$off], $src[$off+1], $src[$off+2], $src[$off+3],
-                                $src[$off+4], $src[$off+5], $src[$off+6], $src[$off+7]])
+            f64::from_le_bytes([
+                $src[$off],
+                $src[$off + 1],
+                $src[$off + 2],
+                $src[$off + 3],
+                $src[$off + 4],
+                $src[$off + 5],
+                $src[$off + 6],
+                $src[$off + 7],
+            ])
         };
         (i64, $src:expr, $off:expr) => {
-            i64::from_le_bytes([$src[$off], $src[$off+1], $src[$off+2], $src[$off+3],
-                                $src[$off+4], $src[$off+5], $src[$off+6], $src[$off+7]])
+            i64::from_le_bytes([
+                $src[$off],
+                $src[$off + 1],
+                $src[$off + 2],
+                $src[$off + 3],
+                $src[$off + 4],
+                $src[$off + 5],
+                $src[$off + 6],
+                $src[$off + 7],
+            ])
         };
         (u64, $src:expr, $off:expr) => {
-            u64::from_le_bytes([$src[$off], $src[$off+1], $src[$off+2], $src[$off+3],
-                                $src[$off+4], $src[$off+5], $src[$off+6], $src[$off+7]])
+            u64::from_le_bytes([
+                $src[$off],
+                $src[$off + 1],
+                $src[$off + 2],
+                $src[$off + 3],
+                $src[$off + 4],
+                $src[$off + 5],
+                $src[$off + 6],
+                $src[$off + 7],
+            ])
         };
     }
 
     match dt {
         DataType::UInt8 => {
-            for (dst, &src) in data.iter_mut().zip(raw.iter()) { *dst = src as f64; }
+            for (dst, &src) in data.iter_mut().zip(raw.iter()) {
+                *dst = src as f64;
+            }
         }
         DataType::Int8 => {
-            for (dst, &src) in data.iter_mut().zip(raw.iter()) { *dst = (src as i8) as f64; }
+            for (dst, &src) in data.iter_mut().zip(raw.iter()) {
+                *dst = (src as i8) as f64;
+            }
         }
         DataType::Int16 => {
-            for (i, dst) in data.iter_mut().enumerate() { *dst = le_read!(i16, raw, i * 2) as f64; }
+            for (i, dst) in data.iter_mut().enumerate() {
+                *dst = le_read!(i16, raw, i * 2) as f64;
+            }
         }
         DataType::UInt16 => {
-            for (i, dst) in data.iter_mut().enumerate() { *dst = le_read!(u16, raw, i * 2) as f64; }
+            for (i, dst) in data.iter_mut().enumerate() {
+                *dst = le_read!(u16, raw, i * 2) as f64;
+            }
         }
         DataType::Int32 => {
-            for (i, dst) in data.iter_mut().enumerate() { *dst = le_read!(i32, raw, i * 4) as f64; }
+            for (i, dst) in data.iter_mut().enumerate() {
+                *dst = le_read!(i32, raw, i * 4) as f64;
+            }
         }
         DataType::UInt32 => {
-            for (i, dst) in data.iter_mut().enumerate() { *dst = le_read!(u32, raw, i * 4) as f64; }
+            for (i, dst) in data.iter_mut().enumerate() {
+                *dst = le_read!(u32, raw, i * 4) as f64;
+            }
         }
         DataType::Float32 => {
-            for (i, dst) in data.iter_mut().enumerate() { *dst = le_read!(f32, raw, i * 4) as f64; }
+            for (i, dst) in data.iter_mut().enumerate() {
+                *dst = le_read!(f32, raw, i * 4) as f64;
+            }
         }
         DataType::Float64 => {
-            for (i, dst) in data.iter_mut().enumerate() { *dst = le_read!(f64, raw, i * 8); }
+            for (i, dst) in data.iter_mut().enumerate() {
+                *dst = le_read!(f64, raw, i * 8);
+            }
         }
         DataType::Int64 => {
-            for (i, dst) in data.iter_mut().enumerate() { *dst = le_read!(i64, raw, i * 8) as f64; }
+            for (i, dst) in data.iter_mut().enumerate() {
+                *dst = le_read!(i64, raw, i * 8) as f64;
+            }
         }
         DataType::UInt64 => {
-            for (i, dst) in data.iter_mut().enumerate() { *dst = le_read!(u64, raw, i * 8) as f64; }
+            for (i, dst) in data.iter_mut().enumerate() {
+                *dst = le_read!(u64, raw, i * 8) as f64;
+            }
         }
         DataType::Unknown => {
             return Err(NiftiError::UnsupportedDataType(dt as i16));
@@ -750,7 +889,9 @@ pub(crate) fn decode_raw_to_f64(
     }
 
     if apply_scaling {
-        for v in &mut data { *v = *v * slope + inter; }
+        for v in &mut data {
+            *v = *v * slope + inter;
+        }
     }
 
     Ok(data)
@@ -882,7 +1023,10 @@ mod tests {
         let dir = std::env::temp_dir().join("bids_nifti_4d");
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("bold.nii");
-        let nx = 4; let ny = 4; let nz = 3; let nt = 10;
+        let nx = 4;
+        let ny = 4;
+        let nz = 3;
+        let nt = 10;
         let dims: [i16; 8] = [4, nx as i16, ny as i16, nz as i16, nt as i16, 1, 1, 1];
         let pixdims: [f32; 8] = [1.0, 2.0, 2.0, 2.0, 1.5, 0.0, 0.0, 0.0];
         let vol_size = nx * ny * nz;
@@ -926,7 +1070,10 @@ mod tests {
         let dir = std::env::temp_dir().join("bids_nifti_vol");
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("bold.nii");
-        let nx = 4; let ny = 4; let nz = 3; let nt = 5;
+        let nx = 4;
+        let ny = 4;
+        let nz = 3;
+        let nt = 5;
         let dims: [i16; 8] = [4, nx as i16, ny as i16, nz as i16, nt as i16, 1, 1, 1];
         let pixdims: [f32; 8] = [1.0, 2.0, 2.0, 2.0, 2.0, 0.0, 0.0, 0.0];
         let vol_size = nx * ny * nz;
@@ -1038,7 +1185,10 @@ mod tests {
         let path = dir.join("bold.nii");
 
         // 64×64×32×100 float32 = ~50 MB
-        let nx = 64; let ny = 64; let nz = 32; let nt = 100;
+        let nx = 64;
+        let ny = 64;
+        let nz = 32;
+        let nt = 100;
         let dims: [i16; 8] = [4, nx, ny, nz, nt, 1, 1, 1];
         let pixdims: [f32; 8] = [1.0, 3.0, 3.0, 3.5, 2.0, 0.0, 0.0, 0.0];
         let n = (nx as usize) * (ny as usize) * (nz as usize) * (nt as usize);
@@ -1060,7 +1210,9 @@ mod tests {
 
         eprintln!(
             "  NIfTI 64×64×32×100 float32 ({:.0}MB): {:.1}ms ({:.0} MB/s)",
-            file_mb, ms, file_mb / (ms / 1000.0)
+            file_mb,
+            ms,
+            file_mb / (ms / 1000.0)
         );
 
         // Should be well under 500ms for 50MB uncompressed
@@ -1108,12 +1260,12 @@ mod tests {
         bytes[254..256].copy_from_slice(&1i16.to_le_bytes());
         // sform affine at bytes 280-327: set diagonal = [2, 2, 3] + offset = [10, 20, 30]
         // Row 0: [2, 0, 0, 10]
-        let sform_vals: [f32; 12] = [2.0, 0.0, 0.0, 10.0,
-                                      0.0, 2.0, 0.0, 20.0,
-                                      0.0, 0.0, 3.0, 30.0];
+        let sform_vals: [f32; 12] = [
+            2.0, 0.0, 0.0, 10.0, 0.0, 2.0, 0.0, 20.0, 0.0, 0.0, 3.0, 30.0,
+        ];
         for (i, &v) in sform_vals.iter().enumerate() {
             let off = 280 + i * 4;
-            bytes[off..off+4].copy_from_slice(&v.to_le_bytes());
+            bytes[off..off + 4].copy_from_slice(&v.to_le_bytes());
         }
         std::fs::write(&path, &bytes).unwrap();
 

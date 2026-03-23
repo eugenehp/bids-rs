@@ -9,7 +9,7 @@
 //!
 //! Run with: cargo test -p bids-eeg --release --test bench_regression
 
-use bids_eeg::{read_edf, read_brainvision, ReadOptions};
+use bids_eeg::{ReadOptions, read_brainvision, read_edf};
 use std::io::Write;
 use std::path::Path;
 use std::time::Instant;
@@ -36,7 +36,12 @@ fn generate_edf(path: &Path, n_ch: usize, n_rec: usize, spr: usize) {
         let label = format!("{:<16}", format!("EEG{}", i + 1));
         ext[i * 16..i * 16 + 16].copy_from_slice(label.as_bytes());
         ext[n_ch * 96 + i * 8..n_ch * 96 + i * 8 + 2].copy_from_slice(b"uV");
-        let vals = [("-3200", 104), ("3200", 112), ("-32768", 120), ("32767", 128)];
+        let vals = [
+            ("-3200", 104),
+            ("3200", 112),
+            ("-32768", 120),
+            ("32767", 128),
+        ];
         for (val, base) in &vals {
             let s = format!("{:<8}", val);
             ext[n_ch * base + i * 8..n_ch * base + i * 8 + 8].copy_from_slice(s.as_bytes());
@@ -84,7 +89,12 @@ fn generate_bdf(path: &Path, n_ch: usize, n_rec: usize, spr: usize) {
         let label = format!("{:<16}", format!("EEG{}", i + 1));
         ext[i * 16..i * 16 + 16].copy_from_slice(label.as_bytes());
         ext[n_ch * 96 + i * 8..n_ch * 96 + i * 8 + 2].copy_from_slice(b"uV");
-        let vals = [("-3200", 104), ("3200", 112), ("-8388608", 120), ("8388607", 128)];
+        let vals = [
+            ("-3200", 104),
+            ("3200", 112),
+            ("-8388608", 120),
+            ("8388607", 128),
+        ];
         for (val, base) in &vals {
             let s = format!("{:<8}", val);
             ext[n_ch * base + i * 8..n_ch * base + i * 8 + 8].copy_from_slice(s.as_bytes());
@@ -100,9 +110,8 @@ fn generate_bdf(path: &Path, n_ch: usize, n_rec: usize, spr: usize) {
         for ch in 0..n_ch {
             for s in 0..spr {
                 let t = rec as f64 + s as f64 / spr as f64;
-                let value = (100000.0
-                    * (2.0 * std::f64::consts::PI * (ch as f64 + 1.0) * t).sin())
-                    as i32;
+                let value =
+                    (100000.0 * (2.0 * std::f64::consts::PI * (ch as f64 + 1.0) * t).sin()) as i32;
                 let value = value.clamp(-8388608, 8388607);
                 let off = (ch * spr + s) * 3;
                 buf[off] = (value & 0xFF) as u8;
@@ -138,8 +147,7 @@ fn generate_brainvision(dir: &Path, n_ch: usize, n_samples: usize, spr: usize) {
     for s in 0..n_samples {
         for ch in 0..n_ch {
             let t = s as f64 / spr as f64;
-            let v =
-                (1000.0 * (2.0 * std::f64::consts::PI * (ch as f64 + 1.0) * t).sin()) as i16;
+            let v = (1000.0 * (2.0 * std::f64::consts::PI * (ch as f64 + 1.0) * t).sin()) as i16;
             let off = (s * n_ch + ch) * 2;
             buf[off..off + 2].copy_from_slice(&v.to_le_bytes());
         }
@@ -200,10 +208,14 @@ fn regression_edf_64ch_60s() {
         assert!(
             ms < baseline.python_ms,
             "EDF 64ch×60s: {:.1}ms > Python baseline {:.1}ms",
-            ms, baseline.python_ms
+            ms,
+            baseline.python_ms
         );
     }
-    eprintln!("  EDF 64ch×60s: {:.1}ms (Python baseline: {:.1}ms)", ms, baseline.python_ms);
+    eprintln!(
+        "  EDF 64ch×60s: {:.1}ms (Python baseline: {:.1}ms)",
+        ms, baseline.python_ms
+    );
 
     std::fs::remove_dir_all(&dir).unwrap();
 }
@@ -227,10 +239,14 @@ fn regression_edf_2ch_select() {
         assert!(
             ms < baseline.python_ms,
             "EDF 2ch select: {:.1}ms > Python baseline {:.1}ms",
-            ms, baseline.python_ms
+            ms,
+            baseline.python_ms
         );
     }
-    eprintln!("  EDF 2ch select: {:.1}ms (Python baseline: {:.1}ms)", ms, baseline.python_ms);
+    eprintln!(
+        "  EDF 2ch select: {:.1}ms (Python baseline: {:.1}ms)",
+        ms, baseline.python_ms
+    );
 
     std::fs::remove_dir_all(&dir).unwrap();
 }
@@ -253,10 +269,14 @@ fn regression_edf_time_window() {
         assert!(
             ms < baseline.python_ms,
             "EDF 10s window: {:.1}ms > Python baseline {:.1}ms",
-            ms, baseline.python_ms
+            ms,
+            baseline.python_ms
         );
     }
-    eprintln!("  EDF 10s window: {:.1}ms (Python baseline: {:.1}ms)", ms, baseline.python_ms);
+    eprintln!(
+        "  EDF 10s window: {:.1}ms (Python baseline: {:.1}ms)",
+        ms, baseline.python_ms
+    );
 
     std::fs::remove_dir_all(&dir).unwrap();
 }
@@ -278,10 +298,14 @@ fn regression_bdf_32ch_30s() {
         assert!(
             ms < baseline.python_ms,
             "BDF 32ch×30s: {:.1}ms > Python baseline {:.1}ms",
-            ms, baseline.python_ms
+            ms,
+            baseline.python_ms
         );
     }
-    eprintln!("  BDF 32ch×30s: {:.1}ms (Python baseline: {:.1}ms)", ms, baseline.python_ms);
+    eprintln!(
+        "  BDF 32ch×30s: {:.1}ms (Python baseline: {:.1}ms)",
+        ms, baseline.python_ms
+    );
 
     std::fs::remove_dir_all(&dir).unwrap();
 }
@@ -293,7 +317,10 @@ fn regression_brainvision_64ch_60s() {
     generate_brainvision(&dir, 64, 60 * 2048, 2048);
     let vhdr = dir.join("test.vhdr");
 
-    let (data, ms) = bench(|| read_brainvision(&vhdr, &ReadOptions::default()).unwrap(), 5);
+    let (data, ms) = bench(
+        || read_brainvision(&vhdr, &ReadOptions::default()).unwrap(),
+        5,
+    );
 
     assert_eq!(data.n_channels(), 64);
     assert_eq!(data.n_samples(0), 60 * 2048);
@@ -306,7 +333,8 @@ fn regression_brainvision_64ch_60s() {
         assert!(
             ms < baseline.python_ms,
             "BV 64ch×60s: {:.1}ms > Python baseline {:.1}ms",
-            ms, baseline.python_ms
+            ms,
+            baseline.python_ms
         );
     }
     eprintln!(
@@ -335,7 +363,8 @@ fn regression_edf_large_150mb() {
         assert!(
             ms < baseline.python_ms,
             "EDF 150MB: {:.1}ms > Python baseline {:.1}ms",
-            ms, baseline.python_ms
+            ms,
+            baseline.python_ms
         );
     }
     eprintln!(
@@ -360,7 +389,11 @@ fn regression_numeric_correctness() {
 
     // Channel 0: sin(2π × 1 × t), scaled by 1000 digital → physical
     // At t=0: sin(0) = 0, digital=0, physical should be near 0
-    assert!(data.data[0][0].abs() < 1.0, "First sample ch0={}", data.data[0][0]);
+    assert!(
+        data.data[0][0].abs() < 1.0,
+        "First sample ch0={}",
+        data.data[0][0]
+    );
 
     // At t=0.25s (sample 64): sin(π/2) = 1, digital=1000
     // Physical = 1000 * (3200-(-3200)) / (32767-(-32768)) + ... ≈ 97.66 µV
@@ -371,7 +404,9 @@ fn regression_numeric_correctness() {
     assert!(
         err < 0.01,
         "ch0 sample 64: expected {:.4} got {:.4} err={:.4}",
-        expected, actual, err
+        expected,
+        actual,
+        err
     );
 
     // Channel 1: sin(2π × 2 × t), at t=0.125 (sample 32): sin(π/2) = 1
@@ -379,7 +414,8 @@ fn regression_numeric_correctness() {
     assert!(
         (actual1 - expected).abs() / expected < 0.01,
         "ch1 sample 32: expected {:.4} got {:.4}",
-        expected, actual1
+        expected,
+        actual1
     );
 
     std::fs::remove_dir_all(&dir).unwrap();

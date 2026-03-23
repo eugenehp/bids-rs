@@ -45,7 +45,10 @@ pub struct Aggregator {
 
 impl Aggregator {
     pub fn new() -> Self {
-        Self { files: Vec::new(), datasets: Vec::new() }
+        Self {
+            files: Vec::new(),
+            datasets: Vec::new(),
+        }
     }
 
     /// Add a local BIDS dataset directory, applying the given filter.
@@ -58,7 +61,10 @@ impl Aggregator {
 
         for bf in matching {
             let ent = |key: &str| -> String {
-                bf.entities.get(key).map(std::string::ToString::to_string).unwrap_or_default()
+                bf.entities
+                    .get(key)
+                    .map(std::string::ToString::to_string)
+                    .unwrap_or_default()
             };
             let ent_opt = |key: &str| -> Option<String> {
                 bf.entities.get(key).map(std::string::ToString::to_string)
@@ -88,10 +94,14 @@ impl Aggregator {
     }
 
     /// Number of files in the aggregate.
-    pub fn len(&self) -> usize { self.files.len() }
+    pub fn len(&self) -> usize {
+        self.files.len()
+    }
 
     /// Whether the aggregate is empty.
-    pub fn is_empty(&self) -> bool { self.files.is_empty() }
+    pub fn is_empty(&self) -> bool {
+        self.files.is_empty()
+    }
 
     /// Iterate over entries (zero-copy). Enables streaming pipelines:
     ///
@@ -104,24 +114,34 @@ impl Aggregator {
         self.files.iter()
     }
 
-
-
     /// Stream entries matching a predicate directly to a CSV writer.
     /// Never holds more than one entry in memory.
     pub fn stream_to_csv<F>(&self, path: &str, predicate: F) -> crate::Result<usize>
-    where F: Fn(&FileEntry) -> bool
+    where
+        F: Fn(&FileEntry) -> bool,
     {
         let mut f = std::fs::File::create(path)?;
-        writeln!(f, "dataset,global_subject,subject,session,task,run,datatype,suffix,extension,path,size")?;
+        writeln!(
+            f,
+            "dataset,global_subject,subject,session,task,run,datatype,suffix,extension,path,size"
+        )?;
         let mut count = 0;
         for e in self.files.iter().filter(|e| predicate(e)) {
-            writeln!(f, "{},{},{},{},{},{},{},{},{},{},{}",
-                e.dataset, e.global_subject, e.subject,
+            writeln!(
+                f,
+                "{},{},{},{},{},{},{},{},{},{},{}",
+                e.dataset,
+                e.global_subject,
+                e.subject,
                 e.session.as_deref().unwrap_or(""),
                 e.task.as_deref().unwrap_or(""),
                 e.run.as_deref().unwrap_or(""),
-                e.datatype, e.suffix, e.extension,
-                e.path.display(), e.size)?;
+                e.datatype,
+                e.suffix,
+                e.extension,
+                e.path.display(),
+                e.size
+            )?;
             count += 1;
         }
         Ok(count)
@@ -129,20 +149,26 @@ impl Aggregator {
 
     /// Get unique global subject IDs.
     pub fn subjects(&self) -> Vec<String> {
-        let mut s: Vec<String> = self.files.iter()
+        let mut s: Vec<String> = self
+            .files
+            .iter()
             .map(|f| f.global_subject.clone())
             .collect::<std::collections::HashSet<_>>()
-            .into_iter().collect();
+            .into_iter()
+            .collect();
         s.sort();
         s
     }
 
     /// Get unique tasks.
     pub fn tasks(&self) -> Vec<String> {
-        let mut t: Vec<String> = self.files.iter()
+        let mut t: Vec<String> = self
+            .files
+            .iter()
             .filter_map(|f| f.task.clone())
             .collect::<std::collections::HashSet<_>>()
-            .into_iter().collect();
+            .into_iter()
+            .collect();
         t.sort();
         t
     }
@@ -153,15 +179,26 @@ impl Aggregator {
     /// suffix, extension, path, size
     pub fn export_manifest(&self, path: &str) -> crate::Result<()> {
         let mut f = std::fs::File::create(path)?;
-        writeln!(f, "dataset,global_subject,subject,session,task,run,datatype,suffix,extension,path,size")?;
+        writeln!(
+            f,
+            "dataset,global_subject,subject,session,task,run,datatype,suffix,extension,path,size"
+        )?;
         for e in &self.files {
-            writeln!(f, "{},{},{},{},{},{},{},{},{},{},{}",
-                e.dataset, e.global_subject, e.subject,
+            writeln!(
+                f,
+                "{},{},{},{},{},{},{},{},{},{},{}",
+                e.dataset,
+                e.global_subject,
+                e.subject,
                 e.session.as_deref().unwrap_or(""),
                 e.task.as_deref().unwrap_or(""),
                 e.run.as_deref().unwrap_or(""),
-                e.datatype, e.suffix, e.extension,
-                e.path.display(), e.size)?;
+                e.datatype,
+                e.suffix,
+                e.extension,
+                e.path.display(),
+                e.size
+            )?;
         }
         Ok(())
     }
@@ -177,19 +214,32 @@ impl Aggregator {
 
         let write_split = |name: &str, subs: &[String]| -> crate::Result<usize> {
             let path = Path::new(dir).join(format!("{name}.csv"));
-            let entries: Vec<&FileEntry> = self.files.iter()
+            let entries: Vec<&FileEntry> = self
+                .files
+                .iter()
                 .filter(|f| subs.contains(&f.global_subject))
                 .collect();
             let mut f = std::fs::File::create(&path)?;
-            writeln!(f, "dataset,global_subject,subject,session,task,run,datatype,suffix,extension,path,size")?;
+            writeln!(
+                f,
+                "dataset,global_subject,subject,session,task,run,datatype,suffix,extension,path,size"
+            )?;
             for e in &entries {
-                writeln!(f, "{},{},{},{},{},{},{},{},{},{},{}",
-                    e.dataset, e.global_subject, e.subject,
+                writeln!(
+                    f,
+                    "{},{},{},{},{},{},{},{},{},{},{}",
+                    e.dataset,
+                    e.global_subject,
+                    e.subject,
                     e.session.as_deref().unwrap_or(""),
                     e.task.as_deref().unwrap_or(""),
                     e.run.as_deref().unwrap_or(""),
-                    e.datatype, e.suffix, e.extension,
-                    e.path.display(), e.size)?;
+                    e.datatype,
+                    e.suffix,
+                    e.extension,
+                    e.path.display(),
+                    e.size
+                )?;
             }
             Ok(entries.len())
         };
@@ -215,7 +265,7 @@ impl Aggregator {
     pub fn export_arrow(&self, path: &str) -> crate::Result<()> {
         use arrow::builder::StringBuilder;
         use arrow::builder::UInt64Builder;
-        use arrow_schema::{Schema, Field, DataType};
+        use arrow_schema::{DataType, Field, Schema};
         use std::sync::Arc;
 
         let n = self.files.len();
@@ -260,24 +310,29 @@ impl Aggregator {
             size_b.append_value(e.size);
         }
 
-        let batch = arrow::RecordBatch::try_new(schema.clone(), vec![
-            Arc::new(dataset_b.finish()),
-            Arc::new(gsub_b.finish()),
-            Arc::new(sub_b.finish()),
-            Arc::new(ses_b.finish()),
-            Arc::new(task_b.finish()),
-            Arc::new(run_b.finish()),
-            Arc::new(dt_b.finish()),
-            Arc::new(suf_b.finish()),
-            Arc::new(ext_b.finish()),
-            Arc::new(path_b.finish()),
-            Arc::new(size_b.finish()),
-        ]).map_err(|e| crate::Error::Network(e.to_string()))?;
+        let batch = arrow::RecordBatch::try_new(
+            schema.clone(),
+            vec![
+                Arc::new(dataset_b.finish()),
+                Arc::new(gsub_b.finish()),
+                Arc::new(sub_b.finish()),
+                Arc::new(ses_b.finish()),
+                Arc::new(task_b.finish()),
+                Arc::new(run_b.finish()),
+                Arc::new(dt_b.finish()),
+                Arc::new(suf_b.finish()),
+                Arc::new(ext_b.finish()),
+                Arc::new(path_b.finish()),
+                Arc::new(size_b.finish()),
+            ],
+        )
+        .map_err(|e| crate::Error::Network(e.to_string()))?;
 
         let file = std::fs::File::create(path)?;
-        let mut writer = arrow_csv::WriterBuilder::new()
-            .build(file);
-        writer.write(&batch).map_err(|e| crate::Error::Network(e.to_string()))?;
+        let mut writer = arrow_csv::WriterBuilder::new().build(file);
+        writer
+            .write(&batch)
+            .map_err(|e| crate::Error::Network(e.to_string()))?;
 
         Ok(())
     }
@@ -289,7 +344,7 @@ impl Aggregator {
     pub fn export_parquet(&self, path: &str) -> crate::Result<()> {
         use arrow::builder::StringBuilder;
         use arrow::builder::UInt64Builder;
-        use arrow_schema::{Schema, Field, DataType};
+        use arrow_schema::{DataType, Field, Schema};
         use std::sync::Arc;
 
         let n = self.files.len();
@@ -328,31 +383,41 @@ impl Aggregator {
             size_b.append_value(e.size);
         }
 
-        let batch = arrow::RecordBatch::try_new(schema.clone(), vec![
-            Arc::new(dataset_b.finish()),
-            Arc::new(gsub_b.finish()),
-            Arc::new(sub_b.finish()),
-            Arc::new(ses_b.finish()),
-            Arc::new(task_b.finish()),
-            Arc::new(dt_b.finish()),
-            Arc::new(suf_b.finish()),
-            Arc::new(path_b.finish()),
-            Arc::new(size_b.finish()),
-        ]).map_err(|e| crate::Error::Network(e.to_string()))?;
+        let batch = arrow::RecordBatch::try_new(
+            schema.clone(),
+            vec![
+                Arc::new(dataset_b.finish()),
+                Arc::new(gsub_b.finish()),
+                Arc::new(sub_b.finish()),
+                Arc::new(ses_b.finish()),
+                Arc::new(task_b.finish()),
+                Arc::new(dt_b.finish()),
+                Arc::new(suf_b.finish()),
+                Arc::new(path_b.finish()),
+                Arc::new(size_b.finish()),
+            ],
+        )
+        .map_err(|e| crate::Error::Network(e.to_string()))?;
 
         let file = std::fs::File::create(path)?;
         let props = parquet::file::properties::WriterProperties::builder().build();
         let mut writer = parquet::arrow::ArrowWriter::try_new(file, schema, Some(props))
             .map_err(|e| crate::Error::Network(e.to_string()))?;
-        writer.write(&batch).map_err(|e| crate::Error::Network(e.to_string()))?;
-        writer.close().map_err(|e| crate::Error::Network(e.to_string()))?;
+        writer
+            .write(&batch)
+            .map_err(|e| crate::Error::Network(e.to_string()))?;
+        writer
+            .close()
+            .map_err(|e| crate::Error::Network(e.to_string()))?;
 
         Ok(())
     }
 }
 
 impl Default for Aggregator {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl IntoIterator for Aggregator {
@@ -374,7 +439,10 @@ fn infer_dataset_name(root: &Path) -> String {
         }
     }
     // Fallback: last non-empty component
-    root.file_name().and_then(|n| n.to_str()).unwrap_or("unknown").to_string()
+    root.file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("unknown")
+        .to_string()
 }
 
 /// Summary of a train/val/test split.
@@ -390,10 +458,16 @@ pub struct SplitReport {
 
 impl std::fmt::Display for SplitReport {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "train: {} subj / {} files, val: {} subj / {} files, test: {} subj / {} files",
-            self.train_subjects, self.train_files,
-            self.val_subjects, self.val_files,
-            self.test_subjects, self.test_files)
+        write!(
+            f,
+            "train: {} subj / {} files, val: {} subj / {} files, test: {} subj / {} files",
+            self.train_subjects,
+            self.train_files,
+            self.val_subjects,
+            self.val_files,
+            self.test_subjects,
+            self.test_files
+        )
     }
 }
 
@@ -404,11 +478,17 @@ mod tests {
     #[test]
     fn test_file_entry_serde() {
         let e = FileEntry {
-            dataset: "ds001".into(), subject: "01".into(),
-            session: None, task: Some("rest".into()), run: None,
-            datatype: "eeg".into(), suffix: "eeg".into(), extension: ".edf".into(),
+            dataset: "ds001".into(),
+            subject: "01".into(),
+            session: None,
+            task: Some("rest".into()),
+            run: None,
+            datatype: "eeg".into(),
+            suffix: "eeg".into(),
+            extension: ".edf".into(),
             path: "/data/ds001/sub-01/eeg/sub-01_task-rest_eeg.edf".into(),
-            size: 1000, global_subject: "ds001_01".into(),
+            size: 1000,
+            global_subject: "ds001_01".into(),
         };
         let json = serde_json::to_string(&e).unwrap();
         assert!(json.contains("ds001_01"));
