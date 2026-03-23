@@ -7,7 +7,7 @@
 //! network access. Use `--ignored` to include them.
 
 use bids_dataset::{Aggregator, DatasetFilter, OpenNeuro, Split};
-use std::path::Path;
+
 
 #[test]
 #[ignore] // requires network

@@ -336,7 +336,7 @@ impl BidsFile {
     /// Handles both plain `.tsv` and gzip-compressed `.tsv.gz` files. The
     /// BIDS sentinel value `n/a` is automatically converted to empty strings.
     ///
-    /// For bulk TSV processing, prefer [`bids_io::read_tsv`] / [`bids_io::read_tsv_gz`]
+    /// For bulk TSV processing, prefer `bids_io::read_tsv` / `bids_io::read_tsv_gz`
     /// which share the same parsing logic but don't require a `BidsFile`.
     ///
     /// # Errors
