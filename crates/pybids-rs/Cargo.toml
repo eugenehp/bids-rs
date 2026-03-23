@@ -1,5 +1,6 @@
 [package]
 name = "pybids-rs"
+description = "Python bindings for bids-rs, a Rust implementation of PyBIDS"
 version = "0.0.1"
 edition = "2024"
 license = "GPL-3.0-or-later"
@@ -10,17 +11,17 @@ crate-type = ["cdylib"]
 
 [dependencies]
 pyo3 = { version = "0.25", features = ["extension-module"] }
-bids-core = { path = "../bids-core" }
-bids-layout = { path = "../bids-layout" }
-bids-eeg = { path = "../bids-eeg" }
-bids-ieeg = { path = "../bids-ieeg" }
-bids-meg = { path = "../bids-meg" }
-bids-pet = { path = "../bids-pet" }
-bids-nifti = { path = "../bids-nifti" }
-bids-filter = { path = "../bids-filter" }
-bids-formula = { path = "../bids-formula" }
-bids-schema = { path = "../bids-schema" }
-bids-inflect = { path = "../bids-inflect" }
-bids-modeling = { path = "../bids-modeling" }
-bids-reports = { path = "../bids-reports" }
+bids-core = { path = "../bids-core", version = "0.0.1" }
+bids-layout = { path = "../bids-layout", version = "0.0.1" }
+bids-eeg = { path = "../bids-eeg", version = "0.0.1" }
+bids-ieeg = { path = "../bids-ieeg", version = "0.0.1" }
+bids-meg = { path = "../bids-meg", version = "0.0.1" }
+bids-pet = { path = "../bids-pet", version = "0.0.1" }
+bids-nifti = { path = "../bids-nifti", version = "0.0.1" }
+bids-filter = { path = "../bids-filter", version = "0.0.1" }
+bids-formula = { path = "../bids-formula", version = "0.0.1" }
+bids-schema = { path = "../bids-schema", version = "0.0.1" }
+bids-inflect = { path = "../bids-inflect", version = "0.0.1" }
+bids-modeling = { path = "../bids-modeling", version = "0.0.1" }
+bids-reports = { path = "../bids-reports", version = "0.0.1" }
 serde_json = { workspace = true }

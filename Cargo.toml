@@ -49,30 +49,30 @@ redundant_closure_for_method_calls = "warn"
 large_futures = "warn"
 
 [workspace.dependencies]
-bids-dataset = { path = "crates/bids-dataset" }
-bids-core = { path = "crates/bids-core" }
-bids-io = { path = "crates/bids-io" }
-bids-layout = { path = "crates/bids-layout" }
-bids-variables = { path = "crates/bids-variables" }
-bids-eeg = { path = "crates/bids-eeg" }
-bids-validate = { path = "crates/bids-validate" }
-bids-derive = { path = "crates/bids-derive" }
-bids-ieeg = { path = "crates/bids-ieeg" }
-bids-meg = { path = "crates/bids-meg" }
-bids-pet = { path = "crates/bids-pet" }
-bids-perf = { path = "crates/bids-perf" }
-bids-motion = { path = "crates/bids-motion" }
-bids-nirs = { path = "crates/bids-nirs" }
-bids-mrs = { path = "crates/bids-mrs" }
-bids-micr = { path = "crates/bids-micr" }
-bids-beh = { path = "crates/bids-beh" }
-bids-nifti = { path = "crates/bids-nifti" }
-bids-filter = { path = "crates/bids-filter" }
-bids-formula = { path = "crates/bids-formula" }
-bids-schema = { path = "crates/bids-schema" }
-bids-inflect = { path = "crates/bids-inflect" }
-bids-modeling = { path = "crates/bids-modeling" }
-bids-reports = { path = "crates/bids-reports" }
+bids-dataset = { path = "crates/bids-dataset", version = "0.0.1" }
+bids-core = { path = "crates/bids-core", version = "0.0.1" }
+bids-io = { path = "crates/bids-io", version = "0.0.1" }
+bids-layout = { path = "crates/bids-layout", version = "0.0.1" }
+bids-variables = { path = "crates/bids-variables", version = "0.0.1" }
+bids-eeg = { path = "crates/bids-eeg", version = "0.0.1" }
+bids-validate = { path = "crates/bids-validate", version = "0.0.1" }
+bids-derive = { path = "crates/bids-derive", version = "0.0.1" }
+bids-ieeg = { path = "crates/bids-ieeg", version = "0.0.1" }
+bids-meg = { path = "crates/bids-meg", version = "0.0.1" }
+bids-pet = { path = "crates/bids-pet", version = "0.0.1" }
+bids-perf = { path = "crates/bids-perf", version = "0.0.1" }
+bids-motion = { path = "crates/bids-motion", version = "0.0.1" }
+bids-nirs = { path = "crates/bids-nirs", version = "0.0.1" }
+bids-mrs = { path = "crates/bids-mrs", version = "0.0.1" }
+bids-micr = { path = "crates/bids-micr", version = "0.0.1" }
+bids-beh = { path = "crates/bids-beh", version = "0.0.1" }
+bids-nifti = { path = "crates/bids-nifti", version = "0.0.1" }
+bids-filter = { path = "crates/bids-filter", version = "0.0.1" }
+bids-formula = { path = "crates/bids-formula", version = "0.0.1" }
+bids-schema = { path = "crates/bids-schema", version = "0.0.1" }
+bids-inflect = { path = "crates/bids-inflect", version = "0.0.1" }
+bids-modeling = { path = "crates/bids-modeling", version = "0.0.1" }
+bids-reports = { path = "crates/bids-reports", version = "0.0.1" }
 
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -81,7 +81,7 @@ thiserror = "2"
 walkdir = "2"
 csv = "1"
 indexmap = { version = "2", features = ["serde"] }
-rusqlite = { version = "0.32", features = ["bundled", "backup", "functions"] }
+rusqlite = { version = "0.37", features = ["bundled", "backup", "functions"] }
 clap = { version = "4", features = ["derive"] }
 flate2 = "1"
 log = "0.4"

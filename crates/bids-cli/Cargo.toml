@@ -10,7 +10,7 @@ name = "bids"
 path = "src/main.rs"
 
 [dependencies]
-bids = { path = "../bids" }
+bids = { path = "../bids", version = "0.0.1" }
 bids-core = { workspace = true }
 bids-layout = { workspace = true }
 bids-eeg = { workspace = true }
