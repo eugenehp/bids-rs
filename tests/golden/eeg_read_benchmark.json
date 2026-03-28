@@ -1,43 +1,43 @@
 {
   "edf_64ch_60s": {
-    "rust_ms": 4.004,
-    "python_ms": 12.372625000000248,
-    "speedup": 3.09,
+    "rust_ms": 6.042,
+    "python_ms": 14.391541000000174,
+    "speedup": 2.38,
     "passed": true,
     "file_mb": 15.7,
     "n_channels": 64,
     "n_samples": 122880
   },
   "edf_2ch_select": {
-    "rust_ms": 0.688,
-    "python_ms": 12.12616699999991,
-    "speedup": 17.63,
+    "rust_ms": 1.197,
+    "python_ms": 14.745459000000238,
+    "speedup": 12.32,
     "passed": true
   },
   "edf_10s_window": {
-    "rust_ms": 0.656,
-    "python_ms": 12.150583999999576,
-    "speedup": 18.52,
+    "rust_ms": 1.024,
+    "python_ms": 13.771958000000417,
+    "speedup": 13.45,
     "passed": true
   },
   "bdf_32ch_30s": {
-    "rust_ms": 1.528,
-    "python_ms": 8.124582999999852,
-    "speedup": 5.32,
+    "rust_ms": 2.176,
+    "python_ms": 8.97808300000058,
+    "speedup": 4.13,
     "passed": true,
     "file_mb": 5.9
   },
   "bv_64ch_60s": {
-    "rust_ms": 5.416,
-    "python_ms": 19.92645800000048,
-    "speedup": 3.68,
+    "rust_ms": 6.974,
+    "python_ms": 25.069167000001613,
+    "speedup": 3.59,
     "passed": true,
     "file_mb": 15.7
   },
   "edf_64ch_600s": {
-    "rust_ms": 53.56,
-    "python_ms": 103.6242910000027,
-    "speedup": 1.93,
+    "rust_ms": 66.319,
+    "python_ms": 110.10066699999754,
+    "speedup": 1.66,
     "passed": true,
     "file_mb": 157.3
   }

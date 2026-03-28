@@ -14,7 +14,7 @@ authors:
     email: eugene@reactivelions.com
 repository-code: "https://github.com/eugenehp/bids-rs"
 license: GPL-3.0-or-later
-version: 0.0.1
+version: 0.0.2
 date-released: 2026-03-23
 keywords:
   - bids

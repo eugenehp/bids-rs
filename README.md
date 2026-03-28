@@ -340,6 +340,54 @@ BIDS_EXAMPLES_DIR=/path/to/bids-examples cargo test -p bids-e2e-tests --test bid
 BIDS_EXAMPLES_OFFLINE=1 cargo test -p bids-e2e-tests --test bids_examples
 ```
 
+## Benchmarks
+
+`bids-rs` is extensively benchmarked against the Python ecosystem (PyBIDS,
+MNE-Python, SciPy, nibabel). All benchmarks are reproducible via
+`python3 tests/run_benchmarks.py`.
+
+### Overall Performance
+
+![Overall Benchmark](figures/overall_benchmark.png)
+
+### EEG Data Reading (vs MNE-Python)
+
+Pure-Rust EEG readers for EDF, BDF, and BrainVision formats — **3–7× faster**
+for full reads, up to **32× faster** for selective channel/time-window reads.
+
+![EEG Reading Benchmark](figures/eeg_reading_benchmark.png)
+
+![EEG Selective Reading](figures/eeg_selective_reading.png)
+
+### EEG Read Scaling by File Size
+
+![EEG Scaling](figures/eeg_scaling.png)
+
+### Dataset Indexing (vs PyBIDS)
+
+Layout indexing with SQLite-backed storage — **2–6× faster** than PyBIDS.
+Entity queries are **up to 1000× faster** once the layout is indexed.
+
+![Layout Indexing Benchmark](figures/layout_indexing_benchmark.png)
+
+### Benchmark Summary
+
+| Category | Avg Speedup | Range |
+|----------|------------|-------|
+| Layout indexing | 3–6× | 1.6–5.6× |
+| Entity queries | 3–1200× | 3.6–1298× |
+| EEG data reading | 3–7× | 2.7–7.2× |
+| EEG selective read | 20–32× | 20.4–32.3× |
+| NIfTI header parsing | 10–20× | 10.4–19.9× |
+| Butterworth filter design | 30–43× | 30–43× |
+| filtfilt (small signals) | 2–5× | 1.1–2.6× |
+
+> Benchmarks run on Apple M-series. Results vary by hardware. Reproduce with:
+> ```bash
+> cargo build -p bids-eeg --release --example bench_vs_python
+> python3 tests/run_benchmarks.py
+> ```
+
 ## Comparison with PyBIDS
 
 `bids-rs` aims for API compatibility with PyBIDS where possible, while taking
@@ -409,13 +457,13 @@ If you use `bids-rs` in your research, please cite it:
   year         = {2026},
   url          = {https://github.com/eugenehp/bids-rs},
   license      = {GPL-3.0-or-later},
-  version      = {0.0.1}
+  version      = {0.0.2}
 }
 ```
 
 **APA:**
 
-> Hauptmann, E. (2026). *bids-rs: Rust tools for BIDS (Brain Imaging Data Structure) datasets* (Version 0.0.1) [Computer software]. https://github.com/eugenehp/bids-rs
+> Hauptmann, E. (2026). *bids-rs: Rust tools for BIDS (Brain Imaging Data Structure) datasets* (Version 0.0.2) [Computer software]. https://github.com/eugenehp/bids-rs
 
 A machine-readable [`CITATION.cff`](CITATION.cff) and [`CITATION.bib`](CITATION.bib)
 are also provided — GitHub will automatically show a "Cite this repository" button.
