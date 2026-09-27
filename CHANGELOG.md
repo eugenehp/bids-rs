@@ -106,6 +106,13 @@ computed with an earlier version, they are affected.
   PyBIDS' `get_entities()` reports.
 - MSRV is declared as 1.85 (required by edition 2024).
 
+- **`pybids-rs` now builds with plain `cargo`.** As a PyO3 extension module it
+  leaves the CPython symbols unresolved for the interpreter to supply, which
+  macOS' linker rejects by default; `maturin` passed the necessary flags but
+  `cargo build` and the verification build inside `cargo publish` did not, so
+  both failed to link. A build script now opts the cdylib in. `cargo build
+  --workspace` no longer needs `--exclude pybids-rs`.
+
 ### Performance
 
 - **Indexing is up to 4.4× faster on metadata-heavy datasets.** Sidecars were

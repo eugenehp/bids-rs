@@ -313,12 +313,17 @@ layout.add_derivatives("/path/to/derivatives")
 
 ## Building
 
+`pybids-rs` is a PyO3 extension module: it leaves the CPython symbols for the
+interpreter to resolve at load time, so building it needs a Python interpreter
+on `PATH` for PyO3's build configuration. macOS linker flags are handled by its
+build script, so the whole workspace builds with plain `cargo`.
+
 ```bash
-# Build all crates (exclude pybids-rs unless Python dev headers are available)
-cargo build --workspace --exclude pybids-rs
+# Build all crates
+cargo build --workspace
 
 # Run tests
-cargo test --workspace --exclude pybids-rs
+cargo test --workspace
 
 # Run performance regression tests (must use --release for meaningful timings)
 cargo test -p bids-eeg --release --test bench_regression
@@ -510,9 +515,9 @@ let ents = entities! {
 Contributions are welcome! Please:
 
 1. Fork the repository and create a feature branch
-2. Ensure `cargo check --workspace --exclude pybids-rs` passes
-3. Run `cargo test --workspace --exclude pybids-rs` (excluding tests that
-   need network access or golden data)
+2. Ensure `cargo check --workspace` passes
+3. Run `cargo test --workspace` (tests needing network access are behind
+   `#[ignore]`)
 4. Add doc comments to all public items
 5. Include tests for new functionality
 
