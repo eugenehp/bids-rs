@@ -4,10 +4,10 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.0.2]
+## [0.0.3]
 
 Full PyBIDS parity. Every crate in the workspace now shares one version — `bids`
-was already at 0.0.2 while the other 27 sat at 0.0.1 — and several numerical
+had gone out at 0.0.2 while the other 27 sat at 0.0.1 — and several numerical
 results changed, so read **Fixed** before upgrading.
 
 ### Fixed
@@ -95,9 +95,8 @@ computed with an earlier version, they are affected.
 - Every crate now shares the workspace version. `bids` had drifted to 0.0.2
   while the rest sat at 0.0.1, because `bids` and `pybids-rs` carried literal
   versions; both now inherit from the workspace, as do `pybids-rs`'s internal
-  dependency pins.
-- Added the `bids` umbrella crate README and a benchmark suite with charts
-  (previously released as `bids` 0.0.2 alone).
+  dependency pins. 0.0.2 was skipped for the workspace because `bids` 0.0.2 is
+  already published and crates.io does not allow a version to be reused.
 - `apply_transformations` returns `Vec<TransformError>` instead of `()`.
 - `StatsModelsNodeOutput` gained a `transform_errors` field.
 - `Term` gained `categorical` and `prior`; use `Term::new` rather than a struct
@@ -126,9 +125,17 @@ filtered file queries 326×, metadata access 22×, indexing 4.2×. Numerical
 agreement is within 1e-12 absolute / 1e-9 relative across 125 checks, with
 sidecar floats bit-exact. See [`bench/`](bench/) to reproduce.
 
+## [0.0.2]
+
+Published for the `bids` umbrella crate only; the rest of the workspace stayed
+at 0.0.1.
+
+- Added the `bids` umbrella crate README and a benchmark suite with charts.
+
 ## [0.0.1]
 
 - Initial release.
 
+[0.0.3]: https://github.com/eugenehp/bids-rs/releases/tag/v0.0.3
 [0.0.2]: https://github.com/eugenehp/bids-rs/releases/tag/v0.0.2
 [0.0.1]: https://github.com/eugenehp/bids-rs/releases/tag/v0.0.1

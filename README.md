@@ -529,13 +529,13 @@ If you use `bids-rs` in your research, please cite it:
   year         = {2026},
   url          = {https://github.com/eugenehp/bids-rs},
   license      = {GPL-3.0-or-later},
-  version      = {0.0.2}
+  version      = {0.0.3}
 }
 ```
 
 **APA:**
 
-> Hauptmann, E. (2026). *bids-rs: Rust tools for BIDS (Brain Imaging Data Structure) datasets* (Version 0.0.2) [Computer software]. https://github.com/eugenehp/bids-rs
+> Hauptmann, E. (2026). *bids-rs: Rust tools for BIDS (Brain Imaging Data Structure) datasets* (Version 0.0.3) [Computer software]. https://github.com/eugenehp/bids-rs
 
 A machine-readable [`CITATION.cff`](CITATION.cff) and [`CITATION.bib`](CITATION.bib)
 are also provided — GitHub will automatically show a "Cite this repository" button.

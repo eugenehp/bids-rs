@@ -19,7 +19,7 @@ Add `bids` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-bids = "0.0.2"
+bids = "0.0.3"
 ```
 
 ### Feature Flags
@@ -35,7 +35,7 @@ All features are opt-in:
 
 ```toml
 [dependencies]
-bids = { version = "0.0.2", features = ["ndarray", "mmap"] }
+bids = { version = "0.0.3", features = ["ndarray", "mmap"] }
 ```
 
 ## Quick Start

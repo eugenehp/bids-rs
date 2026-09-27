@@ -242,7 +242,7 @@ checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 
 [[package]]
 name = "bids"
-version = "0.1.0"
+version = "0.0.3"
 dependencies = [
  "bids-beh",
  "bids-core",
@@ -272,7 +272,7 @@ dependencies = [
 
 [[package]]
 name = "bids-beh"
-version = "0.1.0"
+version = "0.0.3"
 dependencies = [
  "bids-core",
  "bids-io",
@@ -283,7 +283,7 @@ dependencies = [
 
 [[package]]
 name = "bids-cli"
-version = "0.1.0"
+version = "0.0.3"
 dependencies = [
  "bids",
  "bids-core",
@@ -302,7 +302,7 @@ dependencies = [
 
 [[package]]
 name = "bids-core"
-version = "0.1.0"
+version = "0.0.3"
 dependencies = [
  "flate2",
  "indexmap",
@@ -315,7 +315,7 @@ dependencies = [
 
 [[package]]
 name = "bids-dataset"
-version = "0.1.0"
+version = "0.0.3"
 dependencies = [
  "arrow-array",
  "arrow-csv",
@@ -334,7 +334,7 @@ dependencies = [
 
 [[package]]
 name = "bids-derive"
-version = "0.1.0"
+version = "0.0.3"
 dependencies = [
  "bids-core",
  "bids-layout",
@@ -345,7 +345,7 @@ dependencies = [
 
 [[package]]
 name = "bids-e2e-tests"
-version = "0.1.0"
+version = "0.0.3"
 dependencies = [
  "bids-beh",
  "bids-core",
@@ -375,7 +375,7 @@ dependencies = [
 
 [[package]]
 name = "bids-eeg"
-version = "0.1.0"
+version = "0.0.3"
 dependencies = [
  "bids-core",
  "bids-filter",
@@ -392,15 +392,15 @@ dependencies = [
 
 [[package]]
 name = "bids-filter"
-version = "0.1.0"
+version = "0.0.3"
 
 [[package]]
 name = "bids-formula"
-version = "0.1.0"
+version = "0.0.3"
 
 [[package]]
 name = "bids-ieeg"
-version = "0.1.0"
+version = "0.0.3"
 dependencies = [
  "bids-core",
  "bids-eeg",
@@ -412,11 +412,11 @@ dependencies = [
 
 [[package]]
 name = "bids-inflect"
-version = "0.1.0"
+version = "0.0.3"
 
 [[package]]
 name = "bids-io"
-version = "0.1.0"
+version = "0.0.3"
 dependencies = [
  "bids-core",
  "csv",
@@ -429,7 +429,7 @@ dependencies = [
 
 [[package]]
 name = "bids-layout"
-version = "0.1.0"
+version = "0.0.3"
 dependencies = [
  "bids-core",
  "bids-io",
@@ -446,7 +446,7 @@ dependencies = [
 
 [[package]]
 name = "bids-meg"
-version = "0.1.0"
+version = "0.0.3"
 dependencies = [
  "bids-core",
  "bids-eeg",
@@ -459,7 +459,7 @@ dependencies = [
 
 [[package]]
 name = "bids-micr"
-version = "0.1.0"
+version = "0.0.3"
 dependencies = [
  "bids-core",
  "bids-io",
@@ -471,7 +471,7 @@ dependencies = [
 
 [[package]]
 name = "bids-modeling"
-version = "0.1.0"
+version = "0.0.3"
 dependencies = [
  "bids-core",
  "bids-layout",
@@ -483,7 +483,7 @@ dependencies = [
 
 [[package]]
 name = "bids-motion"
-version = "0.1.0"
+version = "0.0.3"
 dependencies = [
  "bids-core",
  "bids-eeg",
@@ -495,7 +495,7 @@ dependencies = [
 
 [[package]]
 name = "bids-mrs"
-version = "0.1.0"
+version = "0.0.3"
 dependencies = [
  "bids-core",
  "bids-io",
@@ -507,7 +507,7 @@ dependencies = [
 
 [[package]]
 name = "bids-nifti"
-version = "0.1.0"
+version = "0.0.3"
 dependencies = [
  "bids-core",
  "bids-layout",
@@ -523,7 +523,7 @@ dependencies = [
 
 [[package]]
 name = "bids-nirs"
-version = "0.1.0"
+version = "0.0.3"
 dependencies = [
  "bids-core",
  "bids-eeg",
@@ -536,7 +536,7 @@ dependencies = [
 
 [[package]]
 name = "bids-perf"
-version = "0.1.0"
+version = "0.0.3"
 dependencies = [
  "bids-core",
  "bids-io",
@@ -548,7 +548,7 @@ dependencies = [
 
 [[package]]
 name = "bids-pet"
-version = "0.1.0"
+version = "0.0.3"
 dependencies = [
  "bids-core",
  "bids-eeg",
@@ -561,7 +561,7 @@ dependencies = [
 
 [[package]]
 name = "bids-reports"
-version = "0.1.0"
+version = "0.0.3"
 dependencies = [
  "bids-core",
  "bids-layout",
@@ -571,7 +571,7 @@ dependencies = [
 
 [[package]]
 name = "bids-schema"
-version = "0.1.0"
+version = "0.0.3"
 dependencies = [
  "bids-core",
  "regex",
@@ -582,7 +582,7 @@ dependencies = [
 
 [[package]]
 name = "bids-validate"
-version = "0.1.0"
+version = "0.0.3"
 dependencies = [
  "bids-core",
  "bids-schema",
@@ -592,7 +592,7 @@ dependencies = [
 
 [[package]]
 name = "bids-variables"
-version = "0.1.0"
+version = "0.0.3"
 dependencies = [
  "bids-core",
  "bids-io",
@@ -1826,7 +1826,7 @@ dependencies = [
 
 [[package]]
 name = "pybids-rs"
-version = "0.1.0"
+version = "0.0.3"
 dependencies = [
  "bids-core",
  "bids-eeg",
