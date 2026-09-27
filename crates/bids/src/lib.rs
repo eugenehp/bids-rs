@@ -120,6 +120,6 @@ pub mod prelude {
     pub use bids_dataset::{Aggregator, DatasetFilter, OpenNeuro, Split};
     pub use bids_eeg::{EegData, EegLayout, ReadOptions};
     pub use bids_layout::{BidsLayout, InvalidFilters, Query, QueryFilter, Scope};
-    pub use bids_nifti::NiftiImage;
+    pub use bids_nifti::{GeometrySource, NiftiHeader, NiftiImage};
     pub use bids_reports::BidsReport;
 }

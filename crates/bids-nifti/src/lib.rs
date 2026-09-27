@@ -7,6 +7,26 @@
 //!
 //! Handles `.nii`, `.nii.gz`, `.dtseries.nii`, and legacy `.hdr`/`.img` pairs.
 //!
+//! # Geometry
+//!
+//! [`NiftiHeader::affine`] is the usual thing to reach for: NIfTI's two
+//! geometry records collapsed into one voxel-to-world matrix, `sform` first
+//! then `qform` then a `pixdim` diagonal, with
+//! [`NiftiHeader::geometry_source`] saying which one it came from.
+//!
+//! The records are also kept as they were stored — [`quatern`], [`qoffset`],
+//! [`srow`], [`qfac`] — because an affine cannot answer every question about
+//! them. It cannot say whether a left-handed volume was written as a
+//! reflection or as a rotation plus `qfac = −1`; it cannot be edited to change
+//! a slice spacing without disturbing the orientation; and it cannot be
+//! written back out as a `qform`. Pipelines that manipulate acquisition
+//! geometry need the fields, not the product.
+//!
+//! [`quatern`]: NiftiHeader::quatern
+//! [`qoffset`]: NiftiHeader::qoffset
+//! [`srow`]: NiftiHeader::srow
+//! [`qfac`]: NiftiHeader::qfac
+//!
 //! # Performance
 //!
 //! - Bulk reads entire data region in one I/O call
@@ -119,6 +139,166 @@ pub struct NiftiHeader {
     pub sform_code: i16,
     /// qform code.
     pub qform_code: i16,
+
+    /// Which record [`affine`](Self::affine) was built from.
+    pub geometry_source: GeometrySource,
+
+    /// `quatern_b`, `quatern_c`, `quatern_d` — the `qform` rotation, exactly
+    /// as stored.
+    ///
+    /// The fourth component is implied by the unit-norm constraint and has
+    /// nowhere to live in the header; [`qform_rotation`](Self::qform_rotation)
+    /// recovers it.
+    ///
+    /// Present alongside [`affine`](Self::affine) because the two answer
+    /// different questions. The affine is what you want to place a voxel in
+    /// the world. These are what you want to *edit* the geometry — rewriting
+    /// a slice spacing while leaving the orientation alone, say — or to
+    /// distinguish "`qfac` is −1" from "the third direction cosine is
+    /// negated", which an affine cannot tell you apart.
+    pub quatern: [f64; 3],
+
+    /// `qoffset_x/y/z` — the `qform` translation, i.e. the world position of
+    /// voxel (0, 0, 0).
+    pub qoffset: [f64; 3],
+
+    /// `srow_x`, `srow_y`, `srow_z` — the `sform` affine's three rows, as
+    /// stored. All zero when the file carries no `sform`.
+    pub srow: [[f64; 4]; 3],
+}
+
+/// Which of NIfTI's geometry records an [`affine`](NiftiHeader::affine) came
+/// from.
+///
+/// Worth knowing: a file can carry both, they can disagree, and which one a
+/// reader picked changes where the voxels are. NIfTI's own precedence — and
+/// this reader's — prefers the `sform`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum GeometrySource {
+    /// From `srow_*`: a general affine, which may include shear.
+    Sform,
+    /// From `quatern_*` + `qoffset_*` + `pixdim`: a rigid transform plus
+    /// scaling, and never a shear.
+    Qform,
+    /// Neither code was set. `pixdim` on the diagonal, no rotation and no
+    /// origin — "method 1" in `nifti1.h`.
+    #[default]
+    Pixdim,
+}
+
+/// Build the voxel-to-world affine from a `qform`.
+///
+/// `nifti_quatern_to_mat44` from `nifti1.h`, shared by both header versions so
+/// that the two cannot drift apart.
+///
+/// The quaternion stores only `b`, `c` and `d`; `a` is recovered from the
+/// unit-norm constraint, clamped at zero because a header written in `float32`
+/// can leave `1 - b² - c² - d²` fractionally negative and an unclamped square
+/// root turns the whole affine into `NaN`.
+///
+/// `qfac` — `pixdim[0]` — flips the third column. NIfTI stores left-handed
+/// volumes as a right-handed rotation plus that sign, because a unit
+/// quaternion cannot express a reflection. A `pixdim[0]` of zero means `+1`
+/// per the spec, which matters: several writers leave the field at zero.
+fn affine_from_qform(quatern: [f64; 3], qoffset: [f64; 3], pixdim: &[f64; 8]) -> [[f64; 4]; 4] {
+    let [b, c, d] = quatern;
+    let a = (1.0 - b * b - c * c - d * d).max(0.0).sqrt();
+    let (i, j, k) = (pixdim[1], pixdim[2], pixdim[3]);
+    let qfac = if pixdim[0] < 0.0 { -1.0 } else { 1.0 };
+
+    [
+        [
+            (a * a + b * b - c * c - d * d) * i,
+            2.0 * (b * c - a * d) * j,
+            2.0 * (b * d + a * c) * k * qfac,
+            qoffset[0],
+        ],
+        [
+            2.0 * (b * c + a * d) * i,
+            (a * a + c * c - b * b - d * d) * j,
+            2.0 * (c * d - a * b) * k * qfac,
+            qoffset[1],
+        ],
+        [
+            2.0 * (b * d - a * c) * i,
+            2.0 * (c * d + a * b) * j,
+            (a * a + d * d - b * b - c * c) * k * qfac,
+            qoffset[2],
+        ],
+        [0.0, 0.0, 0.0, 1.0],
+    ]
+}
+
+/// Apply NIfTI's geometry precedence: `sform`, then `qform`, then `pixdim`.
+///
+/// Shared by both header versions — the fields move and change width between
+/// NIfTI-1 and NIfTI-2, but the precedence rule does not.
+fn choose_affine(
+    qform_code: i32,
+    sform_code: i32,
+    quatern: [f64; 3],
+    qoffset: [f64; 3],
+    srow: &[[f64; 4]; 3],
+    pixdim: &[f64; 8],
+) -> ([[f64; 4]; 4], GeometrySource) {
+    if sform_code > 0 {
+        let mut affine = [[0.0f64; 4]; 4];
+        affine[..3].copy_from_slice(srow);
+        affine[3][3] = 1.0;
+        (affine, GeometrySource::Sform)
+    } else if qform_code > 0 {
+        (
+            affine_from_qform(quatern, qoffset, pixdim),
+            GeometrySource::Qform,
+        )
+    } else {
+        (diagonal_affine(pixdim), GeometrySource::Pixdim)
+    }
+}
+
+/// The fallback affine for a header with neither an `sform` nor a `qform`:
+/// `pixdim` on the diagonal, no rotation and no origin ("method 1" in
+/// `nifti1.h`).
+fn diagonal_affine(pixdim: &[f64; 8]) -> [[f64; 4]; 4] {
+    let mut affine = [[0.0f64; 4]; 4];
+    affine[0][0] = pixdim[1];
+    affine[1][1] = pixdim[2];
+    affine[2][2] = pixdim[3];
+    affine[3][3] = 1.0;
+    affine
+}
+
+impl Default for NiftiHeader {
+    /// A blank 1 × 1 × 1 NIfTI-1 header with unit spacing and no geometry.
+    ///
+    /// Exists so that callers building a header by hand can write
+    /// `NiftiHeader { dim, pixdim, ..Default::default() }` and not have to
+    /// revisit every construction site when this struct grows a field.
+    fn default() -> Self {
+        Self {
+            ndim: 3,
+            dim: [3, 1, 1, 1, 1, 1, 1, 1],
+            pixdim: [1.0; 8],
+            datatype: 16, // FLOAT32
+            bitpix: 32,
+            version: 1,
+            vox_offset: 352,
+            scl_slope: 1.0,
+            scl_inter: 0.0,
+            affine: [
+                [1.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+            ],
+            sform_code: 0,
+            qform_code: 0,
+            geometry_source: GeometrySource::Pixdim,
+            quatern: [0.0; 3],
+            qoffset: [0.0; 3],
+            srow: [[0.0; 4]; 3],
+        }
+    }
 }
 
 impl NiftiHeader {
@@ -136,27 +316,43 @@ impl NiftiHeader {
     }
 
     fn parse_reader<R: Read>(reader: &mut R) -> Result<Self, NiftiError> {
-        let mut buf4 = [0u8; 4];
-        reader.read_exact(&mut buf4)?;
-        let sizeof_hdr = i32::from_le_bytes(buf4);
+        let mut lead = [0u8; 4];
+        reader.read_exact(&mut lead)?;
+        let sizeof_hdr = i32::from_le_bytes(lead);
 
-        if sizeof_hdr == 348 {
-            Self::parse_nifti1(reader)
-        } else if sizeof_hdr == 540 {
-            Self::parse_nifti2(reader)
-        } else {
-            let sizeof_be = i32::from_be_bytes(buf4);
-            if sizeof_be == 348 || sizeof_be == 540 {
-                Err(NiftiError::BigEndian)
-            } else {
-                Err(NiftiError::InvalidHeader(sizeof_hdr))
+        match sizeof_hdr {
+            348 => Self::parse_nifti1(reader, lead),
+            540 => Self::parse_nifti2(reader, lead),
+            _ => {
+                let sizeof_be = i32::from_be_bytes(lead);
+                if sizeof_be == 348 || sizeof_be == 540 {
+                    Err(NiftiError::BigEndian)
+                } else {
+                    Err(NiftiError::InvalidHeader(sizeof_hdr))
+                }
             }
         }
     }
 
-    fn parse_nifti1<R: Read>(reader: &mut R) -> Result<Self, NiftiError> {
-        let mut buf = [0u8; 344];
-        reader.read_exact(&mut buf)?;
+    /// Parse a NIfTI-1 header.
+    ///
+    /// `lead` is the `sizeof_hdr` field `parse_reader` has already consumed. It
+    /// is copied back to the front of the buffer so that **every offset below
+    /// is the byte offset in `nifti1.h`**, with nothing subtracted.
+    ///
+    /// That is not a stylistic choice. Reading into a buffer that starts four
+    /// bytes into the file means every constant has to be written as
+    /// `spec − 4`, and the moment one of them is transcribed from the spec
+    /// table unadjusted it reads a neighbouring field — silently, because
+    /// every field in this region is a plausible-looking `float`. This is
+    /// exactly how `quatern_b/c/d` and `qoffset_*` came to be read as
+    /// `quatern_c`, `quatern_d`, `qoffset_x`, `qoffset_y`, `qoffset_z` and
+    /// `srow_x[0]`. Keeping the buffer aligned to the file makes every
+    /// constant checkable against the spec by eye.
+    fn parse_nifti1<R: Read>(reader: &mut R, lead: [u8; 4]) -> Result<Self, NiftiError> {
+        let mut buf = [0u8; 348];
+        buf[..4].copy_from_slice(&lead);
+        reader.read_exact(&mut buf[4..])?;
 
         let f32_at = |off: usize| -> f64 {
             f32::from_le_bytes([buf[off], buf[off + 1], buf[off + 2], buf[off + 3]]) as f64
@@ -165,68 +361,43 @@ impl NiftiHeader {
 
         let mut dim = [0i64; 8];
         for (i, d) in dim.iter_mut().enumerate() {
-            *d = i16_at(36 + i * 2) as i64;
+            *d = i16_at(40 + i * 2) as i64;
         }
 
-        let datatype = i16_at(66);
-        let bitpix = i16_at(68);
+        let datatype = i16_at(70);
+        let bitpix = i16_at(72);
 
         let mut pixdim = [0.0f64; 8];
         for (i, p) in pixdim.iter_mut().enumerate() {
-            *p = f32_at(72 + i * 4);
+            *p = f32_at(76 + i * 4);
         }
 
-        let vox_offset = f32_at(104) as u64;
-        let scl_slope = f32_at(108);
-        let scl_inter = f32_at(112);
+        let vox_offset = f32_at(108) as u64;
+        let scl_slope = f32_at(112);
+        let scl_inter = f32_at(116);
 
-        // qform_code: byte 252 → offset 248; sform_code: byte 254 → offset 250
-        let qform_code = i16_at(248);
-        let sform_code = i16_at(250);
+        let qform_code = i16_at(252);
+        let sform_code = i16_at(254);
 
-        // sform affine: bytes 280-327 → offset 276-323 (3 rows × 4 cols of f32)
-        let mut affine = [[0.0f64; 4]; 4];
-        if sform_code > 0 {
-            for (row, arow) in affine[..3].iter_mut().enumerate() {
-                for (col, acol) in arow.iter_mut().enumerate() {
-                    *acol = f32_at(276 + (row * 4 + col) * 4);
-                }
+        let quatern = [f32_at(256), f32_at(260), f32_at(264)];
+        let qoffset = [f32_at(268), f32_at(272), f32_at(276)];
+        let mut srow = [[0.0f64; 4]; 3];
+        for (row, srow_n) in srow.iter_mut().enumerate() {
+            for (col, slot) in srow_n.iter_mut().enumerate() {
+                *slot = f32_at(280 + (row * 4 + col) * 4);
             }
-            affine[3][3] = 1.0;
-        } else if qform_code > 0 {
-            // Build affine from quaternion (qoffset + quatern params)
-            let qb = f32_at(256);
-            let qc = f32_at(260);
-            let qd = f32_at(264);
-            let qx = f32_at(268);
-            let qy = f32_at(272);
-            let qz = f32_at(276); // Note: overlaps with sform — only used when sform_code==0
-            // Actually qoffset_x/y/z are at different offsets for NIfTI-1:
-            // qoffset_x=268, qoffset_y=272, qoffset_z=276
-            let qa = (1.0 - qb * qb - qc * qc - qd * qd).max(0.0).sqrt();
-            let (i, j, k) = (pixdim[1], pixdim[2], pixdim[3]);
-            let qfac = if pixdim[0] < 0.0 { -1.0 } else { 1.0 };
-
-            affine[0][0] = (qa * qa + qb * qb - qc * qc - qd * qd) * i;
-            affine[0][1] = 2.0 * (qb * qc - qa * qd) * j;
-            affine[0][2] = 2.0 * (qb * qd + qa * qc) * k * qfac;
-            affine[0][3] = qx;
-            affine[1][0] = 2.0 * (qb * qc + qa * qd) * i;
-            affine[1][1] = (qa * qa + qc * qc - qb * qb - qd * qd) * j;
-            affine[1][2] = 2.0 * (qc * qd - qa * qb) * k * qfac;
-            affine[1][3] = qy;
-            affine[2][0] = 2.0 * (qb * qd - qa * qc) * i;
-            affine[2][1] = 2.0 * (qc * qd + qa * qb) * j;
-            affine[2][2] = (qa * qa + qd * qd - qb * qb - qc * qc) * k * qfac;
-            affine[2][3] = qz;
-            affine[3][3] = 1.0;
-        } else {
-            // Method 1: use pixdim as diagonal
-            affine[0][0] = pixdim[1];
-            affine[1][1] = pixdim[2];
-            affine[2][2] = pixdim[3];
-            affine[3][3] = 1.0;
         }
+
+        // NIfTI-1 lets a file carry two geometry records. `sform` wins when it
+        // is set, which is the precedence `nifti1.h` documents.
+        let (affine, geometry_source) = choose_affine(
+            qform_code as i32,
+            sform_code as i32,
+            quatern,
+            qoffset,
+            &srow,
+            &pixdim,
+        );
 
         let ndim = dim[0].clamp(0, 7) as usize;
 
@@ -243,55 +414,68 @@ impl NiftiHeader {
             affine,
             sform_code,
             qform_code,
+            geometry_source,
+            quatern,
+            qoffset,
+            srow,
         })
     }
 
-    fn parse_nifti2<R: Read>(reader: &mut R) -> Result<Self, NiftiError> {
-        let mut buf = [0u8; 536];
-        reader.read_exact(&mut buf)?;
+    /// Parse a NIfTI-2 header.
+    ///
+    /// As with [`Self::parse_nifti1`], offsets are the ones in `nifti2.h`.
+    /// Note that NIfTI-2 widens `qform_code` and `sform_code` from `int16` to
+    /// `int32` and moves every geometry field, so none of the NIfTI-1
+    /// constants carry over.
+    fn parse_nifti2<R: Read>(reader: &mut R, lead: [u8; 4]) -> Result<Self, NiftiError> {
+        let mut buf = [0u8; 540];
+        buf[..4].copy_from_slice(&lead);
+        reader.read_exact(&mut buf[4..])?;
 
         let f64_at =
             |off: usize| -> f64 { f64::from_le_bytes(buf[off..off + 8].try_into().unwrap()) };
+        let i32_at =
+            |off: usize| -> i32 { i32::from_le_bytes(buf[off..off + 4].try_into().unwrap()) };
         let i16_at = |off: usize| -> i16 { i16::from_le_bytes([buf[off], buf[off + 1]]) };
         let i64_at =
             |off: usize| -> i64 { i64::from_le_bytes(buf[off..off + 8].try_into().unwrap()) };
 
-        let datatype = i16_at(8);
-        let bitpix = i16_at(10);
+        let datatype = i16_at(12);
+        let bitpix = i16_at(14);
 
         let mut dim = [0i64; 8];
         for (i, d) in dim.iter_mut().enumerate() {
-            *d = i64_at(12 + i * 8);
+            *d = i64_at(16 + i * 8);
         }
 
         let mut pixdim = [0.0f64; 8];
         for (i, p) in pixdim.iter_mut().enumerate() {
-            *p = f64_at(100 + i * 8);
+            *p = f64_at(104 + i * 8);
         }
 
-        let vox_offset = i64_at(164) as u64;
-        let scl_slope = f64_at(172);
-        let scl_inter = f64_at(180);
+        let vox_offset = i64_at(168) as u64;
+        let scl_slope = f64_at(176);
+        let scl_inter = f64_at(184);
 
-        // NIfTI-2: qform_code at 344, sform_code at 346
-        let qform_code = i16_at(340);
-        let sform_code = i16_at(342);
+        // `int32` here, not `int16` as in NIfTI-1. Read as `int16` on a
+        // little-endian host, `qform_code` still happens to come out right for
+        // any code below 32768 — but `sform_code` lands on the *high* half of
+        // `qform_code`, which is always zero, so no NIfTI-2 file would ever
+        // take the `sform` branch.
+        let qform_code = i32_at(344);
+        let sform_code = i32_at(348);
 
-        // sform: 3×4 f64 at bytes 400-495 → offset 396-491
-        let mut affine = [[0.0f64; 4]; 4];
-        if sform_code > 0 {
-            for (row, arow) in affine[..3].iter_mut().enumerate() {
-                for (col, acol) in arow.iter_mut().enumerate() {
-                    *acol = f64_at(396 + (row * 4 + col) * 8);
-                }
+        let quatern = [f64_at(352), f64_at(360), f64_at(368)];
+        let qoffset = [f64_at(376), f64_at(384), f64_at(392)];
+        let mut srow = [[0.0f64; 4]; 3];
+        for (row, srow_n) in srow.iter_mut().enumerate() {
+            for (col, slot) in srow_n.iter_mut().enumerate() {
+                *slot = f64_at(400 + (row * 4 + col) * 8);
             }
-            affine[3][3] = 1.0;
-        } else {
-            affine[0][0] = pixdim[1];
-            affine[1][1] = pixdim[2];
-            affine[2][2] = pixdim[3];
-            affine[3][3] = 1.0;
         }
+
+        let (affine, geometry_source) =
+            choose_affine(qform_code, sform_code, quatern, qoffset, &srow, &pixdim);
 
         let ndim = dim[0].clamp(0, 7) as usize;
 
@@ -306,8 +490,16 @@ impl NiftiHeader {
             scl_slope,
             scl_inter,
             affine,
-            sform_code,
-            qform_code,
+            // The struct stores these as `i16`; NIfTI-2's codes are small
+            // enumerations (0..=4 in the spec), so the narrowing is lossless
+            // for any conforming file. Saturate rather than wrap so a
+            // malformed one cannot come back looking valid.
+            sform_code: sform_code.clamp(i16::MIN as i32, i16::MAX as i32) as i16,
+            qform_code: qform_code.clamp(i16::MIN as i32, i16::MAX as i32) as i16,
+            geometry_source,
+            quatern,
+            qoffset,
+            srow,
         })
     }
 
@@ -318,6 +510,52 @@ impl NiftiHeader {
         } else {
             1
         }
+    }
+
+    /// NIfTI's `qfac` — `pixdim[0]`, as a clean ±1.
+    ///
+    /// A left-handed volume is stored as a right-handed rotation plus this
+    /// sign, because a unit quaternion cannot express a reflection. Several
+    /// writers leave the field at zero; the spec reads that as `+1`, and so
+    /// does this.
+    pub fn qfac(&self) -> f64 {
+        if self.pixdim[0] < 0.0 { -1.0 } else { 1.0 }
+    }
+
+    /// The `qform` rotation as a 3×3 matrix, direction cosines in columns.
+    ///
+    /// `qfac` is **not** folded in: this is the rotation `quatern_b/c/d`
+    /// encodes, and the k axis is flipped separately. That split is the point
+    /// of having it — folding the two together is what an affine already does.
+    pub fn qform_rotation(&self) -> [[f64; 3]; 3] {
+        let [b, c, d] = self.quatern;
+        let a = (1.0 - b * b - c * c - d * d).max(0.0).sqrt();
+        [
+            [
+                a * a + b * b - c * c - d * d,
+                2.0 * (b * c - a * d),
+                2.0 * (b * d + a * c),
+            ],
+            [
+                2.0 * (b * c + a * d),
+                a * a + c * c - b * b - d * d,
+                2.0 * (c * d - a * b),
+            ],
+            [
+                2.0 * (b * d - a * c),
+                2.0 * (c * d + a * b),
+                a * a + d * d - b * b - c * c,
+            ],
+        ]
+    }
+
+    /// The affine the `qform` encodes, whatever
+    /// [`geometry_source`](Self::geometry_source) says.
+    ///
+    /// Use this when the `qform` is the record you want — some pipelines
+    /// require it — rather than the one NIfTI's precedence picked.
+    pub fn qform_affine(&self) -> [[f64; 4]; 4] {
+        affine_from_qform(self.quatern, self.qoffset, &self.pixdim)
     }
 
     /// Voxel dimensions in mm: (x, y, z).
@@ -1286,5 +1524,464 @@ mod tests {
         assert!((world[2] - 39.0).abs() < 1e-6);
 
         std::fs::remove_dir_all(&dir).unwrap();
+    }
+    // ─── qform regression tests ───────────────────────────────────────────
+    //
+    // The `qform` path had no coverage, and it was reading `quatern_b/c/d` and
+    // `qoffset_*` four bytes late — picking up `quatern_c`, `quatern_d`,
+    // `qoffset_x` as the quaternion and `qoffset_y`, `qoffset_z`, `srow_x[0]`
+    // as the translation. Every test here fails against that code.
+
+    /// A NIfTI-1 header carrying a `qform` and no `sform`.
+    fn build_nifti1_qform(
+        pixdims: &[f32; 8],
+        quatern: [f32; 3],
+        qoffset: [f32; 3],
+        qform_code: i16,
+    ) -> Vec<u8> {
+        let dims: [i16; 8] = [3, 4, 4, 3, 1, 1, 1, 1];
+        let mut bytes = build_nifti1(&dims, pixdims, &[0.0f32; 48]);
+        bytes[252..254].copy_from_slice(&qform_code.to_le_bytes());
+        bytes[254..256].copy_from_slice(&0i16.to_le_bytes()); // sform_code = 0
+        for (i, &v) in quatern.iter().enumerate() {
+            bytes[256 + i * 4..260 + i * 4].copy_from_slice(&v.to_le_bytes());
+        }
+        for (i, &v) in qoffset.iter().enumerate() {
+            bytes[268 + i * 4..272 + i * 4].copy_from_slice(&v.to_le_bytes());
+        }
+        // Fill `srow_*` with a recognisable pattern. A reader that runs off the
+        // end of the `qform` block lands here, and a zero would hide it.
+        for i in 0..12 {
+            let off = 280 + i * 4;
+            bytes[off..off + 4].copy_from_slice(&(-999.0f32).to_le_bytes());
+        }
+        bytes
+    }
+
+    fn parse_bytes(bytes: Vec<u8>) -> NiftiHeader {
+        NiftiHeader::parse_reader(&mut std::io::Cursor::new(bytes)).unwrap()
+    }
+
+    #[test]
+    fn qform_identity_gives_pixdim_on_the_diagonal_and_qoffset_as_origin() {
+        let hdr = parse_bytes(build_nifti1_qform(
+            &[1.0, 2.0, 3.0, 4.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0], // identity rotation: a = 1
+            [10.0, 20.0, 30.0],
+            1,
+        ));
+        assert_eq!(hdr.qform_code, 1);
+        assert_eq!(hdr.sform_code, 0);
+
+        let want = [
+            [2.0, 0.0, 0.0, 10.0],
+            [0.0, 3.0, 0.0, 20.0],
+            [0.0, 0.0, 4.0, 30.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ];
+        for (r, (got_row, want_row)) in hdr.affine.iter().zip(&want).enumerate() {
+            for (c, (got, wanted)) in got_row.iter().zip(want_row).enumerate() {
+                assert!(
+                    (got - wanted).abs() < 1e-6,
+                    "affine[{r}][{c}] = {got}, expected {wanted}\n{:?}",
+                    hdr.affine
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn qform_reads_the_quaternion_not_the_field_after_it() {
+        // A 180° rotation about y: quatern = (b, c, d) = (0, 1, 0). Reading
+        // one field late would take (c, d, qoffset_x) = (1, 0, 100) and
+        // produce something that is not a rotation at all.
+        let hdr = parse_bytes(build_nifti1_qform(
+            &[1.0, 2.0, 2.0, 2.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [100.0, -50.0, 25.0],
+            1,
+        ));
+
+        // R = diag(-1, 1, -1), scaled by pixdim.
+        assert!((hdr.affine[0][0] + 2.0).abs() < 1e-6, "{:?}", hdr.affine);
+        assert!((hdr.affine[1][1] - 2.0).abs() < 1e-6, "{:?}", hdr.affine);
+        assert!((hdr.affine[2][2] + 2.0).abs() < 1e-6, "{:?}", hdr.affine);
+        // …and the translation is `qoffset`, not `qoffset` shifted by one.
+        assert!((hdr.affine[0][3] - 100.0).abs() < 1e-6, "{:?}", hdr.affine);
+        assert!((hdr.affine[1][3] + 50.0).abs() < 1e-6, "{:?}", hdr.affine);
+        assert!((hdr.affine[2][3] - 25.0).abs() < 1e-6, "{:?}", hdr.affine);
+    }
+
+    #[test]
+    fn qform_direction_cosines_are_orthonormal() {
+        // An oblique rotation — 36° about y, the case a rotated-stack
+        // acquisition produces. Whatever else is true, the direction cosines
+        // recovered from a `qform` must be a rotation.
+        let theta: f64 = 36f64.to_radians();
+        let (b, c, d) = (0.0, (theta / 2.0).sin(), 0.0);
+        let hdr = parse_bytes(build_nifti1_qform(
+            &[1.0, 2.0, 2.0, 6.0, 0.0, 0.0, 0.0, 0.0],
+            [b as f32, c as f32, d as f32],
+            [1.0, 2.0, 3.0],
+            1,
+        ));
+
+        // Column `n` of the affine is voxel axis `n` scaled by its spacing, so
+        // dividing it out leaves the direction cosine.
+        let spacing = [2.0, 2.0, 6.0];
+        let axes: [[f64; 3]; 3] = std::array::from_fn(|col| {
+            std::array::from_fn(|row| hdr.affine[row][col] / spacing[col])
+        });
+
+        for (col, axis) in axes.iter().enumerate() {
+            let len = axis.iter().map(|v| v * v).sum::<f64>().sqrt();
+            assert!((len - 1.0).abs() < 1e-6, "axis {col} length {len}");
+        }
+        for (a, bb) in [(0, 1), (0, 2), (1, 2)] {
+            let dot: f64 = axes[a].iter().zip(&axes[bb]).map(|(x, y)| x * y).sum();
+            assert!(dot.abs() < 1e-6, "axes {a},{bb} dot {dot}");
+        }
+        // 36° about y puts sin(36°) in the off-diagonal.
+        assert!((axes[2][0] - theta.sin()).abs() < 1e-6, "{axes:?}");
+    }
+
+    #[test]
+    fn qfac_flips_the_slice_axis() {
+        let with = |qfac: f32| {
+            parse_bytes(build_nifti1_qform(
+                &[qfac, 2.0, 2.0, 6.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0],
+                1,
+            ))
+            .affine[2][2]
+        };
+        assert!((with(1.0) - 6.0).abs() < 1e-6);
+        assert!((with(-1.0) + 6.0).abs() < 1e-6);
+        // A zero `pixdim[0]` means +1, per the spec.
+        assert!((with(0.0) - 6.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn sform_still_wins_when_both_are_present() {
+        let mut bytes = build_nifti1_qform(
+            &[1.0, 2.0, 2.0, 2.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [100.0, -50.0, 25.0],
+            1,
+        );
+        bytes[254..256].copy_from_slice(&1i16.to_le_bytes());
+        let sform: [f32; 12] = [5.0, 0.0, 0.0, 1.0, 0.0, 5.0, 0.0, 2.0, 0.0, 0.0, 5.0, 3.0];
+        for (i, &v) in sform.iter().enumerate() {
+            let off = 280 + i * 4;
+            bytes[off..off + 4].copy_from_slice(&v.to_le_bytes());
+        }
+        let hdr = parse_bytes(bytes);
+        assert!((hdr.affine[0][0] - 5.0).abs() < 1e-6, "{:?}", hdr.affine);
+        assert!((hdr.affine[0][3] - 1.0).abs() < 1e-6, "{:?}", hdr.affine);
+    }
+
+    #[test]
+    fn a_header_with_neither_code_falls_back_to_pixdim() {
+        let hdr = parse_bytes(build_nifti1_qform(
+            &[1.0, 2.0, 3.0, 4.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [9.0, 9.0, 9.0],
+            0, // qform_code = 0, sform_code = 0
+        ));
+        assert!((hdr.affine[0][0] - 2.0).abs() < 1e-6);
+        assert!((hdr.affine[1][1] - 3.0).abs() < 1e-6);
+        assert!((hdr.affine[2][2] - 4.0).abs() < 1e-6);
+        assert_eq!(hdr.affine[0][3], 0.0, "no origin without a geometry code");
+    }
+
+    #[test]
+    fn a_non_unit_quaternion_does_not_produce_nan() {
+        // `float32` storage of a 180° rotation can leave `b² + c² + d²` just
+        // over 1, and an unclamped `sqrt` turns the whole affine into NaN.
+        let hdr = parse_bytes(build_nifti1_qform(
+            &[1.0, 2.0, 2.0, 2.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 1.000_000_1, 0.0],
+            [0.0, 0.0, 0.0],
+            1,
+        ));
+        assert!(
+            hdr.affine.iter().flatten().all(|v| v.is_finite()),
+            "{:?}",
+            hdr.affine
+        );
+    }
+
+    // ─── NIfTI-2 ──────────────────────────────────────────────────────────
+
+    /// A NIfTI-2 header with the geometry fields the caller asks for.
+    fn build_nifti2(
+        pixdims: &[f64; 8],
+        quatern: [f64; 3],
+        qoffset: [f64; 3],
+        qform_code: i32,
+        sform: Option<[f64; 12]>,
+    ) -> Vec<u8> {
+        let mut header = vec![0u8; 540];
+        header[0..4].copy_from_slice(&540i32.to_le_bytes());
+        header[4..12].copy_from_slice(b"n+2\0\r\n\x1a\n");
+        header[12..14].copy_from_slice(&16i16.to_le_bytes()); // FLOAT32
+        header[14..16].copy_from_slice(&32i16.to_le_bytes());
+        let dims: [i64; 8] = [3, 4, 4, 3, 1, 1, 1, 1];
+        for (i, &d) in dims.iter().enumerate() {
+            header[16 + i * 8..24 + i * 8].copy_from_slice(&d.to_le_bytes());
+        }
+        for (i, &p) in pixdims.iter().enumerate() {
+            header[104 + i * 8..112 + i * 8].copy_from_slice(&p.to_le_bytes());
+        }
+        header[168..176].copy_from_slice(&544i64.to_le_bytes()); // vox_offset
+        header[176..184].copy_from_slice(&1.0f64.to_le_bytes()); // scl_slope
+        header[344..348].copy_from_slice(&qform_code.to_le_bytes());
+        let sform_code: i32 = if sform.is_some() { 1 } else { 0 };
+        header[348..352].copy_from_slice(&sform_code.to_le_bytes());
+        for (i, &v) in quatern.iter().enumerate() {
+            header[352 + i * 8..360 + i * 8].copy_from_slice(&v.to_le_bytes());
+        }
+        for (i, &v) in qoffset.iter().enumerate() {
+            header[376 + i * 8..384 + i * 8].copy_from_slice(&v.to_le_bytes());
+        }
+        let rows = sform.unwrap_or([-999.0; 12]);
+        for (i, &v) in rows.iter().enumerate() {
+            header[400 + i * 8..408 + i * 8].copy_from_slice(&v.to_le_bytes());
+        }
+        header
+    }
+
+    #[test]
+    fn nifti2_reads_sform_code_as_the_int32_it_is() {
+        // Read as `int16`, `sform_code` lands on the high half of
+        // `qform_code` — always zero — so no NIfTI-2 file ever took the
+        // `sform` branch and every one of them came back with a bare
+        // `pixdim` diagonal.
+        let hdr = parse_bytes(build_nifti2(
+            &[1.0, 2.0, 2.0, 2.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            1,
+            Some([
+                -1.5, 0.0, 0.0, 11.0, 0.0, 1.5, 0.0, 22.0, 0.0, 0.0, 1.5, 33.0,
+            ]),
+        ));
+        assert_eq!(hdr.version, 2);
+        assert_eq!(hdr.sform_code, 1);
+        assert_eq!(hdr.qform_code, 1);
+        assert!((hdr.affine[0][0] + 1.5).abs() < 1e-9, "{:?}", hdr.affine);
+        assert!((hdr.affine[0][3] - 11.0).abs() < 1e-9, "{:?}", hdr.affine);
+        assert!((hdr.affine[2][3] - 33.0).abs() < 1e-9, "{:?}", hdr.affine);
+    }
+
+    #[test]
+    fn nifti2_builds_an_affine_from_a_qform() {
+        // NIfTI-2 had no `qform` branch at all: a `qform`-only file silently
+        // came back with no rotation and no origin.
+        let hdr = parse_bytes(build_nifti2(
+            &[-1.0, 2.0, 2.0, 6.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0], // 180° about y
+            [113.0, -94.0, -125.0],
+            1,
+            None,
+        ));
+        assert_eq!(hdr.sform_code, 0);
+        assert_eq!(hdr.qform_code, 1);
+        assert!((hdr.affine[0][0] + 2.0).abs() < 1e-9, "{:?}", hdr.affine);
+        assert!((hdr.affine[1][1] - 2.0).abs() < 1e-9, "{:?}", hdr.affine);
+        // qfac = −1 flips the k column: −(−6) = +6.
+        assert!((hdr.affine[2][2] - 6.0).abs() < 1e-9, "{:?}", hdr.affine);
+        assert!((hdr.affine[0][3] - 113.0).abs() < 1e-9, "{:?}", hdr.affine);
+        assert!((hdr.affine[1][3] + 94.0).abs() < 1e-9, "{:?}", hdr.affine);
+        assert!((hdr.affine[2][3] + 125.0).abs() < 1e-9, "{:?}", hdr.affine);
+    }
+
+    #[test]
+    fn nifti2_geometry_fields_do_not_alias_each_other() {
+        // Give every geometry field a distinct value and check none of them
+        // turns up where another belongs.
+        let hdr = parse_bytes(build_nifti2(
+            &[1.0, 7.0, 8.0, 9.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            [101.0, 202.0, 303.0],
+            2,
+            None,
+        ));
+        assert_eq!(hdr.qform_code, 2);
+        assert!((hdr.affine[0][0] - 7.0).abs() < 1e-9, "{:?}", hdr.affine);
+        assert!((hdr.affine[1][1] - 8.0).abs() < 1e-9, "{:?}", hdr.affine);
+        assert!((hdr.affine[2][2] - 9.0).abs() < 1e-9, "{:?}", hdr.affine);
+        assert!((hdr.affine[0][3] - 101.0).abs() < 1e-9, "{:?}", hdr.affine);
+        assert!((hdr.affine[1][3] - 202.0).abs() < 1e-9, "{:?}", hdr.affine);
+        assert!((hdr.affine[2][3] - 303.0).abs() < 1e-9, "{:?}", hdr.affine);
+    }
+
+    #[test]
+    fn both_versions_agree_on_the_same_geometry() {
+        // The two parsers share `affine_from_qform`; this is what stops them
+        // drifting apart again.
+        let quatern = [0.0, 0.309_016_994_374_947_45, 0.0]; // 36° about y
+        let qoffset = [1.5, -2.5, 3.5];
+        let pixdim = [-1.0, 2.0, 2.0, 6.0, 0.0, 0.0, 0.0, 0.0];
+
+        let one = parse_bytes(build_nifti1_qform(
+            &[
+                pixdim[0] as f32,
+                pixdim[1] as f32,
+                pixdim[2] as f32,
+                pixdim[3] as f32,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+            ],
+            [quatern[0] as f32, quatern[1] as f32, quatern[2] as f32],
+            [qoffset[0] as f32, qoffset[1] as f32, qoffset[2] as f32],
+            1,
+        ));
+        let two = parse_bytes(build_nifti2(&pixdim, quatern, qoffset, 1, None));
+
+        for r in 0..4 {
+            for c in 0..4 {
+                assert!(
+                    (one.affine[r][c] - two.affine[r][c]).abs() < 1e-6,
+                    "[{r}][{c}]: nifti1 {} vs nifti2 {}",
+                    one.affine[r][c],
+                    two.affine[r][c]
+                );
+            }
+        }
+    }
+    // ─── raw geometry fields ──────────────────────────────────────────────
+
+    #[test]
+    fn the_qform_fields_are_exposed_exactly_as_stored() {
+        // The affine folds rotation, spacing and `qfac` together. Anything
+        // that needs to edit one without disturbing the others — or to tell
+        // "qfac is −1" apart from "the third cosine is negated" — needs these.
+        let hdr = parse_bytes(build_nifti1_qform(
+            &[-1.0, 2.0, 2.0, 6.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.309_017, 0.0],
+            [113.0, -94.0, -125.0],
+            1,
+        ));
+        assert_eq!(hdr.geometry_source, GeometrySource::Qform);
+        assert!(
+            (hdr.quatern[1] - 0.309_017).abs() < 1e-6,
+            "{:?}",
+            hdr.quatern
+        );
+        assert_eq!(hdr.quatern[0], 0.0);
+        assert_eq!(hdr.quatern[2], 0.0);
+        assert!((hdr.qoffset[0] - 113.0).abs() < 1e-6, "{:?}", hdr.qoffset);
+        assert!((hdr.qoffset[2] + 125.0).abs() < 1e-6, "{:?}", hdr.qoffset);
+        assert_eq!(hdr.qfac(), -1.0);
+    }
+
+    #[test]
+    fn the_srow_rows_are_exposed_even_when_the_qform_was_used() {
+        // And vice versa: both records survive parsing, whichever one the
+        // precedence rule picked.
+        let mut bytes = build_nifti1_qform(
+            &[1.0, 2.0, 2.0, 2.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [7.0, 8.0, 9.0],
+            1,
+        );
+        bytes[254..256].copy_from_slice(&1i16.to_le_bytes());
+        let sform: [f32; 12] = [
+            4.0, 0.0, 0.0, 40.0, 0.0, 4.0, 0.0, 50.0, 0.0, 0.0, 4.0, 60.0,
+        ];
+        for (i, &v) in sform.iter().enumerate() {
+            bytes[280 + i * 4..284 + i * 4].copy_from_slice(&v.to_le_bytes());
+        }
+        let hdr = parse_bytes(bytes);
+
+        assert_eq!(hdr.geometry_source, GeometrySource::Sform);
+        assert!((hdr.affine[0][0] - 4.0).abs() < 1e-6, "sform won");
+        // The qform is still there, and still says something different.
+        assert!((hdr.quatern[1] - 1.0).abs() < 1e-6, "{:?}", hdr.quatern);
+        assert!((hdr.qoffset[0] - 7.0).abs() < 1e-6, "{:?}", hdr.qoffset);
+        assert!((hdr.srow[2][3] - 60.0).abs() < 1e-6, "{:?}", hdr.srow);
+        // …and can be asked for directly.
+        let q = hdr.qform_affine();
+        assert!((q[0][0] + 2.0).abs() < 1e-6, "{q:?}");
+        assert!((q[0][3] - 7.0).abs() < 1e-6, "{q:?}");
+    }
+
+    #[test]
+    fn geometry_source_reports_the_fallback() {
+        let hdr = parse_bytes(build_nifti1_qform(
+            &[1.0, 2.0, 3.0, 4.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            0,
+        ));
+        assert_eq!(hdr.geometry_source, GeometrySource::Pixdim);
+    }
+
+    #[test]
+    fn qform_rotation_excludes_qfac_and_spacing() {
+        // The whole reason to expose it separately: the rotation is a
+        // rotation, with the sign and the scale kept out of it.
+        let hdr = parse_bytes(build_nifti1_qform(
+            &[-1.0, 2.0, 2.0, 6.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0], // 180° about y
+            [0.0, 0.0, 0.0],
+            1,
+        ));
+        let r = hdr.qform_rotation();
+        // R = diag(-1, 1, -1) — unscaled, and *not* flipped by qfac.
+        assert!((r[0][0] + 1.0).abs() < 1e-6, "{r:?}");
+        assert!((r[1][1] - 1.0).abs() < 1e-6, "{r:?}");
+        assert!((r[2][2] + 1.0).abs() < 1e-6, "{r:?}");
+        // The affine, by contrast, has both folded in: −1 × 6 × qfac(−1) = +6.
+        assert!((hdr.affine[2][2] - 6.0).abs() < 1e-6, "{:?}", hdr.affine);
+    }
+
+    #[test]
+    fn qform_rotation_is_orthonormal_for_an_oblique_header() {
+        let theta: f64 = 36f64.to_radians();
+        let hdr = parse_bytes(build_nifti1_qform(
+            &[1.0, 2.0, 2.0, 6.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, (theta / 2.0).sin() as f32, 0.0],
+            [0.0, 0.0, 0.0],
+            1,
+        ));
+        let r = hdr.qform_rotation();
+        // Direction cosines sit in the columns, so transpose before measuring.
+        let axes: [[f64; 3]; 3] = std::array::from_fn(|col| std::array::from_fn(|row| r[row][col]));
+        for (col, axis) in axes.iter().enumerate() {
+            let len = axis.iter().map(|v| v * v).sum::<f64>().sqrt();
+            assert!((len - 1.0).abs() < 1e-6, "column {col}: {len}");
+        }
+        assert!((r[0][2] - theta.sin()).abs() < 1e-6, "{r:?}");
+    }
+
+    #[test]
+    fn nifti2_exposes_the_same_raw_fields() {
+        let hdr = parse_bytes(build_nifti2(
+            &[-1.0, 2.0, 2.0, 6.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.309_016_994_374_947_45, 0.0],
+            [113.0, -94.0, -125.0],
+            1,
+            None,
+        ));
+        assert_eq!(hdr.geometry_source, GeometrySource::Qform);
+        assert!((hdr.quatern[1] - 0.309_016_994_374_947_45).abs() < 1e-12);
+        assert!((hdr.qoffset[1] + 94.0).abs() < 1e-12);
+        assert_eq!(hdr.qfac(), -1.0);
+    }
+
+    #[test]
+    fn the_default_header_is_coherent() {
+        let h = NiftiHeader::default();
+        assert_eq!(h.matrix_size(), (1, 1, 1));
+        assert_eq!(h.n_vols(), 1);
+        assert_eq!(h.n_voxels(), 1);
+        assert!(!h.has_scaling());
+        assert_eq!(h.qfac(), 1.0);
+        assert_eq!(h.voxel_to_world([0.0, 0.0, 0.0]), [0.0, 0.0, 0.0]);
     }
 }
