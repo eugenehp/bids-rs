@@ -26,3 +26,7 @@ dist/
 
 # Cargo lock for libraries (optional — keep if you want reproducible builds)
 # Cargo.lock
+
+# Local PyBIDS reference checkout, used by SPEC_PARITY.md and bench/ to compare
+# against. Clone it yourself; it is not part of this repository.
+/pybids/

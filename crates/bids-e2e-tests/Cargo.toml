@@ -2,8 +2,15 @@
 name = "bids-e2e-tests"
 description = "End-to-end tests comparing bids-rs against PyBIDS golden data"
 version.workspace = true
+# Test-only: never goes to crates.io.
+publish = false
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+rust-version.workspace = true
 
 [dependencies]
 bids-core = { workspace = true }
@@ -15,6 +22,7 @@ bids-formula = { workspace = true }
 bids-schema = { workspace = true }
 bids-inflect = { workspace = true }
 bids-modeling = { workspace = true }
+bids-variables = { workspace = true }
 bids-validate = { workspace = true }
 bids-eeg = { workspace = true }
 bids-meg = { workspace = true }

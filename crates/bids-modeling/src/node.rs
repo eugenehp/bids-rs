@@ -119,9 +119,12 @@ impl StatsModelsNode {
         for collection in &self.collections {
             let mut coll = collection.clone();
 
-            // Apply transformations
+            // Apply transformations. Errors are carried on the output rather
+            // than dropped: a model that asks for a transformation we cannot
+            // perform must not look like one that succeeded.
+            let mut transform_errors = Vec::new();
             if let Some(ref spec) = self.transformations {
-                crate::transformations::apply_transformations(&mut coll, spec);
+                transform_errors = crate::transformations::apply_transformations(&mut coll, spec);
             }
 
             // Extract X variable names from model
@@ -213,6 +216,7 @@ impl StatsModelsNode {
             let dm = if !x_vars.is_empty() {
                 let mut cols = Vec::new();
                 let mut col_names = Vec::new();
+                let mut missing = Vec::new();
                 for var_name in &x_vars {
                     if var_name == "intercept" {
                         let n = coll
@@ -225,7 +229,18 @@ impl StatsModelsNode {
                     } else if let Some(var) = coll.variables.get(var_name) {
                         cols.push(var.values.clone());
                         col_names.push(var_name.clone());
+                    } else {
+                        missing.push(var_name.clone());
                     }
+                }
+                for name in missing {
+                    transform_errors.push(crate::transformations::TransformError {
+                        instruction: String::new(),
+                        message: format!(
+                            "model term '{name}' is not present in the collection after \
+                             transformations"
+                        ),
+                    });
                 }
                 if !cols.is_empty() {
                     Some((col_names, cols))
@@ -242,6 +257,7 @@ impl StatsModelsNode {
                 x_variables: x_vars.clone(),
                 contrasts,
                 design_matrix: dm,
+                transform_errors,
             });
         }
 
@@ -262,12 +278,23 @@ pub struct StatsModelsNodeOutput {
     pub contrasts: Vec<ContrastInfo>,
     /// Design matrix: (column_names, data_rows).
     pub design_matrix: Option<(Vec<String>, Vec<Vec<f64>>)>,
+    /// Transformations that could not be applied, and model terms that went
+    /// missing as a result. Empty when the node ran cleanly.
+    pub transform_errors: Vec<crate::transformations::TransformError>,
 }
 
 impl StatsModelsNodeOutput {
     /// Get the design matrix column names (X).
+    #[must_use]
     pub fn x_columns(&self) -> &[String] {
         &self.x_variables
+    }
+
+    /// Whether the node produced its design matrix without any transformation
+    /// errors.
+    #[must_use]
+    pub fn is_complete(&self) -> bool {
+        self.transform_errors.is_empty() && self.design_matrix.is_some()
     }
 }
 

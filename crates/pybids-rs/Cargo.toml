@@ -1,9 +1,14 @@
 [package]
 name = "pybids-rs"
 description = "Python bindings for bids-rs, a Rust implementation of PyBIDS"
-version = "0.0.1"
-edition = "2024"
-license = "GPL-3.0-or-later"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+rust-version.workspace = true
 
 [lib]
 name = "pybids_rs"
@@ -11,17 +16,19 @@ crate-type = ["cdylib"]
 
 [dependencies]
 pyo3 = { version = "0.25", features = ["extension-module"] }
-bids-core = { path = "../bids-core", version = "0.0.1" }
-bids-layout = { path = "../bids-layout", version = "0.0.1" }
-bids-eeg = { path = "../bids-eeg", version = "0.0.1" }
-bids-ieeg = { path = "../bids-ieeg", version = "0.0.1" }
-bids-meg = { path = "../bids-meg", version = "0.0.1" }
-bids-pet = { path = "../bids-pet", version = "0.0.1" }
-bids-nifti = { path = "../bids-nifti", version = "0.0.1" }
-bids-filter = { path = "../bids-filter", version = "0.0.1" }
-bids-formula = { path = "../bids-formula", version = "0.0.1" }
-bids-schema = { path = "../bids-schema", version = "0.0.1" }
-bids-inflect = { path = "../bids-inflect", version = "0.0.1" }
-bids-modeling = { path = "../bids-modeling", version = "0.0.1" }
-bids-reports = { path = "../bids-reports", version = "0.0.1" }
+bids-core = { workspace = true }
+bids-layout = { workspace = true }
+bids-variables = { workspace = true }
+bids-io = { workspace = true }
+bids-eeg = { workspace = true }
+bids-ieeg = { workspace = true }
+bids-meg = { workspace = true }
+bids-pet = { workspace = true }
+bids-nifti = { workspace = true }
+bids-filter = { workspace = true }
+bids-formula = { workspace = true }
+bids-schema = { workspace = true }
+bids-inflect = { workspace = true }
+bids-modeling = { workspace = true }
+bids-reports = { workspace = true }
 serde_json = { workspace = true }

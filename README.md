@@ -31,9 +31,16 @@ For more information about the BIDS standard, visit
 - **BIDS Stats Models** — Full implementation of the
   [BIDS-StatsModels](https://bids-standard.github.io/stats-models/)
   specification: parse model JSON, build directed acyclic graphs of analysis
-  nodes, apply variable transformations (Factor, Scale, Threshold, Convolve,
-  …), execute contrast pipelines, and auto-generate models from dataset
-  structure.
+  nodes, apply all 24 PyBIDS variable transformations (Factor, Scale,
+  Threshold, Convolve, Orthogonalize, Lag, …), execute contrast pipelines, and
+  auto-generate models from dataset structure. Instructions that cannot be
+  applied are reported as errors rather than skipped.
+- **Mixed models** — Fixed-effect design (X) plus random-effect variance
+  components (Z), with priors — the Rust equivalent of PyBIDS' `GLMMSpec`.
+- **Model diagnostics and reports** — Contrast matrices, per-regressor and
+  per-contrast variance inflation factors (via the Smith et al. effective
+  regressor construction), and a self-contained HTML report with inline SVG
+  design-matrix, correlation and VIF figures — no runtime dependencies.
 - **HRF convolution** — SPM and Glover canonical hemodynamic response functions
   with time/dispersion derivatives, FIR basis sets, and full regressor
   computation — numerically validated against SciPy to <1e-10 relative error.
@@ -390,6 +397,42 @@ Entity queries are **up to 1000× faster** once the layout is indexed.
 
 ## Comparison with PyBIDS
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/pybids-speedup-dark.svg">
+  <img alt="bids-rs speedup over PyBIDS by operation, log scale" src="figures/pybids-speedup-light.svg">
+</picture>
+
+Measured by running the **same benchmark code** against both backends: a
+drop-in `bids` package that mirrors PyBIDS' module structure but dispatches to
+`bids-rs` (see [`bench/`](bench/)). Every operation is compared for equality
+before it is timed — all results were identical across the 19 datasets.
+
+| | median speedup |
+|---|---|
+| Entity queries (`get_subjects`, `get_tasks`, …) | **1,000–3,000×** |
+| Filtered file queries (`get(subject=…)`) | **326×** |
+| Metadata access (`get_metadata`) | **22×** |
+| File listing, entity parsing | **~10×** |
+| Indexing a dataset (`BIDSLayout(…)`) | **4.2×** |
+
+Query speedups are large because `bids-rs` answers them from the SQLite index
+rather than materialising Python objects; indexing is the honest floor, since
+both implementations must walk the tree and parse every sidecar.
+
+### Numerical agreement
+
+`bench/precision.py` checks the numeric surfaces both implementations share,
+against PyBIDS and SciPy:
+
+| Surface | Result |
+|---|---|
+| `spm_hrf`, `glover_hrf` (8 parameterisations) | within 1e-12 abs / 1e-9 rel |
+| Butterworth low/high/band-pass coefficients | within 1e-12 abs / 1e-9 rel |
+| `filtfilt` over 500 samples | within 1e-12 abs |
+| Sidecar float round-trip (2,753 values, 40 datasets) | **bit-exact** |
+
+125 checks, none outside tolerance.
+
 `bids-rs` aims for API compatibility with PyBIDS where possible, while taking
 advantage of Rust's type system and performance characteristics:
 
@@ -400,10 +443,13 @@ advantage of Rust's type system and performance characteristics:
 | Metadata inheritance | Python dict merging | IndexMap-based merging |
 | EEG data reading | MNE-Python | Pure Rust, 2-14× faster (channel-major decoding) |
 | Variables | pandas DataFrame | Custom `SimpleVariable` / `SparseRunVariable` / `DenseRunVariable` |
-| StatsModels | Full spec with numpy/pandas | Full spec with pure Rust |
+| StatsModels | Full spec with numpy/pandas | Full spec with pure Rust; all 24 transformations, unapplied instructions surface as errors |
+| Model reports | Altair/Vega + matplotlib | Self-contained HTML with inline SVG, no runtime deps |
+| Mixed models | `GLMMSpec` with X, Z, variance components | Same, via `GlmSpec`/`GlmmSpec` + `VarComp` + `Prior` |
 | HRF functions | scipy.stats.gamma | Pure Rust with cephes-matching gammaln |
 | Signal filtering | scipy.signal | Pure Rust Butterworth + filtfilt |
 | Reports | Jinja2 templates | Rust string formatting |
+| Package options | `bids.config` globals | `bids_core::options` |
 | Safety | Runtime checks | `#[deny(unsafe_code)]` on all crates |
 | Python access | Native | PyO3 bindings (`pybids-rs`) |
 
@@ -413,10 +459,36 @@ For the most common imports, use the prelude:
 
 ```rust
 use bids::prelude::*;
-// Brings in: BidsLayout, BidsFile, BidsMetadata, BidsError,
-//            Config, DatasetDescription, Entity, EntityValue,
-//            Entities, Result, TimeSeries, Query, QueryFilter
 ```
+
+The umbrella prelude covers the everyday surface of the whole workspace:
+
+| Area | Brings in |
+|------|-----------|
+| Core | `BidsFile`, `BidsMetadata`, `Config`, `DatasetDescription`, `Entities`, `Entity`, `EntityValue`, `FileType`, `PaddedInt`, `StringEntities`, `BidsError`, `Result`, `TimeSeries`, `options` |
+| I/O | `read_json`, `read_tsv`, `read_tsv_gz`, `build_path`, `write_to_file`, `GradientTable`, `ConflictStrategy` |
+| Layout | `BidsLayout`, `LayoutBuilder`, `GetBuilder`, `Query`, `QueryFilter`, `Scope`, `InvalidFilters` |
+| Variables | `VariableCollection`, `RunVariableCollection`, `SimpleVariable`, `SparseRunVariable`, `DenseRunVariable`, `NodeIndex`, `LayoutVariables`, `load_variables` |
+| Modeling | `StatsModelsGraph`, `GlmSpec`/`GlmmSpec`, `VarComp`, `Prior`, `Term`, `HrfModel`, `ContrastInfo`, `TransformSpec`, `apply_transformations`, `spm_hrf`, `glover_hrf`, `compute_regressor`, `compute_vif`, `node_report`, `generate_report`, `auto_model` |
+| Formula | `Formula`, `parse_formula`, `build_design_matrix` |
+| Reports | `BidsReport` |
+| Validation | `validate_dataset`, `validate_root`, `ValidationResult`, `BidsVersion`, `SUPPORTED_BIDS_VERSION` |
+| Signal | `butter_lowpass`, `butter_highpass`, `butter_bandpass`, `filtfilt`, `notch_filter`, `resample` |
+| Modalities | `EegLayout`, `EegData`, `EegMetadata`, `NiftiHeader`, `NiftiImage` |
+| Datasets | `OpenNeuro`, `Aggregator`, `DatasetFilter`, `Split` |
+
+Each sub-crate also has its own narrower prelude:
+
+```rust
+use bids::layout::prelude::*;    // or bids_layout::prelude::*
+use bids::modeling::prelude::*;
+use bids::variables::prelude::*;
+```
+
+Preludes are available on `bids-core`, `bids-io`, `bids-layout`,
+`bids-variables`, `bids-modeling`, `bids-reports`, `bids-eeg`, `bids-nifti`,
+`bids-filter`, `bids-validate`, `bids-schema`, `bids-dataset`, and
+`bids-formula`.
 
 ## Entities Macro
 

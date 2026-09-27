@@ -22,10 +22,15 @@ for order in [1, 2, 3, 4, 5]:
         }
 
 # ── 2. lfilter output ──
+# The input is emitted alongside the output. Without it the Rust side cannot
+# reproduce this signal — it would have to reimplement numpy's legacy MT19937
+# `randn` — so the comparison degrades into "is the output plausible?" instead
+# of "does it equal scipy?".
 np.random.seed(0)
 x = np.random.randn(50).tolist()
 b5, a5 = butter(3, 0.3)
 y_lfilter = lfilter(b5, a5, x)
+results['lfilter_input'] = [float(v) for v in x]
 results['lfilter_output'] = [float(v) for v in y_lfilter]
 
 # ── 3. filtfilt output ──
@@ -33,6 +38,7 @@ np.random.seed(0)
 sig = np.random.randn(200).tolist()
 b5, a5 = butter(5, 0.2)
 y_ff = filtfilt(b5, a5, sig)
+results['filtfilt_input'] = [float(v) for v in sig]
 results['filtfilt_output_first20'] = [float(v) for v in y_ff[:20]]
 results['filtfilt_output_last20'] = [float(v) for v in y_ff[-20:]]
 results['filtfilt_rms'] = float(np.sqrt(np.mean(y_ff**2)))

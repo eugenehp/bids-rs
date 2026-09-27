@@ -286,6 +286,9 @@ fn index_metadata(root: &Path, db: &Database) -> Result<()> {
     }
 
     let mut seen_assocs: HashSet<String> = HashSet::new();
+    // Sidecars are shared: a top-level task JSON applies to every run in the
+    // dataset. Parse each one once rather than per data file.
+    let mut sidecar_cache: HashMap<PathBuf, Vec<(String, serde_json::Value)>> = HashMap::new();
 
     for data_path_str in &data_files {
         let data_path = PathBuf::from(data_path_str);
@@ -371,10 +374,15 @@ fn index_metadata(root: &Path, db: &Database) -> Result<()> {
         let mut merged_metadata: indexmap::IndexMap<String, serde_json::Value> =
             indexmap::IndexMap::new();
         for sidecar_path in &sidecar_stack {
-            if let Ok(md) = read_json_sidecar(sidecar_path) {
-                for (k, v) in md {
-                    merged_metadata.insert(k, v);
-                }
+            let parsed = sidecar_cache
+                .entry(sidecar_path.clone())
+                .or_insert_with(|| {
+                    read_json_sidecar(sidecar_path)
+                        .map(|md| md.into_iter().collect())
+                        .unwrap_or_default()
+                });
+            for (k, v) in parsed.iter() {
+                merged_metadata.insert(k.clone(), v.clone());
             }
         }
 
@@ -385,9 +393,18 @@ fn index_metadata(root: &Path, db: &Database) -> Result<()> {
             }
 
             let tag_key = format!("{data_path_str}_{key}");
-            let val_str = match value {
-                serde_json::Value::String(s) => s.clone(),
-                other => other.to_string(),
+            // Store the value as plain text so metadata filters compare
+            // against it directly, and record its JSON type alongside so
+            // get_metadata can restore it faithfully. Storing a string
+            // unquoted and re-parsing it as JSON would turn "35119" into the
+            // number 35119.
+            let (val_str, dtype) = match value {
+                serde_json::Value::String(s) => (s.clone(), "str"),
+                serde_json::Value::Bool(b) => (b.to_string(), "bool"),
+                serde_json::Value::Number(n) => {
+                    (n.to_string(), if n.is_f64() { "float" } else { "int" })
+                }
+                other => (other.to_string(), "json"),
             };
 
             if let Some(existing_val) = existing_tags.get(&tag_key) {
@@ -398,7 +415,7 @@ fn index_metadata(root: &Path, db: &Database) -> Result<()> {
                 }
                 continue;
             }
-            db.insert_tag(data_path_str, key, &val_str, "json", true)?;
+            db.insert_tag(data_path_str, key, &val_str, dtype, true)?;
         }
 
         // Handle IntendedFor

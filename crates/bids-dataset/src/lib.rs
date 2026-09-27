@@ -71,3 +71,17 @@ pub use bids_core::BidsError as Error;
 
 /// Result type for this crate.
 pub type Result<T> = std::result::Result<T, Error>;
+
+/// Dataset download, aggregation and ML splits.
+///
+/// ```
+/// use bids_dataset::prelude::*;
+/// ```
+pub mod prelude {
+    pub use crate::aggregate::{Aggregator, FileEntry};
+    pub use crate::cache::Cache;
+    pub use crate::filter::DatasetFilter;
+    pub use crate::ml::{DatasetIter, EpochSpec, KFold, Sample, StratifiedSplit};
+    pub use crate::openneuro::{DatasetInfo, OpenNeuro, SearchBuilder};
+    pub use crate::split::Split;
+}

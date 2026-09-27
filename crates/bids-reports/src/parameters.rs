@@ -255,6 +255,94 @@ pub fn get_size_str(dims: &[usize]) -> String {
         .join("×")
 }
 
+/// Describe the length of a functional run as `M:SS`.
+///
+/// Corresponds to PyBIDS' `describe_func_duration`.
+///
+/// # Example
+///
+/// ```
+/// use bids_reports::parameters::describe_func_duration;
+///
+/// assert_eq!(describe_func_duration(200, 2.0), "6:40");
+/// ```
+#[must_use]
+pub fn describe_func_duration(n_vols: usize, tr: f64) -> String {
+    let run_secs = (n_vols as f64 * tr).ceil() as u64;
+    let (mins, secs) = (run_secs / 60, run_secs % 60);
+    format!("{mins}:{secs:02}")
+}
+
+/// Name the slice acquisition order implied by a list of slice times.
+///
+/// Returns one of `"sequential ascending"`, `"sequential descending"`,
+/// `"interleaved ascending"`, or `"interleaved descending"`. As in PyBIDS,
+/// anything with a gap in the acquisition order counts as interleaved.
+///
+/// Corresponds to PyBIDS' `get_slice_info`.
+///
+/// # Errors
+///
+/// Returns an error when the order cannot be classified — fewer than two
+/// distinct slice times, or an order that is neither ascending nor descending
+/// at its start.
+///
+/// # Example
+///
+/// ```
+/// use bids_reports::parameters::get_slice_info;
+///
+/// assert_eq!(get_slice_info(&[0.0, 0.5, 1.0]).unwrap(), "sequential ascending");
+/// assert_eq!(get_slice_info(&[1.0, 0.5, 0.0]).unwrap(), "sequential descending");
+/// ```
+pub fn get_slice_info(slice_times: &[f64]) -> Result<String, String> {
+    // Deduplicate while preserving order, as PyBIDS does.
+    let mut seen: Vec<f64> = Vec::with_capacity(slice_times.len());
+    for t in slice_times {
+        if !seen.iter().any(|s| (s - t).abs() < f64::EPSILON) {
+            seen.push(*t);
+        }
+    }
+    let n = seen.len();
+    if n < 2 {
+        return Err(format!(
+            "cannot infer slice order from {n} distinct slice time(s)"
+        ));
+    }
+
+    // slice_order[k] is the rank of slice k in acquisition time.
+    let mut order: Vec<usize> = (0..n).collect();
+    order.sort_by(|a, b| {
+        seen[*a]
+            .partial_cmp(&seen[*b])
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+
+    if order.iter().copied().eq(0..n) {
+        return Ok("sequential ascending".into());
+    }
+    if order.iter().copied().eq((0..n).rev()) {
+        return Ok("sequential descending".into());
+    }
+    // Some wiggle room on interleaved, matching PyBIDS: the direction of the
+    // first step decides.
+    if order[0] < order[1] {
+        return Ok("interleaved ascending".into());
+    }
+    if order[0] > order[1] {
+        return Ok("interleaved descending".into());
+    }
+    Err(format!("unknown slice order: {order:?}"))
+}
+
+/// A reminder to print at the end of a generated report.
+///
+/// Corresponds to PyBIDS' `reminder`.
+#[must_use]
+pub fn reminder() -> &'static str {
+    "Remember to double-check everything and to replace <deg> with a degree symbol."
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -72,3 +72,18 @@ pub use events::{EegEvent, read_events_tsv};
 pub use harmonize::{ChannelStrategy, HarmonizationPlan, apply_harmonization, plan_harmonization};
 pub use metadata::EegMetadata;
 pub use pipeline::{Pipeline as EegPipeline, PipelineResult};
+
+/// EEG channels, electrodes, events and signal data.
+///
+/// ```
+/// use bids_eeg::prelude::*;
+/// ```
+pub mod prelude {
+    pub use crate::channels::{Channel, ChannelType, read_channels_tsv};
+    pub use crate::coordsystem::CoordinateSystem;
+    pub use crate::eeg_layout::{EegDatasetSummary, EegLayout};
+    pub use crate::electrodes::{Electrode, read_electrodes_tsv};
+    pub use crate::events::{EegEvent, read_events_tsv};
+    pub use crate::metadata::EegMetadata;
+    pub use bids_core::timeseries::TimeSeries;
+}

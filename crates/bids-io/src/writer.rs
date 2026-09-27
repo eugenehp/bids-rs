@@ -114,6 +114,25 @@ pub fn write_to_file(
     Ok(())
 }
 
+fn find_append_path(path: &Path) -> PathBuf {
+    let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
+    let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+    let parent = path.parent().unwrap_or(Path::new("."));
+
+    for i in 1..i32::MAX {
+        let new_name = if ext.is_empty() {
+            format!("{stem}_{i}")
+        } else {
+            format!("{stem}_{i}.{ext}")
+        };
+        let candidate = parent.join(new_name);
+        if !candidate.exists() {
+            return candidate;
+        }
+    }
+    path.to_path_buf() // Fallback
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -304,23 +323,4 @@ mod tests {
 
         fs::remove_dir_all(&dir).unwrap();
     }
-}
-
-fn find_append_path(path: &Path) -> PathBuf {
-    let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
-    let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
-    let parent = path.parent().unwrap_or(Path::new("."));
-
-    for i in 1..i32::MAX {
-        let new_name = if ext.is_empty() {
-            format!("{stem}_{i}")
-        } else {
-            format!("{stem}_{i}.{ext}")
-        };
-        let candidate = parent.join(new_name);
-        if !candidate.exists() {
-            return candidate;
-        }
-    }
-    path.to_path_buf() // Fallback
 }

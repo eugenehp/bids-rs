@@ -116,6 +116,12 @@ pub struct BidsLayout {
     /// Set during construction by comparing the dataset's declared
     /// `BIDSVersion` against the library's supported version.
     spec_compatibility: Option<bids_schema::Compatibility>,
+    /// Flattened entity definitions from `configs`, built once.
+    ///
+    /// Each `Entity` compiles its regex lazily into a `OnceLock`. Rebuilding
+    /// this list per call would hand out fresh clones whose locks are empty,
+    /// so every `parse_file_entities` would recompile every pattern.
+    entity_defs: std::sync::OnceLock<Vec<bids_core::Entity>>,
 }
 
 impl BidsLayout {
@@ -170,6 +176,7 @@ impl BidsLayout {
             configs,
             regex_search: false,
             spec_compatibility,
+            entity_defs: std::sync::OnceLock::new(),
         })
     }
 
@@ -235,6 +242,36 @@ impl BidsLayout {
     pub fn get_entities(&self) -> Result<Vec<String>> {
         self.db.get_entity_names()
     }
+    /// Every indexed file path.
+    ///
+    /// Corresponds to PyBIDS' `BIDSLayout.files`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the index database cannot be read.
+    pub fn all_files(&self) -> Result<Vec<String>> {
+        self.db.all_file_paths()
+    }
+
+    /// Number of indexed files.
+    ///
+    /// Corresponds to PyBIDS' `len(layout)`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the index database cannot be read.
+    pub fn file_count(&self) -> Result<usize> {
+        self.db.file_count()
+    }
+
+    /// Names of the derivative pipelines registered on this layout.
+    #[must_use]
+    pub fn derivative_names(&self) -> Vec<String> {
+        let mut names: Vec<String> = self.derivatives.keys().cloned().collect();
+        names.sort();
+        names
+    }
+
     pub fn get_entity_values(&self, entity: &str) -> Result<Vec<String>> {
         self.db.get_unique_entity_values(entity)
     }
@@ -267,11 +304,9 @@ impl BidsLayout {
         let path_str = self.resolve_path(path);
         let tags = self.db.get_tags(&path_str)?;
         let mut md = BidsMetadata::with_source(&path_str);
-        for (name, value, _dtype, is_metadata) in tags {
+        for (name, value, dtype, is_metadata) in tags {
             if is_metadata {
-                let json_val =
-                    serde_json::from_str(&value).unwrap_or(serde_json::Value::String(value));
-                md.insert(name, json_val);
+                md.insert(name, restore_json_value(value, &dtype));
             }
         }
         Ok(md)
@@ -501,22 +536,44 @@ impl BidsLayout {
     /// Parse entities from a filename using this layout's config.
     #[must_use]
     pub fn parse_file_entities(&self, filename: &str) -> Entities {
-        let all_entities = self.all_entity_defs();
-        bids_core::entities::parse_file_entities(filename, &all_entities)
+        bids_core::entities::parse_file_entities(filename, self.all_entity_defs())
     }
 
-    /// Collect all unique entity definitions from this layout's configs.
-    fn all_entity_defs(&self) -> Vec<bids_core::Entity> {
-        let mut all = Vec::new();
-        let mut seen = std::collections::HashSet::new();
-        for config in &self.configs {
-            for entity in &config.entities {
-                if seen.insert(&entity.name) {
-                    all.push(entity.clone());
+    /// All unique entity definitions from this layout's configs.
+    ///
+    /// Built on first use and reused thereafter, so each entity's regex is
+    /// compiled exactly once for the life of the layout.
+    fn all_entity_defs(&self) -> &[bids_core::Entity] {
+        self.entity_defs.get_or_init(|| {
+            let mut all = Vec::new();
+            let mut seen = std::collections::HashSet::new();
+            for config in &self.configs {
+                for entity in &config.entities {
+                    if seen.insert(entity.name.clone()) {
+                        all.push(entity.clone());
+                    }
                 }
             }
-        }
-        all
+            all
+        })
+    }
+
+    /// Names of every entity this layout's configuration defines.
+    ///
+    /// This is the full vocabulary the layout can parse, whether or not a
+    /// given entity appears in the dataset. Corresponds to PyBIDS'
+    /// `BIDSLayout.get_entities()`; use
+    /// [`get_entities()`](Self::get_entities) for the entities actually
+    /// present in the indexed files.
+    #[must_use]
+    pub fn configured_entities(&self) -> Vec<String> {
+        let mut names: Vec<String> = self
+            .all_entity_defs()
+            .iter()
+            .map(|e| e.name.clone())
+            .collect();
+        names.sort();
+        names
     }
 
     /// Build a path from entities using this layout's config patterns.
@@ -957,6 +1014,7 @@ impl LayoutBuilder {
             configs,
             regex_search: self.regex_search,
             spec_compatibility,
+            entity_defs: std::sync::OnceLock::new(),
         };
 
         if let Some(deriv_paths) = self.derivatives {
@@ -966,5 +1024,24 @@ impl LayoutBuilder {
         }
 
         Ok(layout)
+    }
+}
+
+/// Rebuild a metadata value from its stored text and recorded JSON type.
+///
+/// The type matters: a sidecar value of `"35119"` is a string, and re-parsing
+/// the stored text as JSON without it would hand back the number `35119`.
+fn restore_json_value(value: String, dtype: &str) -> serde_json::Value {
+    match dtype {
+        "str" => serde_json::Value::String(value),
+        "null" => serde_json::Value::Null,
+        "bool" => value.parse::<bool>().map_or_else(
+            |_| serde_json::Value::String(value.clone()),
+            serde_json::Value::Bool,
+        ),
+        // Numbers, arrays and objects round-trip through their JSON text.
+        // Tags written before the dtype was recorded land here too, which is
+        // the old best-effort behaviour.
+        _ => serde_json::from_str(&value).unwrap_or(serde_json::Value::String(value)),
     }
 }

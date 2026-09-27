@@ -4,9 +4,10 @@
 //! providing operations like variable lookup, wildcard matching, filtering,
 //! and merging across runs or subjects.
 
+use crate::node::RunInfo;
 use crate::variables::{DenseRunVariable, SimpleVariable, SparseRunVariable, merge_simple};
 use bids_core::entities::StringEntities;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 fn source_to_level(source: &str) -> &str {
     match source {
@@ -28,11 +29,60 @@ fn source_to_level(source: &str) -> &str {
 /// filtering, and subset selection.
 ///
 /// Corresponds to PyBIDS' `BIDSVariableCollection` class.
-#[derive(Debug, Default, Clone)]
+///
+/// # Run-level timing
+///
+/// When a collection is built from a [`RunVariableCollection`] via
+/// [`from_run_collection()`](Self::from_run_collection), each variable keeps
+/// the timing information it was loaded with. Variables that came from
+/// `_events.tsv` retain their onsets and durations in [`timing`](Self::timing);
+/// variables that are uniformly sampled are listed in [`dense`](Self::dense).
+/// This is what allows the `ToDense`, `Resample`, `Assign`, and `Convolve`
+/// transformations to operate — without it a collection is a flat table with
+/// no notion of time.
+#[derive(Debug, Clone)]
 pub struct VariableCollection {
     pub variables: HashMap<String, SimpleVariable>,
     pub level: String,
     pub entities: StringEntities,
+    /// Onset/duration per variable, for variables in sparse (event) form.
+    pub timing: HashMap<String, VariableTiming>,
+    /// Names of variables held in dense (uniformly sampled) form.
+    pub dense: HashSet<String>,
+    /// Sampling rate in Hz used for dense variables.
+    pub sampling_rate: f64,
+    /// Run metadata (duration, TR) when this collection is run-level.
+    pub run_info: Vec<RunInfo>,
+    /// Named variable groups created by the `Group` transformation.
+    pub groups: HashMap<String, Vec<String>>,
+}
+
+/// Onset and duration vectors for a variable in sparse (event) form.
+///
+/// Parallel to the variable's own value vector: entry `i` of `onset` and
+/// `duration` describes event `i`.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct VariableTiming {
+    pub onset: Vec<f64>,
+    pub duration: Vec<f64>,
+}
+
+/// Default sampling rate (Hz) for dense variables, matching PyBIDS.
+pub const DEFAULT_SAMPLING_RATE: f64 = 10.0;
+
+impl Default for VariableCollection {
+    fn default() -> Self {
+        Self {
+            variables: HashMap::new(),
+            level: String::new(),
+            entities: StringEntities::new(),
+            timing: HashMap::new(),
+            dense: HashSet::new(),
+            sampling_rate: DEFAULT_SAMPLING_RATE,
+            run_info: Vec::new(),
+            groups: HashMap::new(),
+        }
+    }
 }
 
 impl VariableCollection {
@@ -59,6 +109,7 @@ impl VariableCollection {
             variables,
             level,
             entities,
+            ..Default::default()
         }
     }
 
@@ -174,6 +225,341 @@ impl VariableCollection {
             .collect();
         Self::new(vars)
     }
+
+    /// Build a collection from a run-level collection, preserving timing.
+    ///
+    /// Sparse variables keep their onsets and durations in [`timing`](Self::timing);
+    /// dense variables are recorded in [`dense`](Self::dense) and their sample
+    /// values become the variable's values. This is the constructor that makes a
+    /// collection usable by the time-aware transformations (`ToDense`,
+    /// `Resample`, `Assign`, `Convolve`).
+    pub fn from_run_collection(rc: &RunVariableCollection) -> Self {
+        let mut variables = HashMap::new();
+        let mut timing = HashMap::new();
+        let mut dense = HashSet::new();
+        let mut run_info: Vec<RunInfo> = Vec::new();
+
+        for v in &rc.sparse {
+            let var =
+                SimpleVariable::new(&v.name, &v.source, v.str_amplitude.clone(), v.index.clone());
+            timing.insert(
+                v.name.clone(),
+                VariableTiming {
+                    onset: v.onset.clone(),
+                    duration: v.duration.clone(),
+                },
+            );
+            variables.insert(v.name.clone(), var);
+            if run_info.is_empty() {
+                run_info = v.run_info.clone();
+            }
+        }
+
+        for v in &rc.dense {
+            let str_values: Vec<String> = v
+                .values
+                .iter()
+                .map(std::string::ToString::to_string)
+                .collect();
+            let index = dense_index(v);
+            let var = SimpleVariable::new(&v.name, &v.source, str_values, index);
+            dense.insert(v.name.clone());
+            variables.insert(v.name.clone(), var);
+            if run_info.is_empty() {
+                run_info = v.run_info.clone();
+            }
+        }
+
+        let entities = index_common_entities(&variables);
+        let level = variables
+            .values()
+            .next()
+            .map(|v| source_to_level(&v.source).to_string())
+            .unwrap_or_else(|| "run".into());
+
+        Self {
+            variables,
+            level,
+            entities,
+            timing,
+            dense,
+            sampling_rate: rc.sampling_rate,
+            run_info,
+            groups: HashMap::new(),
+        }
+    }
+
+    /// Total duration in seconds across all runs in this collection.
+    #[must_use]
+    pub fn run_duration(&self) -> f64 {
+        self.run_info.iter().map(|r| r.duration).sum()
+    }
+
+    /// Whether `name` is held in dense (uniformly sampled) form.
+    #[must_use]
+    pub fn is_dense(&self, name: &str) -> bool {
+        self.dense.contains(name)
+    }
+
+    /// Whether `name` is held in sparse (event) form, i.e. it has timing.
+    #[must_use]
+    pub fn is_sparse(&self, name: &str) -> bool {
+        self.timing.contains_key(name)
+    }
+
+    /// Insert a variable, replacing any timing/dense state under its name.
+    pub fn insert_var(&mut self, var: SimpleVariable) {
+        self.timing.remove(&var.name);
+        self.dense.remove(&var.name);
+        self.variables.insert(var.name.clone(), var);
+    }
+
+    /// Insert a sparse variable together with its event timing.
+    pub fn insert_sparse(&mut self, var: SimpleVariable, timing: VariableTiming) {
+        self.dense.remove(&var.name);
+        self.timing.insert(var.name.clone(), timing);
+        self.variables.insert(var.name.clone(), var);
+    }
+
+    /// Insert a dense variable sampled at [`sampling_rate`](Self::sampling_rate).
+    pub fn insert_dense(&mut self, var: SimpleVariable) {
+        self.timing.remove(&var.name);
+        self.dense.insert(var.name.clone());
+        self.variables.insert(var.name.clone(), var);
+    }
+
+    /// Remove a variable and all of its associated state.
+    pub fn remove_var(&mut self, name: &str) -> Option<SimpleVariable> {
+        self.timing.remove(name);
+        self.dense.remove(name);
+        for members in self.groups.values_mut() {
+            members.retain(|m| m != name);
+        }
+        self.variables.remove(name)
+    }
+
+    /// Rename a variable, carrying its timing/dense state to the new name.
+    pub fn rename_var(&mut self, from: &str, to: &str) {
+        if let Some(mut var) = self.variables.remove(from) {
+            var.name = to.to_string();
+            self.variables.insert(to.to_string(), var);
+        } else {
+            return;
+        }
+        if let Some(t) = self.timing.remove(from) {
+            self.timing.insert(to.to_string(), t);
+        }
+        if self.dense.remove(from) {
+            self.dense.insert(to.to_string());
+        }
+        for members in self.groups.values_mut() {
+            for m in members.iter_mut() {
+                if m == from {
+                    *m = to.to_string();
+                }
+            }
+        }
+    }
+
+    /// Copy a variable under a new name, carrying timing/dense state along.
+    pub fn copy_var(&mut self, from: &str, to: &str) {
+        let Some(src) = self.variables.get(from).cloned() else {
+            return;
+        };
+        let mut copy = src;
+        copy.name = to.to_string();
+        self.variables.insert(to.to_string(), copy);
+        if let Some(t) = self.timing.get(from).cloned() {
+            self.timing.insert(to.to_string(), t);
+        }
+        if self.dense.contains(from) {
+            self.dense.insert(to.to_string());
+        }
+    }
+
+    /// Reconstruct a [`SparseRunVariable`] for `name`, if it has timing.
+    #[must_use]
+    pub fn as_sparse(&self, name: &str) -> Option<SparseRunVariable> {
+        let var = self.variables.get(name)?;
+        let t = self.timing.get(name)?;
+        Some(SparseRunVariable::new(
+            &var.name,
+            &var.source,
+            t.onset.clone(),
+            t.duration.clone(),
+            var.str_values.clone(),
+            var.index.clone(),
+            self.run_info.clone(),
+        ))
+    }
+
+    /// Reconstruct a [`DenseRunVariable`] for `name`, if it is dense.
+    #[must_use]
+    pub fn as_dense(&self, name: &str) -> Option<DenseRunVariable> {
+        if !self.dense.contains(name) {
+            return None;
+        }
+        let var = self.variables.get(name)?;
+        Some(DenseRunVariable::new(
+            &var.name,
+            &var.source,
+            var.values.clone(),
+            self.sampling_rate,
+            self.run_info.clone(),
+        ))
+    }
+
+    /// Store a [`DenseRunVariable`] back into the collection.
+    ///
+    /// Sets the collection's sampling rate to the variable's when the
+    /// collection has no other dense variables, so that a lone `Resample`
+    /// keeps the collection self-consistent.
+    pub fn put_dense(&mut self, dv: &DenseRunVariable) {
+        let only =
+            self.dense.is_empty() || (self.dense.len() == 1 && self.dense.contains(&dv.name));
+        if only {
+            self.sampling_rate = dv.sampling_rate;
+        }
+        let str_values: Vec<String> = dv
+            .values
+            .iter()
+            .map(std::string::ToString::to_string)
+            .collect();
+        let index = dense_index(dv);
+        let var = SimpleVariable::new(&dv.name, &dv.source, str_values, index);
+        self.insert_dense(var);
+    }
+
+    /// Convert a sparse variable to dense form in place.
+    ///
+    /// No-op if the variable is missing or already dense. Mirrors PyBIDS'
+    /// `ToDense` transformation.
+    pub fn to_dense_var(&mut self, name: &str, sampling_rate: f64) {
+        if self.dense.contains(name) {
+            return;
+        }
+        let Some(sparse) = self.as_sparse(name) else {
+            return;
+        };
+        let dv = sparse.to_dense(Some(sampling_rate));
+        self.timing.remove(name);
+        self.put_dense(&dv);
+    }
+
+    /// Overwrite a variable's values in place, keeping timing/dense state.
+    ///
+    /// Returns `false` if the variable is not present.
+    pub fn set_values(&mut self, name: &str, values: Vec<f64>) -> bool {
+        let Some(var) = self.variables.get_mut(name) else {
+            return false;
+        };
+        var.str_values = values
+            .iter()
+            .map(std::string::ToString::to_string)
+            .collect();
+        var.values = values;
+        var.is_numeric = true;
+        true
+    }
+
+    /// Create or replace `to`, reusing `from`'s index and source.
+    ///
+    /// When `to` and `from` have the same row count, `from`'s timing/dense
+    /// state carries over, so a derived variable stays convolvable. Returns
+    /// `false` if `from` is not present.
+    pub fn derive_var(&mut self, from: &str, to: &str, values: Vec<f64>) -> bool {
+        let Some(src) = self.variables.get(from) else {
+            return false;
+        };
+        let same_len = src.len() == values.len();
+        let str_values: Vec<String> = values
+            .iter()
+            .map(std::string::ToString::to_string)
+            .collect();
+        let index = src.index.clone();
+        let source = src.source.clone();
+        let mut var = SimpleVariable::new(to, &source, str_values, index);
+        var.values = values;
+        var.is_numeric = true;
+
+        let timing = if same_len {
+            self.timing.get(from).cloned()
+        } else {
+            None
+        };
+        let was_dense = same_len && self.dense.contains(from);
+        match timing {
+            Some(t) => self.insert_sparse(var, t),
+            None if was_dense => self.insert_dense(var),
+            None => self.insert_var(var),
+        }
+        true
+    }
+
+    /// Keep only the rows at `keep` for `name`, trimming timing in step.
+    ///
+    /// Dense variables have no per-row timing, so their samples are simply
+    /// subset. Returns `false` if the variable is not present.
+    pub fn select_rows(&mut self, name: &str, keep: &[usize]) -> bool {
+        let Some(var) = self.variables.get(name) else {
+            return false;
+        };
+        let str_values: Vec<String> = keep
+            .iter()
+            .filter_map(|&i| var.str_values.get(i).cloned())
+            .collect();
+        let index: Vec<StringEntities> = keep
+            .iter()
+            .filter_map(|&i| var.index.get(i).cloned())
+            .collect();
+        let source = var.source.clone();
+        let new_var = SimpleVariable::new(name, &source, str_values, index);
+
+        if let Some(t) = self.timing.get(name) {
+            let trimmed = VariableTiming {
+                onset: keep
+                    .iter()
+                    .filter_map(|&i| t.onset.get(i).copied())
+                    .collect(),
+                duration: keep
+                    .iter()
+                    .filter_map(|&i| t.duration.get(i).copied())
+                    .collect(),
+            };
+            self.insert_sparse(new_var, trimmed);
+        } else if self.dense.contains(name) {
+            self.insert_dense(new_var);
+        } else {
+            self.insert_var(new_var);
+        }
+        true
+    }
+
+    /// Number of rows in `name`, or 0 if absent.
+    #[must_use]
+    pub fn n_rows(&self, name: &str) -> usize {
+        self.variables.get(name).map_or(0, SimpleVariable::len)
+    }
+
+    /// Resample a dense variable in place. No-op for sparse variables.
+    pub fn resample_var(&mut self, name: &str, sampling_rate: f64) {
+        let Some(dv) = self.as_dense(name) else {
+            return;
+        };
+        let resampled = dv.resample(sampling_rate);
+        self.put_dense(&resampled);
+    }
+}
+
+/// Build a per-sample entity index for a dense variable.
+fn dense_index(v: &DenseRunVariable) -> Vec<StringEntities> {
+    v.build_entity_index()
+        .into_iter()
+        .map(|(t, mut ents)| {
+            ents.insert("onset".into(), t.to_string());
+            ents
+        })
+        .collect()
 }
 
 /// A collection of run-level BIDS variables.

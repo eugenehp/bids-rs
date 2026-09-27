@@ -146,13 +146,103 @@ impl FromIterator<(String, Value)> for BidsMetadata {
     }
 }
 
+/// BIDS' sentinel for a value that exists in the schema but is unavailable here.
+const NA: &str = "n/a";
+
+/// Recursively replace BIDS' `"n/a"` sentinel with JSON `null`.
+///
+/// BIDS permits `"n/a"` wherever a value is unknown, including for fields the
+/// specification types as numeric — `"PowerLineFrequency": "n/a"` is valid and
+/// appears in real datasets. Deserializing that into an `Option<f64>` fails with
+/// `invalid type: string "n/a", expected f64`, which is not what the dataset
+/// means: `"n/a"` means absent, and absent is `None`.
+///
+/// Mapping it to `null` lets every `Option<T>` field take it, for every modality
+/// struct at once, without annotating each field. It matches what this codebase
+/// already does elsewhere — the TSV readers turn `n/a` cells into empty strings,
+/// and the electrode/channel parsers filter `"n/a"` out by hand.
+///
+/// Applied only on the typed path. The untyped accessors ([`BidsMetadata::get`],
+/// [`BidsMetadata::get_str`], ...) still return the sidecar verbatim, so
+/// anything comparing raw metadata against PyBIDS keeps seeing `"n/a"`.
+fn na_to_null(value: Value) -> Value {
+    match value {
+        Value::String(ref s) if s == NA => Value::Null,
+        Value::Array(items) => Value::Array(items.into_iter().map(na_to_null).collect()),
+        Value::Object(fields) => Value::Object(
+            fields
+                .into_iter()
+                .map(|(k, v)| (k, na_to_null(v)))
+                .collect(),
+        ),
+        other => other,
+    }
+}
+
 impl BidsMetadata {
     /// Try to deserialize this metadata into a typed struct.
     ///
     /// Works via JSON roundtrip: metadata map → `serde_json::Value` → `T`.
+    /// BIDS' `"n/a"` sentinel is treated as absent — see
+    /// [`try_deserialize_as`](Self::try_deserialize_as) for the details and for
+    /// the error when this returns `None`.
     pub fn deserialize_as<T: serde::de::DeserializeOwned>(&self) -> Option<T> {
-        let json = serde_json::to_value(&self.inner).ok()?;
-        serde_json::from_value(json).ok()
+        self.try_deserialize_as().ok()
+    }
+
+    /// Deserialize this metadata into a typed struct, reporting why on failure.
+    ///
+    /// Same conversion as [`deserialize_as`](Self::deserialize_as), which
+    /// discards the error and yields `None`. That is a poor way to debug a
+    /// sidecar: one unparseable field drops the whole struct, and the caller
+    /// cannot see which key was at fault. Prefer this when you need to know.
+    ///
+    /// Any `"n/a"` in the metadata — at any depth — is converted to `null`
+    /// first, so fields the BIDS schema types as numeric still deserialize when
+    /// a dataset marks them unavailable. `Option<T>` fields take it as `None`;
+    /// a *required* field set to `"n/a"` is still an error, which is correct —
+    /// it genuinely has no value.
+    ///
+    /// # Errors
+    ///
+    /// Returns the `serde_json` error if the metadata cannot be represented as
+    /// JSON, or does not fit `T`.
+    ///
+    /// The error describes the mismatch (`invalid type: null, expected f64`)
+    /// but does not name the key — `serde_json::from_value` carries no field
+    /// path. Note that a `"n/a"` reaching a required field surfaces as
+    /// `null`, since that is what it was rewritten to. Wiring up
+    /// `serde_path_to_error` here would recover the key name, at the cost of a
+    /// new dependency in every crate that builds on this one.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use bids_core::metadata::BidsMetadata;
+    /// use serde::Deserialize;
+    /// use serde_json::json;
+    ///
+    /// #[derive(Deserialize)]
+    /// #[serde(rename_all = "PascalCase")]
+    /// struct Eeg {
+    ///     sampling_frequency: f64,
+    ///     #[serde(default)]
+    ///     power_line_frequency: Option<f64>,
+    /// }
+    ///
+    /// let mut md = BidsMetadata::new();
+    /// md.insert("SamplingFrequency".into(), json!(500.0));
+    /// md.insert("PowerLineFrequency".into(), json!("n/a"));
+    ///
+    /// let eeg: Eeg = md.try_deserialize_as().unwrap();
+    /// assert_eq!(eeg.sampling_frequency, 500.0);
+    /// assert_eq!(eeg.power_line_frequency, None);
+    /// ```
+    pub fn try_deserialize_as<T: serde::de::DeserializeOwned>(
+        &self,
+    ) -> std::result::Result<T, serde_json::Error> {
+        let json = serde_json::to_value(&self.inner)?;
+        serde_json::from_value(na_to_null(json))
     }
 }
 
@@ -282,5 +372,84 @@ mod tests {
         let md = BidsMetadata::with_source("/data/sub-01_eeg.json");
         assert_eq!(md.source_file.as_deref(), Some("/data/sub-01_eeg.json"));
         assert!(md.is_empty());
+    }
+
+    // ── BIDS' "n/a" sentinel ──────────────────────────────────────────────
+
+    #[derive(Debug, serde::Deserialize)]
+    #[serde(rename_all = "PascalCase")]
+    struct NaProbe {
+        sampling_frequency: f64,
+        #[serde(default)]
+        power_line_frequency: Option<f64>,
+        #[serde(rename = "EEGChannelCount", default)]
+        eeg_channel_count: Option<u32>,
+        #[serde(default)]
+        manufacturer: Option<String>,
+    }
+
+    /// Regression: `"PowerLineFrequency": "n/a"` is valid BIDS and appears in
+    /// real datasets (ds005420). It used to fail the whole struct with
+    /// `invalid type: string "n/a", expected f64`.
+    #[test]
+    fn na_in_a_numeric_field_deserializes_as_none() {
+        let mut md = BidsMetadata::new();
+        md.insert("SamplingFrequency".into(), json!(500.0));
+        md.insert("PowerLineFrequency".into(), json!("n/a"));
+        md.insert("EEGChannelCount".into(), json!(20));
+        md.insert("Manufacturer".into(), json!("n/a"));
+
+        let typed: NaProbe = md.deserialize_as().expect("n/a must not sink the struct");
+        assert_eq!(typed.sampling_frequency, 500.0);
+        assert_eq!(typed.power_line_frequency, None);
+        assert_eq!(typed.eeg_channel_count, Some(20));
+        // "n/a" means absent for strings too, matching what the TSV readers and
+        // the electrode/channel parsers already do.
+        assert_eq!(typed.manufacturer, None);
+    }
+
+    #[test]
+    fn na_is_rewritten_at_any_depth() {
+        let mut md = BidsMetadata::new();
+        md.insert(
+            "Nested".into(),
+            json!({ "inner": { "value": "n/a" }, "list": ["n/a", 1] }),
+        );
+        let out: serde_json::Value = md.try_deserialize_as().unwrap();
+        assert_eq!(out["Nested"]["inner"]["value"], Value::Null);
+        assert_eq!(out["Nested"]["list"][0], Value::Null);
+        assert_eq!(out["Nested"]["list"][1], json!(1));
+    }
+
+    /// `"n/a"` is only rewritten on the typed path — raw accessors still hand
+    /// back what the sidecar said, which is what PyBIDS-parity tests compare.
+    #[test]
+    fn na_survives_on_the_untyped_path() {
+        let mut md = BidsMetadata::new();
+        md.insert("SoftwareFilters".into(), json!("n/a"));
+        assert_eq!(md.get_str("SoftwareFilters"), Some("n/a"));
+        assert_eq!(md.get("SoftwareFilters"), Some(&json!("n/a")));
+    }
+
+    /// A required field set to `"n/a"` genuinely has no value, so it must still
+    /// fail — and `try_deserialize_as` has to say why.
+    #[test]
+    fn na_in_a_required_field_still_errors_with_a_reason() {
+        let mut md = BidsMetadata::new();
+        md.insert("SamplingFrequency".into(), json!("n/a"));
+
+        assert!(md.deserialize_as::<NaProbe>().is_none());
+
+        // The error describes the mismatch but not which key caused it —
+        // `serde_json::from_value` does not carry a field path. Still strictly
+        // more than the bare `None` that `deserialize_as` gives back. Note the
+        // `null`: that is the rewritten `"n/a"`.
+        let err = md
+            .try_deserialize_as::<NaProbe>()
+            .expect_err("required field must not be silently defaulted");
+        assert!(
+            err.to_string().contains("expected f64"),
+            "error should describe the mismatch, got: {err}"
+        );
     }
 }

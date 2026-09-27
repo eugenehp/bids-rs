@@ -229,20 +229,13 @@ impl StatsModelsGraph {
                 let entities = bids_core::entities::StringEntities::new();
                 let run_colls = index.get_run_collections(&entities);
                 for rc in run_colls {
-                    let vars: Vec<bids_variables::SimpleVariable> = rc
-                        .sparse
-                        .iter()
-                        .map(|v| {
-                            bids_variables::SimpleVariable::new(
-                                &v.name,
-                                &v.source,
-                                v.str_amplitude.clone(),
-                                v.index.clone(),
-                            )
-                        })
-                        .collect();
-                    if !vars.is_empty() {
-                        node.add_collections(vec![bids_variables::VariableCollection::new(vars)]);
+                    // from_run_collection keeps onsets, durations, run timing
+                    // and sampling rate, which is what lets the run-level
+                    // transformations (ToDense, Resample, Assign, Convolve)
+                    // work on these collections.
+                    let coll = bids_variables::VariableCollection::from_run_collection(&rc);
+                    if !coll.variables.is_empty() {
+                        node.add_collections(vec![coll]);
                     }
                 }
             }

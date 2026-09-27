@@ -28,10 +28,40 @@ pub enum VariableType {
 }
 
 /// Load variables from a BIDS dataset.
+///
+/// # Errors
+///
+/// Propagates I/O and parse errors from the dataset's tabular files.
 pub fn load_variables(
     layout: &BidsLayout,
     types: Option<&[VariableType]>,
     level: Option<&str>,
+) -> Result<NodeIndex> {
+    load_variables_with(layout, types, level, None)
+}
+
+/// Load variables, supplying a fallback run duration in seconds.
+///
+/// Run-level variables need to know how long their run is — without it they
+/// cannot be made dense or convolved. The duration is taken from the
+/// associated image: `RepetitionTime` from its metadata multiplied by the
+/// volume count from its NIfTI header. When that is unavailable (an
+/// unreadable or placeholder image), `scan_length` is used, and failing that
+/// the duration is inferred from the events themselves as the offset of the
+/// last event.
+///
+/// PyBIDS raises in the last case rather than inferring; inferring keeps
+/// datasets with stub image files usable, and [`RunInfo::n_vols`] stays 0 so
+/// the difference is visible.
+///
+/// # Errors
+///
+/// Propagates I/O and parse errors from the dataset's tabular files.
+pub fn load_variables_with(
+    layout: &BidsLayout,
+    types: Option<&[VariableType]>,
+    level: Option<&str>,
+    scan_length: Option<f64>,
 ) -> Result<NodeIndex> {
     let types = resolve_types(types, level);
     let mut index = NodeIndex::new();
@@ -40,13 +70,82 @@ pub fn load_variables(
             VariableType::Participants => load_participants(layout, &mut index)?,
             VariableType::Sessions => load_sessions(layout, &mut index)?,
             VariableType::Scans => load_scans(layout, &mut index)?,
-            VariableType::Events => load_events(layout, &mut index)?,
+            VariableType::Events => load_events(layout, &mut index, scan_length)?,
             VariableType::Physio | VariableType::Stim | VariableType::Regressors => {
-                load_time_variables(layout, &mut index, None)?;
+                load_time_variables(layout, &mut index, scan_length)?;
             }
         }
     }
     Ok(index)
+}
+
+/// Timing for the run an events file belongs to.
+struct RunTiming {
+    duration: f64,
+    tr: f64,
+    n_vols: usize,
+    image: Option<String>,
+}
+
+/// Resolve a run's duration and TR from the image associated with `events`.
+///
+/// Looks for a data file sharing the events file's entities, reads
+/// `RepetitionTime` from its metadata and the volume count from its NIfTI
+/// header. Returns zeroed timing when no usable image is found; the caller
+/// then falls back to `scan_length` or to the events themselves.
+fn resolve_run_timing(layout: &BidsLayout, events: &bids_core::BidsFile) -> RunTiming {
+    let mut timing = RunTiming {
+        duration: 0.0,
+        tr: 0.0,
+        n_vols: 0,
+        image: None,
+    };
+
+    // Same entities as the events file, minus the events suffix/extension.
+    let mut query = layout
+        .get()
+        .invalid_filters(bids_layout::InvalidFilters::Drop);
+    for key in [
+        "subject",
+        "session",
+        "task",
+        "run",
+        "acquisition",
+        "datatype",
+    ] {
+        if let Some(v) = events.entities.get(key) {
+            query = query.filter(key, &v.as_str_lossy());
+        }
+    }
+    let Ok(candidates) = query.collect() else {
+        return timing;
+    };
+
+    let image = candidates.iter().find(|f| {
+        matches!(f.extension(), ".nii" | ".nii.gz") && f.suffix().is_some_and(|s| s != "events")
+    });
+    let Some(image) = image else {
+        return timing;
+    };
+    let path = image.path.to_string_lossy().to_string();
+    timing.image = Some(path.clone());
+
+    // TR: prefer the sidecar, fall back to the header's time step.
+    if let Ok(md) = layout.get_metadata(&path) {
+        if let Some(tr) = md.get_f64("RepetitionTime") {
+            timing.tr = tr;
+        }
+    }
+    if let Ok(header) = bids_nifti::NiftiHeader::from_file(&image.path) {
+        timing.n_vols = header.n_vols();
+        if timing.tr <= 0.0 {
+            timing.tr = header.tr().unwrap_or(0.0);
+        }
+    }
+    if timing.tr > 0.0 && timing.n_vols > 0 {
+        timing.duration = timing.tr * timing.n_vols as f64;
+    }
+    timing
 }
 
 fn resolve_types(types: Option<&[VariableType]>, level: Option<&str>) -> Vec<VariableType> {
@@ -353,7 +452,7 @@ fn load_time_variables(
     Ok(())
 }
 
-fn load_events(layout: &BidsLayout, index: &mut NodeIndex) -> Result<()> {
+fn load_events(layout: &BidsLayout, index: &mut NodeIndex, scan_length: Option<f64>) -> Result<()> {
     let event_files = layout.get().suffix("events").extension("tsv").collect()?;
     for ef in &event_files {
         let rows = read_tsv(&ef.path)?;
@@ -366,17 +465,30 @@ fn load_events(layout: &BidsLayout, index: &mut NodeIndex) -> Result<()> {
             entities.insert(k.clone(), v.as_str_lossy().into_owned());
         }
 
-        let node_idx = index.get_or_create_run_node(entities.clone(), None, 0.0, 0.0, 0);
+        // Run timing: from the associated image, else the caller's
+        // scan_length, else the offset of the last event.
+        let mut timing = resolve_run_timing(layout, ef);
+        if timing.duration <= 0.0 {
+            timing.duration = scan_length.unwrap_or_else(|| last_event_offset(&rows));
+        }
+
+        let node_idx = index.get_or_create_run_node(
+            entities.clone(),
+            timing.image.clone(),
+            timing.duration,
+            timing.tr,
+            timing.n_vols,
+        );
 
         let run_info = index
             .get_run_node_mut(node_idx)
             .map(|rn| rn.get_info())
             .unwrap_or(RunInfo {
                 entities: entities.clone(),
-                duration: 0.0,
-                tr: 0.0,
-                image: None,
-                n_vols: 0,
+                duration: timing.duration,
+                tr: timing.tr,
+                image: timing.image.clone(),
+                n_vols: timing.n_vols,
             });
 
         let columns: Vec<String> = rows[0]
@@ -426,4 +538,20 @@ fn load_events(layout: &BidsLayout, index: &mut NodeIndex) -> Result<()> {
         }
     }
     Ok(())
+}
+
+/// The offset of the last event in a set of events rows, in seconds.
+///
+/// Used as a last-resort run duration when no image timing is available.
+fn last_event_offset(rows: &[StringEntities]) -> f64 {
+    rows.iter()
+        .map(|r| {
+            let onset: f64 = r.get("onset").and_then(|v| v.parse().ok()).unwrap_or(0.0);
+            let duration: f64 = r
+                .get("duration")
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(0.0);
+            onset + duration
+        })
+        .fold(0.0, f64::max)
 }

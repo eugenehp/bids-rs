@@ -166,6 +166,151 @@ fn edit_distance(a: &str, b: &str) -> usize {
     }
     prev[n]
 }
+/// Strip a leading UTF-8 byte-order mark, if present.
+///
+/// Several editors and spreadsheet exporters — Excel in particular — prefix
+/// UTF-8 files with `EF BB BF`. Left in place the BOM becomes part of the first
+/// column's header name, so a `_channels.tsv` saved from Excel parses its first
+/// header as `"\u{feff}name"` and every lookup of `"name"` misses. Real
+/// OpenNeuro datasets ship such files (`ds005420`, for one), so every TSV
+/// header line is passed through this.
+#[must_use]
+pub fn strip_bom(s: &str) -> &str {
+    s.strip_prefix('\u{feff}').unwrap_or(s)
+}
+
+/// Compare two strings in natural order: embedded numbers compare as numbers.
+///
+/// `"sub-2"` sorts before `"sub-10"`, where a plain lexicographic comparison
+/// would not.
+///
+/// # Example
+///
+/// ```
+/// use bids_core::utils::natural_cmp;
+/// use std::cmp::Ordering;
+///
+/// assert_eq!(natural_cmp("sub-2", "sub-10"), Ordering::Less);
+/// ```
+#[must_use]
+pub fn natural_cmp(a: &str, b: &str) -> std::cmp::Ordering {
+    use std::cmp::Ordering;
+
+    let mut ai = a.chars().peekable();
+    let mut bi = b.chars().peekable();
+
+    loop {
+        match (ai.peek(), bi.peek()) {
+            (None, None) => return Ordering::Equal,
+            (None, Some(_)) => return Ordering::Less,
+            (Some(_), None) => return Ordering::Greater,
+            (Some(&ac), Some(&bc)) => {
+                if ac.is_ascii_digit() && bc.is_ascii_digit() {
+                    let mut an = String::new();
+                    while let Some(&c) = ai.peek() {
+                        if c.is_ascii_digit() {
+                            an.push(c);
+                            ai.next();
+                        } else {
+                            break;
+                        }
+                    }
+                    let mut bn = String::new();
+                    while let Some(&c) = bi.peek() {
+                        if c.is_ascii_digit() {
+                            bn.push(c);
+                            bi.next();
+                        } else {
+                            break;
+                        }
+                    }
+                    let av: u64 = an.parse().unwrap_or(0);
+                    let bv: u64 = bn.parse().unwrap_or(0);
+                    match av.cmp(&bv) {
+                        Ordering::Equal => {}
+                        ord => return ord,
+                    }
+                } else {
+                    let al = ac.to_lowercase().next().unwrap_or(ac);
+                    let bl = bc.to_lowercase().next().unwrap_or(bc);
+                    match al.cmp(&bl) {
+                        Ordering::Equal => {
+                            ai.next();
+                            bi.next();
+                        }
+                        ord => return ord,
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Sort strings in natural order.
+///
+/// Corresponds to PyBIDS' `natural_sort`.
+///
+/// # Example
+///
+/// ```
+/// use bids_core::utils::natural_sort;
+///
+/// let mut subjects = vec!["sub-10".to_string(), "sub-2".into(), "sub-1".into()];
+/// natural_sort(&mut subjects);
+/// assert_eq!(subjects, ["sub-1", "sub-2", "sub-10"]);
+/// ```
+pub fn natural_sort(items: &mut [String]) {
+    items.sort_by(|a, b| natural_cmp(a, b));
+}
+
+/// Sort items in natural order by a key extracted from each.
+///
+/// The `field` argument of PyBIDS' `natural_sort`, expressed as a closure.
+///
+/// # Example
+///
+/// ```
+/// use bids_core::utils::natural_sort_by_key;
+///
+/// let mut files = vec!["b/sub-10.nii", "a/sub-2.nii"];
+/// natural_sort_by_key(&mut files, |f| f.rsplit('/').next().unwrap().to_string());
+/// assert_eq!(files[0], "a/sub-2.nii");
+/// ```
+pub fn natural_sort_by_key<T, F>(items: &mut [T], key: F)
+where
+    F: Fn(&T) -> String,
+{
+    items.sort_by(|a, b| natural_cmp(&key(a), &key(b)));
+}
+
+/// Split a path into its stem and its (possibly compound) extensions.
+///
+/// Unlike `Path::extension`, this handles paths whose *directories* contain
+/// dots, and returns every extension segment rather than only the last — so
+/// `sub-01_bold.nii.gz` yields `["nii", "gz"]`, not just `"gz"`.
+///
+/// Corresponds to PyBIDS' `splitext`.
+///
+/// # Example
+///
+/// ```
+/// use bids_core::utils::splitext;
+///
+/// let (stem, exts) = splitext("/data/my.dir/sub-01_bold.nii.gz");
+/// assert_eq!(stem, "/data/my.dir/sub-01_bold");
+/// assert_eq!(exts, ["nii", "gz"]);
+/// ```
+#[must_use]
+pub fn splitext(path: &str) -> (String, Vec<String>) {
+    let (dir, base) = match path.rfind(['/', '\\']) {
+        Some(i) => (&path[..=i], &path[i + 1..]),
+        None => ("", path),
+    };
+    let mut parts = base.split('.');
+    let stem = parts.next().unwrap_or("");
+    let exts: Vec<String> = parts.map(String::from).collect();
+    (format!("{dir}{stem}"), exts)
+}
 
 #[cfg(test)]
 mod tests {
@@ -215,5 +360,23 @@ mod tests {
         let matches = get_close_matches("suject", &candidates, 2);
         assert!(!matches.is_empty());
         assert_eq!(matches[0], "subject");
+    }
+
+    // ── strip_bom ─────────────────────────────────────────────────────────
+
+    #[test]
+    fn strips_a_leading_bom() {
+        assert_eq!(strip_bom("\u{feff}name\ttype"), "name\ttype");
+    }
+
+    #[test]
+    fn leaves_unmarked_text_alone() {
+        assert_eq!(strip_bom("name\ttype"), "name\ttype");
+    }
+
+    #[test]
+    fn only_strips_the_leading_one() {
+        // A BOM anywhere but the start is a real (if odd) character.
+        assert_eq!(strip_bom("name\u{feff}\ttype"), "name\u{feff}\ttype");
     }
 }

@@ -42,3 +42,16 @@ pub use json::{find_sidecars, merge_json_sidecars, read_json, read_json_sidecar}
 pub use path_builder::build_path;
 pub use tsv::{TsvRow, read_tsv, read_tsv_gz};
 pub use writer::{ConflictStrategy, write_to_file};
+
+/// Reading and writing BIDS tabular, JSON and gradient files.
+///
+/// ```
+/// use bids_io::prelude::*;
+/// ```
+pub mod prelude {
+    pub use crate::gradient::{GradientTable, read_bvals, read_bvecs};
+    pub use crate::json::{find_sidecars, merge_json_sidecars, read_json, read_json_sidecar};
+    pub use crate::path_builder::build_path;
+    pub use crate::tsv::{TsvRow, read_tsv, read_tsv_gz};
+    pub use crate::writer::{ConflictStrategy, write_to_file};
+}

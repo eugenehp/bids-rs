@@ -107,58 +107,71 @@ fn test_dc_gain() {
 
 // ──────────────────── lfilter ────────────────────
 
+/// `lfilter` against scipy, on scipy's own input.
+///
+/// This used to run a *different* signal (a sine ramp) through the filter and
+/// assert only that the output got smoother, while loading — and ignoring —
+/// the golden output. It could not have caught a wrong coefficient. The golden
+/// data now carries the input alongside the output (`tests/precision_test.py`),
+/// so the comparison is the real one: same `x`, same `b`/`a`, same `y`.
 #[test]
 fn test_lfilter_vs_scipy() {
     let g = precision_data();
+    let x = get_f64_vec(&g["lfilter_input"]);
     let expected = get_f64_vec(&g["lfilter_output"]);
 
-    // Same signal: np.random.seed(0); np.random.randn(50)
-    // We need to reproduce the exact same random sequence...
-    // Instead, just verify our filter with known b,a on a simple signal
+    // scipy: np.random.seed(0); x = np.random.randn(50); butter(3, 0.3)
     let (b, a) = bids_filter::butter_lowpass(3, 0.3);
-    let x: Vec<f64> = (0..50).map(|i| (i as f64 * 0.1).sin()).collect();
     let y = bids_filter::lfilter(&b, &a, &x);
 
-    // Basic sanity: output should be smoother than input
-    assert_eq!(y.len(), x.len());
-    let x_var: f64 = x.windows(2).map(|w| (w[1] - w[0]).powi(2)).sum::<f64>();
-    let y_var: f64 = y.windows(2).map(|w| (w[1] - w[0]).powi(2)).sum::<f64>();
-    assert!(y_var < x_var, "Filtered should be smoother");
+    assert_eq!(y.len(), expected.len());
+    let err = max_abs_error(&y, &expected);
+    assert!(
+        err < 1e-12,
+        "lfilter differs from scipy by {err:.3e} (max |ours - scipy|)"
+    );
 }
 
 // ──────────────────── filtfilt ────────────────────
 
+/// `filtfilt` against scipy, on scipy's own input.
+///
+/// Same story as the `lfilter` test above: this previously filtered a synthetic
+/// 3 Hz + 40 Hz sine through `butter_lowpass(5, 0.2)` and checked the RMS was
+/// near `1/sqrt(2)`, which only says the 40 Hz component was attenuated. The
+/// three golden values it loaded went unused. Now it compares directly.
 #[test]
-fn test_filtfilt_rms() {
+fn test_filtfilt_vs_scipy() {
     let g = precision_data();
+    let x = get_f64_vec(&g["filtfilt_input"]);
     let expected_first20 = get_f64_vec(&g["filtfilt_output_first20"]);
     let expected_last20 = get_f64_vec(&g["filtfilt_output_last20"]);
     let expected_rms = g["filtfilt_rms"].as_f64().unwrap();
 
-    // We can't reproduce numpy's RNG, so check coefficients and structural properties
-    // The golden data uses np.random.seed(0)+randn(200) which we can't match.
-    // Instead verify our filtfilt is numerically consistent with a known deterministic signal.
-    let n = 200;
-    let fs = 100.0;
-    let signal: Vec<f64> = (0..n)
-        .map(|i| {
-            let t = i as f64 / fs;
-            (2.0 * std::f64::consts::PI * 3.0 * t).sin()
-                + 0.5 * (2.0 * std::f64::consts::PI * 40.0 * t).sin()
-        })
-        .collect();
-
+    // scipy: np.random.seed(0); sig = np.random.randn(200); butter(5, 0.2)
     let (b, a) = bids_filter::butter_lowpass(5, 0.2);
-    let filtered = bids_filter::filtfilt(&b, &a, &signal);
-    assert_eq!(filtered.len(), n);
+    let y = bids_filter::filtfilt(&b, &a, &x);
+    assert_eq!(y.len(), x.len());
 
-    // The 3 Hz should survive, 40 Hz killed
-    let rms: f64 = (filtered.iter().map(|v| v * v).sum::<f64>() / n as f64).sqrt();
-    // Pure 3Hz sine RMS = 1/sqrt(2) ≈ 0.707
+    // The edges are where filtfilt implementations actually diverge — the
+    // padding length and reflection scheme differ between naive ports and
+    // scipy's `odd` extension of `3 * max(len(a), len(b))` samples. Checking
+    // both ends is the point.
+    let first = max_abs_error(&y[..20], &expected_first20);
+    let last = max_abs_error(&y[y.len() - 20..], &expected_last20);
+    let rms = (y.iter().map(|v| v * v).sum::<f64>() / y.len() as f64).sqrt();
+
     assert!(
-        (rms - 0.707).abs() < 0.05,
-        "filtfilt RMS should be ~0.707 (3Hz component), got {}",
-        rms
+        first < 1e-12,
+        "filtfilt leading edge differs from scipy by {first:.3e}"
+    );
+    assert!(
+        last < 1e-12,
+        "filtfilt trailing edge differs from scipy by {last:.3e}"
+    );
+    assert!(
+        (rms - expected_rms).abs() < 1e-12,
+        "filtfilt RMS {rms} differs from scipy's {expected_rms}"
     );
 }
 
@@ -237,6 +250,14 @@ fn test_gamma_pdf(x: f64, shape: f64, loc: f64) -> f64 {
     log_pdf.exp()
 }
 
+/// `lgamma`, used to evaluate the gamma PDF without pulling in a stats crate.
+///
+/// The `P`/`Q`/`S` tables are the Cephes coefficients, reproduced at their
+/// published width. They carry more digits than an `f64` can hold — the parser
+/// rounds them — but truncating the source literals to 17 digits would make
+/// them no longer diffable against the reference tables, so the extra digits
+/// stay and the lint is waived here.
+#[allow(clippy::excessive_precision)]
 fn gammaln(x: f64) -> f64 {
     if x <= 0.0 {
         return f64::INFINITY;
@@ -289,7 +310,7 @@ fn gammaln(x: f64) -> f64 {
         }
         return (z * (xnum / xden + 1.0)).ln();
     }
-    let mut q = (xx - 0.5) * xx.ln() - xx + 0.918938533204672741780329736406;
+    let q = (xx - 0.5) * xx.ln() - xx + 0.918938533204672741780329736406;
     if xx > 1e8 {
         return q;
     }

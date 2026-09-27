@@ -67,6 +67,56 @@ impl Database {
         path.exists()
     }
 
+    /// The conventional index file inside a database directory.
+    ///
+    /// Creates `dir` if it does not exist and returns `dir/layout_index.sqlite`.
+    /// Passing `None` returns `None`, matching PyBIDS' `get_database_file`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the directory cannot be created.
+    pub fn get_database_file(dir: Option<&Path>) -> Result<Option<std::path::PathBuf>> {
+        let Some(dir) = dir else { return Ok(None) };
+        std::fs::create_dir_all(dir)?;
+        Ok(Some(dir.join("layout_index.sqlite")))
+    }
+
+    /// Drop every table and recreate the schema, discarding all indexed data.
+    ///
+    /// Corresponds to PyBIDS' `ConnectionManager.reset_database`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the tables cannot be dropped or recreated.
+    pub fn reset_database(&self) -> Result<()> {
+        for table in ["tags", "associations", "layout_info", "files"] {
+            self.conn
+                .execute(&format!("DROP TABLE IF EXISTS {table}"), [])
+                .map_err(db_err)?;
+        }
+        self.create_tables()
+    }
+
+    /// Discard any uncommitted work and start clean.
+    ///
+    /// The rusqlite analogue of PyBIDS' `ConnectionManager.reset_session`:
+    /// there is no session object to replace, so this rolls back an in-flight
+    /// transaction if one is open. Succeeds when there is nothing to roll back.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the rollback itself fails for a reason other than
+    /// there being no active transaction.
+    pub fn reset_session(&self) -> Result<()> {
+        match self.conn.execute_batch("ROLLBACK") {
+            Ok(()) => Ok(()),
+            // "cannot rollback - no transaction is active" is the expected
+            // case when nothing is in flight.
+            Err(e) if e.to_string().contains("no transaction is active") => Ok(()),
+            Err(e) => Err(db_err(e)),
+        }
+    }
+
     /// Register REGEXP function for SQLite.
     ///
     /// Caches compiled regexes so the same pattern is only compiled once per

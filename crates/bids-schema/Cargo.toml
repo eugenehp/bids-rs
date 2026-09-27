@@ -4,8 +4,20 @@ description = "BIDS specification schema loader — entity definitions, filename
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+rust-version.workspace = true
+
+[features]
+default = []
+# Fetch published BIDS schemas over the network in `collect_schema`.
+http = ["dep:ureq"]
 
 [dependencies]
 serde = { workspace = true }
 serde_json = { workspace = true }
 regex = { workspace = true }
+ureq = { workspace = true, optional = true }
+bids-core = { workspace = true }

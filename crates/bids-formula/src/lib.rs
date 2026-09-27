@@ -281,3 +281,12 @@ mod tests {
         assert_eq!(cols[2], vec![8.0, 15.0]); // 2*4, 3*5
     }
 }
+
+/// Wilkinson-style formula parsing.
+///
+/// ```
+/// use bids_formula::prelude::*;
+/// ```
+pub mod prelude {
+    pub use crate::{Formula, Term, build_design_matrix, parse_formula};
+}

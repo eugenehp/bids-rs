@@ -1765,19 +1765,17 @@ fn parse_vhdr(text: &str) -> Result<BvHeader> {
                         };
                     }
                 }
-                "channel infos" => {
-                    if key.starts_with("Ch") || key.starts_with("ch") {
-                        let parts: Vec<&str> = value.splitn(4, ',').collect();
-                        let name = parts
-                            .first()
-                            .map(|s| s.trim().to_string())
-                            .unwrap_or_default();
-                        let resolution = parts
-                            .get(2)
-                            .and_then(|s| s.trim().parse::<f64>().ok())
-                            .unwrap_or(1.0);
-                        channels.push(BvChannel { name, resolution });
-                    }
+                "channel infos" if key.starts_with("Ch") || key.starts_with("ch") => {
+                    let parts: Vec<&str> = value.splitn(4, ',').collect();
+                    let name = parts
+                        .first()
+                        .map(|s| s.trim().to_string())
+                        .unwrap_or_default();
+                    let resolution = parts
+                        .get(2)
+                        .and_then(|s| s.trim().parse::<f64>().ok())
+                        .unwrap_or(1.0);
+                    channels.push(BvChannel { name, resolution });
                 }
                 _ => {}
             }
@@ -2220,7 +2218,7 @@ mod tests {
         assert!((data.duration - 2.0).abs() < 0.01);
         for ch_data in &data.data {
             for &v in ch_data {
-                assert!(v >= -3200.1 && v <= 3200.1, "Value {} out of range", v);
+                assert!((-3200.1..=3200.1).contains(&v), "Value {v} out of range");
             }
         }
         std::fs::remove_dir_all(&dir).unwrap();

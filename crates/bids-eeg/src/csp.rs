@@ -371,9 +371,7 @@ mod tests {
                         (0..n_s)
                             .map(|s| {
                                 let seed = (epoch_idx * 1000 + ch * 100 + s + class * 50000) as f64;
-                                let val =
-                                    (seed * 0.1).sin() * (1.0 + class as f64 * ch as f64 * 0.5);
-                                val
+                                (seed * 0.1).sin() * (1.0 + class as f64 * ch as f64 * 0.5)
                             })
                             .collect()
                     })

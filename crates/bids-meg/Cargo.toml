@@ -4,6 +4,11 @@ description = "BIDS MEG domain support — metadata, channels, events; optional 
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+rust-version.workspace = true
 
 [features]
 default = []

@@ -70,7 +70,8 @@ fn parse_tsv_reader<R: Read>(reader: BufReader<R>) -> Result<Vec<TsvRow>> {
     let header_line = lines
         .next()
         .ok_or_else(|| BidsError::Csv("Empty TSV file".to_string()))??;
-    let headers: Vec<String> = header_line
+    // A UTF-8 BOM would otherwise end up glued to the first column's name.
+    let headers: Vec<String> = bids_core::strip_bom(&header_line)
         .split('\t')
         .map(|s| s.trim().to_string())
         .collect();
@@ -99,7 +100,8 @@ fn parse_tsv_raw_reader<R: Read>(reader: BufReader<R>) -> Result<(Vec<String>, V
     let header_line = lines
         .next()
         .ok_or_else(|| BidsError::Csv("Empty TSV file".to_string()))??;
-    let headers: Vec<String> = header_line
+    // A UTF-8 BOM would otherwise end up glued to the first column's name.
+    let headers: Vec<String> = bids_core::strip_bom(&header_line)
         .split('\t')
         .map(|s| s.trim().to_string())
         .collect();
@@ -161,6 +163,37 @@ mod tests {
         assert_eq!(rows[0]["onset"], "1.0");
         assert_eq!(rows[0]["trial_type"], "go");
         assert_eq!(rows[1]["duration"], ""); // n/a -> empty
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// Regression: a UTF-8 BOM used to be glued onto the first header, so the
+    /// first column became `"\u{feff}name"` and every lookup of `"name"`
+    /// missed. Excel writes such files, and so do real OpenNeuro datasets —
+    /// ds005420's `_channels.tsv` files all start with `EF BB BF`.
+    #[test]
+    fn bom_prefixed_header_is_readable() {
+        let dir = std::env::temp_dir().join("bids_io_bom_test");
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("bom_channels.tsv");
+
+        let mut f = std::fs::File::create(&path).unwrap();
+        f.write_all(&[0xEF, 0xBB, 0xBF]).unwrap();
+        writeln!(f, "name\ttype\tunits").unwrap();
+        writeln!(f, "Fp1\tEEG\tuV").unwrap();
+        drop(f);
+
+        let rows = read_tsv(&path).unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(
+            rows[0]["name"], "Fp1",
+            "BOM must not corrupt the first header"
+        );
+        assert_eq!(rows[0]["type"], "EEG");
+
+        let (headers, raw) = read_tsv_raw(&path).unwrap();
+        assert_eq!(headers[0], "name");
+        assert_eq!(raw[0][0], "Fp1");
+
         std::fs::remove_dir_all(&dir).unwrap();
     }
 }

@@ -4,6 +4,11 @@ description = "BIDS microscopy domain support — metadata, photos; optional TIF
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+rust-version.workspace = true
 
 [features]
 default = []

@@ -57,6 +57,7 @@ pub mod file;
 pub mod genetic;
 pub mod hed;
 pub mod metadata;
+pub mod options;
 pub mod padded_int;
 pub mod timeseries;
 pub mod utils;
@@ -68,7 +69,7 @@ pub use error::{BidsError, Result};
 pub use file::{BidsFile, CopyMode, FileType};
 pub use metadata::BidsMetadata;
 pub use padded_int::PaddedInt;
-pub use utils::{collect_associated_files, convert_json_keys, matches_entities};
+pub use utils::{collect_associated_files, convert_json_keys, matches_entities, strip_bom};
 
 /// Helper for modality crates: try to read from a companion file path.
 ///
@@ -110,4 +111,19 @@ macro_rules! entities {
         )*
         map
     }};
+}
+
+/// The types you almost always want when working with BIDS files.
+///
+/// ```
+/// use bids_core::prelude::*;
+/// ```
+pub mod prelude {
+    pub use crate::error::{BidsError, Result};
+    pub use crate::timeseries::TimeSeries;
+    pub use crate::utils::{collect_associated_files, convert_json_keys, matches_entities};
+    pub use crate::{
+        BidsFile, BidsMetadata, Config, CopyMode, DatasetDescription, Entities, Entity,
+        EntityValue, FileType, PaddedInt, StringEntities,
+    };
 }

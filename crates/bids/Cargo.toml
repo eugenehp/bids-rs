@@ -1,13 +1,16 @@
 [package]
 name = "bids"
 description = "Rust tools for BIDS (Brain Imaging Data Structure) datasets"
-version = "0.0.2"
+version.workspace = true
 edition.workspace = true
 license.workspace = true
-readme = "README.md"
 repository.workspace = true
 homepage.workspace = true
-documentation = "https://docs.rs/bids"
+keywords.workspace = true
+categories.workspace = true
+rust-version.workspace = true
+documentation.workspace = true
+readme = "README.md"
 
 [features]
 default = []

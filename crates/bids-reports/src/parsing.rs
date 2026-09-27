@@ -151,3 +151,46 @@ fn capitalize(s: &str) -> String {
         None => String::new(),
     }
 }
+
+/// The opening sentence of an MRI data acquisition section.
+///
+/// Corresponds to PyBIDS' `general_acquisition_info`. Missing fields are
+/// filled with the same placeholders PyBIDS uses, so the gap is visible in the
+/// generated prose rather than silently omitted.
+///
+/// # Example
+///
+/// ```
+/// use bids_core::BidsMetadata;
+/// use bids_reports::parsing::general_acquisition_info;
+///
+/// let mut md = BidsMetadata::new();
+/// md.insert("MagneticFieldStrength".into(), serde_json::json!(3));
+/// md.insert("Manufacturer".into(), serde_json::json!("Siemens"));
+/// md.insert("ManufacturersModelName".into(), serde_json::json!("Prisma"));
+/// assert_eq!(
+///     general_acquisition_info(&md),
+///     "MR data were acquired using a 3-Tesla Siemens Prisma MRI scanner."
+/// );
+/// ```
+#[must_use]
+pub fn general_acquisition_info(metadata: &BidsMetadata) -> String {
+    let tesla = metadata
+        .get("MagneticFieldStrength")
+        .map_or_else(|| "UNKNOWN".to_string(), render_scalar);
+    let manufacturer = metadata
+        .get_str("Manufacturer")
+        .map_or_else(|| "MANUFACTURER".to_string(), String::from);
+    let model = metadata
+        .get_str("ManufacturersModelName")
+        .map_or_else(|| "MODEL".to_string(), String::from);
+    format!("MR data were acquired using a {tesla}-Tesla {manufacturer} {model} MRI scanner.")
+}
+
+/// Render a JSON scalar the way PyBIDS' string formatting would.
+fn render_scalar(v: &serde_json::Value) -> String {
+    match v {
+        serde_json::Value::String(s) => s.clone(),
+        other => other.to_string(),
+    }
+}

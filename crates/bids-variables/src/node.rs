@@ -27,6 +27,7 @@ pub struct RunInfo {
 ///
 /// Holds simple variables (e.g., participant demographics, session metadata)
 /// at a specific level of the BIDS hierarchy.
+#[derive(Debug, Clone)]
 pub struct Node {
     pub level: String,
     pub entities: StringEntities,
@@ -52,6 +53,7 @@ impl Node {
 /// Represents a single functional run with its temporal parameters (duration,
 /// TR, number of volumes) and holds both event-based sparse variables and
 /// continuous dense variables for that run.
+#[derive(Debug, Clone)]
 pub struct RunNode {
     pub level: String,
     pub entities: StringEntities,
@@ -117,6 +119,44 @@ pub struct NodeIndex {
 enum NodeEntry {
     Run(RunNode),
     Other(Node),
+}
+
+/// A borrowed node from a [`NodeIndex`], at whichever level it lives.
+#[derive(Debug, Clone, Copy)]
+pub enum NodeRef<'a> {
+    /// A run-level node, carrying timing and sparse/dense variables.
+    Run(&'a RunNode),
+    /// A dataset, subject or session level node.
+    Other(&'a Node),
+}
+
+impl NodeRef<'_> {
+    /// The node's hierarchy level.
+    #[must_use]
+    pub fn level(&self) -> &str {
+        match self {
+            Self::Run(n) => &n.level,
+            Self::Other(n) => &n.level,
+        }
+    }
+
+    /// The node's BIDS entities.
+    #[must_use]
+    pub fn entities(&self) -> &StringEntities {
+        match self {
+            Self::Run(n) => &n.entities,
+            Self::Other(n) => &n.entities,
+        }
+    }
+
+    /// The run node, when this is a run-level node.
+    #[must_use]
+    pub fn as_run(&self) -> Option<&RunNode> {
+        match self {
+            Self::Run(n) => Some(n),
+            Self::Other(_) => None,
+        }
+    }
 }
 
 impl NodeIndex {
@@ -218,7 +258,80 @@ impl NodeIndex {
         }
     }
 
+    /// Collect variables at any level into [`VariableCollection`]s.
+    ///
+    /// Run-level nodes keep their event timing (via
+    /// [`VariableCollection::from_run_collection`]); other levels hold simple
+    /// variables. With `merge`, all matching nodes are combined into a single
+    /// collection instead of one per node.
+    #[must_use]
+    pub fn get_collections(
+        &self,
+        level: &str,
+        entities: &StringEntities,
+        merge: bool,
+    ) -> Vec<crate::collections::VariableCollection> {
+        use crate::collections::{VariableCollection, merge_collections};
+
+        let collections: Vec<VariableCollection> = if level == "run" {
+            self.get_run_collections(entities)
+                .iter()
+                .map(VariableCollection::from_run_collection)
+                .filter(|c| !c.variables.is_empty())
+                .collect()
+        } else {
+            self.find_nodes(level, entities)
+                .iter()
+                .filter_map(|&idx| match &self.nodes[idx] {
+                    NodeEntry::Other(n) if !n.variables.is_empty() => {
+                        Some(VariableCollection::new(n.variables.clone()))
+                    }
+                    _ => None,
+                })
+                .collect()
+        };
+
+        if merge {
+            merge_collections(&collections).into_iter().collect()
+        } else {
+            collections
+        }
+    }
+
+    /// Nodes at `level` whose entities match `entities`.
+    ///
+    /// Corresponds to PyBIDS' `NodeIndex.get_nodes`. Use
+    /// [`find_nodes`](Self::find_nodes) when you need the indices instead, for
+    /// example to then call [`get_run_node_mut`](Self::get_run_node_mut).
+    #[must_use]
+    pub fn get_nodes(&self, level: &str, entities: &StringEntities) -> Vec<NodeRef<'_>> {
+        self.find_nodes(level, entities)
+            .into_iter()
+            .map(|i| match &self.nodes[i] {
+                NodeEntry::Run(n) => NodeRef::Run(n),
+                NodeEntry::Other(n) => NodeRef::Other(n),
+            })
+            .collect()
+    }
+
+    /// The distinct levels present in this index.
+    #[must_use]
+    pub fn levels(&self) -> Vec<String> {
+        let mut levels: Vec<String> = self
+            .nodes
+            .iter()
+            .map(|e| match e {
+                NodeEntry::Run(r) => r.level.clone(),
+                NodeEntry::Other(n) => n.level.clone(),
+            })
+            .collect();
+        levels.sort();
+        levels.dedup();
+        levels
+    }
+
     /// Collect run-level variables into collections.
+    #[must_use]
     pub fn get_run_collections(&self, entities: &StringEntities) -> Vec<RunVariableCollection> {
         let indices = self.find_nodes("run", entities);
         indices

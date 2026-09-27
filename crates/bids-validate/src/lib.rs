@@ -431,3 +431,15 @@ mod tests {
         ));
     }
 }
+
+/// Dataset validation.
+///
+/// ```
+/// use bids_validate::prelude::*;
+/// ```
+pub mod prelude {
+    pub use crate::{
+        ValidationIssue, ValidationResult, validate_dataset, validate_derivative_path,
+        validate_indexing_args, validate_root,
+    };
+}

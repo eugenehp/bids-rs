@@ -10,6 +10,7 @@ use std::path::{Path, PathBuf};
 
 use crate::entities::{Entities, EntityValue};
 use crate::metadata::BidsMetadata;
+use crate::utils::natural_cmp;
 
 /// How to copy a file to a new location.
 ///
@@ -424,60 +425,6 @@ impl Ord for BidsFile {
     }
 }
 
-/// Natural sort comparison: numeric substrings are compared as numbers.
-fn natural_cmp(a: &str, b: &str) -> std::cmp::Ordering {
-    use std::cmp::Ordering;
-
-    let mut ai = a.chars().peekable();
-    let mut bi = b.chars().peekable();
-
-    loop {
-        match (ai.peek(), bi.peek()) {
-            (None, None) => return Ordering::Equal,
-            (None, Some(_)) => return Ordering::Less,
-            (Some(_), None) => return Ordering::Greater,
-            (Some(&ac), Some(&bc)) => {
-                if ac.is_ascii_digit() && bc.is_ascii_digit() {
-                    let mut an = String::new();
-                    while let Some(&c) = ai.peek() {
-                        if c.is_ascii_digit() {
-                            an.push(c);
-                            ai.next();
-                        } else {
-                            break;
-                        }
-                    }
-                    let mut bn = String::new();
-                    while let Some(&c) = bi.peek() {
-                        if c.is_ascii_digit() {
-                            bn.push(c);
-                            bi.next();
-                        } else {
-                            break;
-                        }
-                    }
-                    let av: u64 = an.parse().unwrap_or(0);
-                    let bv: u64 = bn.parse().unwrap_or(0);
-                    match av.cmp(&bv) {
-                        Ordering::Equal => {}
-                        ord => return ord,
-                    }
-                } else {
-                    let al = ac.to_lowercase().next().unwrap_or(ac);
-                    let bl = bc.to_lowercase().next().unwrap_or(bc);
-                    match al.cmp(&bl) {
-                        Ordering::Equal => {
-                            ai.next();
-                            bi.next();
-                        }
-                        ord => return ord,
-                    }
-                }
-            }
-        }
-    }
-}
-
 /// Parse TSV rows from any reader. Shared logic for `BidsFile::get_df()`.
 ///
 /// The `n/a` sentinel is converted to empty strings per BIDS convention.
@@ -490,7 +437,8 @@ pub(crate) fn parse_tsv_reader(
     let header_line = lines
         .next()
         .ok_or_else(|| crate::error::BidsError::Csv("Empty TSV file".into()))??;
-    let headers: Vec<String> = header_line
+    // A UTF-8 BOM would otherwise end up glued to the first column's name.
+    let headers: Vec<String> = crate::utils::strip_bom(&header_line)
         .split('\t')
         .map(|s| s.trim().to_string())
         .collect();

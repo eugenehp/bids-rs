@@ -36,3 +36,16 @@ pub mod parsing;
 pub mod report;
 
 pub use report::BidsReport;
+
+/// Auto-generated methods sections.
+///
+/// ```
+/// use bids_reports::prelude::*;
+/// ```
+pub mod prelude {
+    pub use crate::parameters::{describe_func_duration, get_slice_info, reminder};
+    pub use crate::parsing::{
+        general_acquisition_info, generate_methods, parse_files, report_subject,
+    };
+    pub use crate::report::BidsReport;
+}

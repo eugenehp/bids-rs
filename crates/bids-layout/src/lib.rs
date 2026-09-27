@@ -66,5 +66,17 @@ pub mod layout;
 pub mod query;
 
 pub use get_builder::{GetBuilder, InvalidFilters};
-pub use layout::BidsLayout;
+pub use layout::{BidsLayout, LayoutBuilder};
 pub use query::{Query, QueryFilter, Scope};
+
+/// Indexing and querying a BIDS dataset.
+///
+/// ```
+/// use bids_layout::prelude::*;
+/// ```
+pub mod prelude {
+    pub use crate::get_builder::{GetBuilder, InvalidFilters};
+    pub use crate::layout::{BidsLayout, LayoutBuilder};
+    pub use crate::query::{Query, QueryFilter, Scope};
+    pub use bids_core::error::{BidsError, Result};
+}

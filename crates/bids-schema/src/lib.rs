@@ -19,12 +19,14 @@
 //!
 //! See the [`version`] module for full documentation on the migration process.
 
+pub mod collect;
 pub mod version;
 
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
+pub use collect::{SchemaSource, collect_schema, schema_url};
 pub use version::{BidsVersion, Compatibility, MIN_COMPATIBLE_VERSION, SUPPORTED_BIDS_VERSION};
 
 /// A BIDS entity definition from the schema.
@@ -382,4 +384,17 @@ mod tests {
         assert!(schema.is_valid_suffix("bold"));
         assert!(schema.is_valid_extension(".nii.gz"));
     }
+}
+
+/// BIDS schema lookup and version compatibility.
+///
+/// ```
+/// use bids_schema::prelude::*;
+/// ```
+pub mod prelude {
+    pub use crate::collect::{SchemaSource, collect_schema};
+    pub use crate::version::{
+        BidsVersion, Compatibility, MIN_COMPATIBLE_VERSION, SUPPORTED_BIDS_VERSION,
+    };
+    pub use crate::{BidsSchema, EntityDef};
 }

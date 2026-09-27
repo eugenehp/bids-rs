@@ -132,83 +132,55 @@ fn gamma_pdf(x: f64, shape: f64, loc: f64) -> f64 {
 ///
 /// For x < 13: recurrence + rational polynomial approximation.
 /// For x >= 13: Stirling series.
-/// Reproduces scipy.special.gammaln to machine epsilon.
+/// Natural log of the gamma function, for positive arguments.
+///
+/// Small positive integers use the exact factorial identity
+/// `ln Γ(n) = ln((n-1)!)`; everything else uses the Lanczos approximation
+/// (g = 7, 9 terms), which holds ~15 significant digits.
+///
+/// The rational approximation previously used here was only correct at
+/// integer arguments, where the factorial path short-circuits it. That made
+/// `spm_hrf` — whose shape parameters are integers — agree with SciPy while
+/// `glover_hrf`, whose dispersion of 0.9 gives a shape of 6/0.9, was off by
+/// ~0.5 in log space and visibly wrong after normalisation.
 fn gammaln(x: f64) -> f64 {
     if x <= 0.0 {
         return f64::INFINITY;
     }
-    let mut xx = x;
 
-    if xx < 13.0 {
-        let mut z = 1.0;
-        while xx >= 3.0 {
-            xx -= 1.0;
-            z *= xx;
+    // Exact for small positive integers; 18! is the largest factorial below
+    // 2^53 and so the largest that stays exactly representable.
+    if x.fract() == 0.0 && x <= 19.0 {
+        let mut z = 1.0f64;
+        let mut k = 2.0f64;
+        while k < x {
+            z *= k;
+            k += 1.0;
         }
-        while xx < 2.0 {
-            if xx == 0.0 {
-                return f64::INFINITY;
-            }
-            z /= xx;
-            xx += 1.0;
-        }
-        if z < 0.0 {
-            z = -z;
-        }
-        if xx == 2.0 {
-            return z.ln();
-        }
-        xx -= 2.0;
-        // Rational approximation for lgamma(2+x), 0 <= x <= 1 (cephes coefficients)
-        const P: [f64; 8] = [
-            -1.716_185_138_865_495,
-            2.476_565_080_557_592e1,
-            -3.798_042_564_709_456_3e2,
-            6.293_311_553_128_184e2,
-            8.669_662_027_904_133e2,
-            -3.145_127_296_884_836_7e4,
-            -3.614_441_341_869_117_6e4,
-            6.645_614_382_024_054e4,
-        ];
-        const Q: [f64; 8] = [
-            -3.084_023_001_197_389_7e1,
-            3.153_506_269_796_041_6e2,
-            -1.015_156_367_490_219_2e3,
-            -3.107_771_671_572_311e3,
-            2.253_811_842_098_015e4,
-            4.755_846_277_527_881e3,
-            -1.346_599_598_649_693e5,
-            -1.151_322_596_755_534_9e5,
-        ];
-        let mut xnum = 0.0;
-        let mut xden = 1.0;
-        for i in 0..8 {
-            xnum = (xnum + P[i]) * xx;
-            xden = xden * xx + Q[i];
-        }
-        return (z * (xnum / xden + 1.0)).ln();
+        return z.ln();
     }
 
-    // Stirling series for x >= 13
-    let q = (xx - 0.5) * xx.ln() - xx + 0.918_938_533_204_672_8;
-    if xx > 1.0e8 {
-        return q;
-    }
-    let inv_x = 1.0 / xx;
-    let inv_x2 = inv_x * inv_x;
-    const S: [f64; 6] = [
-        8.333_333_333_333_333e-2,
-        -2.777_777_777_777_778e-3,
-        7.936_507_936_507_937e-4,
-        -5.952_380_952_380_953e-4,
-        8.417_508_417_508_417e-4,
-        -1.917_526_917_526_917_6e-3,
+    /// Lanczos coefficients for g = 7.
+    const LANCZOS: [f64; 9] = [
+        0.999_999_999_999_809_9,
+        676.520_368_121_885_1,
+        -1_259.139_216_722_402_8,
+        771.323_428_777_653_1,
+        -176.615_029_162_140_6,
+        12.507_343_278_686_905,
+        -0.138_571_095_265_720_12,
+        9.984_369_578_019_572e-6,
+        1.505_632_735_149_311_6e-7,
     ];
-    let mut s = S[5];
-    for i in (0..5).rev() {
-        s = s * inv_x2 + S[i];
+    const G: f64 = 7.0;
+
+    let z = x - 1.0;
+    let mut series = LANCZOS[0];
+    for (i, &c) in LANCZOS.iter().enumerate().skip(1) {
+        series += c / (z + i as f64);
     }
-    q + s * inv_x
+    let t = z + G + 0.5;
+    0.5 * (2.0 * std::f64::consts::PI).ln() + (z + 0.5) * t.ln() - t + series.ln()
 }
 
 /// SPM canonical HRF.
@@ -484,5 +456,85 @@ mod tests {
             regressor_names("face", &HrfModel::SpmDerivative, None),
             vec!["face", "face_derivative"]
         );
+    }
+}
+
+#[cfg(test)]
+mod pybids_parity {
+    //! Regression tests against PyBIDS' `bids.modeling.hrf`.
+    //!
+    //! The committed golden data exercised `spm_hrf`, whose shape parameters
+    //! are integers and so took `gammaln`'s exact factorial path. `glover_hrf`
+    //! uses a dispersion of 0.9, giving a shape of 6/0.9, which went through
+    //! the rational approximation instead — and that was wrong by ~0.5 in log
+    //! space, leaving the normalised HRF visibly misshapen.
+
+    use super::{glover_hrf, spm_hrf};
+
+    #[test]
+    fn glover_matches_pybids() {
+        // bids.modeling.hrf.glover_hrf(2.0, oversampling=16, time_length=32.0)
+        let h = glover_hrf(2.0, 16, 32.0, 0.0);
+        assert_eq!(h.len(), 256);
+
+        for (i, want) in [
+            (40usize, 0.029_878_996_620_615_9_f64),
+            (45, 0.031_472_264_197_766_1),
+            (46, 0.031_485_522_667_294_26),
+            (50, 0.030_618_452_101_931_176),
+            (60, 0.023_685_401_454_912_478),
+            (80, 0.005_136_734_535_805_884),
+        ] {
+            let got = h[i];
+            assert!(
+                (got - want).abs() <= 1e-12 + 1e-9 * want.abs(),
+                "glover_hrf[{i}]: got {got:.17e}, want {want:.17e}"
+            );
+        }
+
+        let sum: f64 = h.iter().sum();
+        assert!(
+            (sum - 1.0).abs() < 1e-12,
+            "HRF should be normalised, got {sum}"
+        );
+        let peak = h.iter().copied().fold(f64::MIN, f64::max);
+        assert!(
+            (peak - 0.031_485_522_667_294_26).abs() < 1e-12,
+            "peak {peak}"
+        );
+    }
+
+    #[test]
+    fn spm_is_unchanged_by_the_gammaln_rewrite() {
+        // bids.modeling.hrf.spm_hrf(2.0, oversampling=16, time_length=32.0)
+        let h = spm_hrf(2.0, 16, 32.0, 0.0);
+        assert_eq!(h.len(), 256);
+        let sum: f64 = h.iter().sum();
+        assert!((sum - 1.0).abs() < 1e-12, "got {sum}");
+        // SPM peaks around 5 s; at TR 2 s with 16x oversampling that is ~40.
+        let peak_idx = h
+            .iter()
+            .enumerate()
+            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+            .unwrap()
+            .0;
+        assert!((36..=44).contains(&peak_idx), "peak at {peak_idx}");
+    }
+
+    #[test]
+    fn gammaln_matches_scipy_on_non_integers() {
+        // scipy.special.gammaln at the shapes the Glover model uses.
+        for (x, want) in [
+            (6.0_f64 / 0.9, 5.963_669_124_282_592_f64),
+            (12.0 / 0.9, 20.833_615_986_426_6),
+            (2.5, 0.284_682_870_472_919_2),
+            (0.5, 0.572_364_942_924_700_1),
+        ] {
+            let got = super::gammaln(x);
+            assert!(
+                (got - want).abs() <= 1e-12 + 1e-11 * want.abs(),
+                "gammaln({x}): got {got:.17}, want {want:.17}"
+            );
+        }
     }
 }

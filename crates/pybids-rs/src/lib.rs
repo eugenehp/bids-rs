@@ -5,8 +5,17 @@
 //!
 //! # Available Classes
 //!
-//! - `BIDSLayout` — Dataset indexing and querying (wraps `bids_layout::BidsLayout`)
+//! - `BIDSLayout` — Dataset indexing and querying (wraps `bids_layout::BidsLayout`).
+//!   Covers the PyBIDS `BIDSLayout` surface: querying (`get`, `get_file`,
+//!   `get_files`, `get_metadata`, `get_entity_values`, …), associations
+//!   (`get_associations`, `get_bval`, `get_bvec`, `get_fieldmap`,
+//!   `get_nearest`), variables (`get_collections`), writing (`build_path`,
+//!   `copy_files`, `write_to_file`), and the `root`, `files`, `entities`,
+//!   `session` and `derivatives` properties.
 //! - `BIDSFile` — File representation with path, filename, entities, and metadata
+//!
+//! Module-level functions cover NIfTI headers, signal filtering, HRFs, formula
+//! parsing, schema validation, inflection, and report generation.
 //!
 //! # Usage from Python
 //!
@@ -311,6 +320,15 @@ impl BIDSLayout {
         self.inner.get_tr(&filters).map_err(to_py_err)
     }
 
+    /// Names of every entity this layout's configuration defines.
+    ///
+    /// The full vocabulary the layout can parse, whether or not each entity
+    /// appears in the dataset — matching PyBIDS' `get_entities()`. Use
+    /// `get_entity_names()` for the entities actually present.
+    fn get_configured_entities(&self) -> Vec<String> {
+        self.inner.configured_entities()
+    }
+
     /// Parse BIDS entities from a filename string.
     fn parse_file_entities(&self, filename: &str) -> HashMap<String, String> {
         self.inner
@@ -362,6 +380,210 @@ impl BIDSLayout {
         self.inner
             .save(std::path::Path::new(path))
             .map_err(to_py_err)
+    }
+
+    // ── Associations and companion files ──
+
+    /// Files associated with `path` (sidecars, bval/bvec, …).
+    ///
+    /// `kind` optionally restricts the association type.
+    #[pyo3(signature = (path, kind=None))]
+    fn get_associations(&self, path: &str, kind: Option<&str>) -> PyResult<Vec<BIDSFile>> {
+        let files = self.inner.get_associations(path, kind).map_err(to_py_err)?;
+        Ok(files.iter().map(to_pyfile).collect())
+    }
+
+    /// The `.bval` file associated with a DWI image, if present.
+    fn get_bval(&self, path: &str) -> PyResult<Option<BIDSFile>> {
+        Ok(self
+            .inner
+            .get_bval(path)
+            .map_err(to_py_err)?
+            .as_ref()
+            .map(to_pyfile))
+    }
+
+    /// The `.bvec` file associated with a DWI image, if present.
+    fn get_bvec(&self, path: &str) -> PyResult<Option<BIDSFile>> {
+        Ok(self
+            .inner
+            .get_bvec(path)
+            .map_err(to_py_err)?
+            .as_ref()
+            .map(to_pyfile))
+    }
+
+    /// Fieldmaps whose `IntendedFor` covers `path`.
+    ///
+    /// Returns a list of dicts, one per fieldmap.
+    fn get_fieldmap(&self, path: &str) -> PyResult<Vec<HashMap<String, String>>> {
+        self.inner.get_fieldmap(path).map_err(to_py_err)
+    }
+
+    /// The file closest to `path` in entity space that matches the filters.
+    #[pyo3(signature = (path, **kwargs))]
+    fn get_nearest(
+        &self,
+        path: &str,
+        kwargs: Option<&Bound<'_, PyDict>>,
+    ) -> PyResult<Option<BIDSFile>> {
+        let filters = kwargs_to_filters(kwargs)?;
+        Ok(self
+            .inner
+            .get_nearest(path, &filters)
+            .map_err(to_py_err)?
+            .as_ref()
+            .map(to_pyfile))
+    }
+
+    // ── Variables ──
+
+    /// Variable collections at `level`, as a list of dicts.
+    ///
+    /// Each dict maps a variable name to its list of values. `merge` collapses
+    /// all matching nodes into one collection.
+    #[pyo3(signature = (level="run", merge=false))]
+    fn get_collections<'py>(
+        &self,
+        py: Python<'py>,
+        level: &str,
+        merge: bool,
+    ) -> PyResult<Vec<PyObject>> {
+        use bids_variables::LayoutVariables;
+        let collections = self
+            .inner
+            .get_collections(level, None, None, merge)
+            .map_err(to_py_err)?;
+
+        collections
+            .iter()
+            .map(|c| {
+                let dict = PyDict::new(py);
+                let vars = PyDict::new(py);
+                for (name, var) in &c.variables {
+                    vars.set_item(name, var.values.clone())?;
+                }
+                dict.set_item("level", &c.level)?;
+                dict.set_item("variables", vars)?;
+                dict.set_item("sampling_rate", c.sampling_rate)?;
+                let ents = PyDict::new(py);
+                for (k, v) in &c.entities {
+                    ents.set_item(k, v)?;
+                }
+                dict.set_item("entities", ents)?;
+                Ok(dict.into_any().unbind())
+            })
+            .collect()
+    }
+
+    // ── Writing ──
+
+    /// Copy matching files into `root` using `path_patterns`.
+    ///
+    /// With `symbolic_links`, symlinks are created instead of copies. Returns
+    /// the list of paths written.
+    #[pyo3(signature = (path_patterns, root=None, symbolic_links=false, **kwargs))]
+    fn copy_files(
+        &self,
+        path_patterns: Vec<String>,
+        root: Option<&str>,
+        symbolic_links: bool,
+        kwargs: Option<&Bound<'_, PyDict>>,
+    ) -> PyResult<Vec<String>> {
+        let mode = if symbolic_links {
+            bids_core::CopyMode::Symlink
+        } else {
+            bids_core::CopyMode::Copy
+        };
+        let filters = kwargs_to_filters(kwargs)?;
+        let patterns: Vec<&str> = path_patterns.iter().map(String::as_str).collect();
+        let written = self
+            .inner
+            .copy_files(&patterns, mode, root.map(std::path::Path::new), &filters)
+            .map_err(to_py_err)?;
+        Ok(written
+            .iter()
+            .map(|p| p.to_string_lossy().to_string())
+            .collect())
+    }
+
+    /// Write `contents` to the path built from `entities`.
+    ///
+    /// Returns the path written.
+    #[pyo3(signature = (entities, contents, path_patterns=None, strict=false))]
+    fn write_to_file(
+        &self,
+        entities: HashMap<String, String>,
+        contents: &str,
+        path_patterns: Option<Vec<String>>,
+        strict: bool,
+    ) -> PyResult<String> {
+        let ents: bids_core::Entities = entities
+            .into_iter()
+            .map(|(k, v)| (k, bids_core::EntityValue::Str(v)))
+            .collect();
+        let patterns: Option<Vec<&str>> = path_patterns
+            .as_ref()
+            .map(|p| p.iter().map(String::as_str).collect());
+        let path = self
+            .inner
+            .write_to_file(&ents, patterns.as_deref(), contents.as_bytes(), strict)
+            .map_err(to_py_err)?;
+        Ok(path.to_string_lossy().to_string())
+    }
+
+    // ── Introspection ──
+
+    /// Every indexed file path.
+    fn get_files(&self) -> PyResult<Vec<String>> {
+        self.inner.all_files().map_err(to_py_err)
+    }
+
+    /// Number of indexed files.
+    fn __len__(&self) -> PyResult<usize> {
+        self.inner.file_count().map_err(to_py_err)
+    }
+
+    /// Every indexed file path, as a property (PyBIDS' `layout.files`).
+    #[getter(files)]
+    fn files_property(&self) -> PyResult<Vec<String>> {
+        self.inner.all_files().map_err(to_py_err)
+    }
+
+    /// Entity names present in the dataset (PyBIDS' `layout.entities`).
+    #[getter(entities)]
+    fn entities_property(&self) -> PyResult<Vec<String>> {
+        self.inner.get_entities().map_err(to_py_err)
+    }
+
+    /// Session IDs in the dataset (PyBIDS' `layout.session`).
+    #[getter(session)]
+    fn session_property(&self) -> PyResult<Vec<String>> {
+        self.inner.get_sessions().map_err(to_py_err)
+    }
+
+    /// The dataset root (PyBIDS' `layout.root`).
+    #[getter(root)]
+    fn root_property(&self) -> String {
+        self.inner.root().to_string_lossy().to_string()
+    }
+
+    /// Derivative pipeline names registered on this layout.
+    #[getter(derivatives)]
+    fn derivatives_property(&self) -> Vec<String> {
+        self.inner.derivative_names()
+    }
+
+    /// Derivative pipeline names registered on this layout.
+    fn get_derivatives(&self) -> Vec<String> {
+        self.inner.derivative_names()
+    }
+
+    /// An independent copy of this layout, sharing no database handle.
+    fn clone_layout(&self) -> PyResult<Self> {
+        Ok(Self {
+            inner: self.inner.clone_layout().map_err(to_py_err)?,
+        })
     }
 }
 
@@ -597,6 +819,60 @@ fn generate_report(root: &str) -> PyResult<String> {
 }
 
 // ─────────────────────── Helpers ───────────────────────
+
+/// Convert a `BidsFile` into the Python-facing wrapper.
+fn to_pyfile(f: &bids_core::BidsFile) -> BIDSFile {
+    BIDSFile {
+        path: f.path.to_string_lossy().to_string(),
+        filename: f.filename.clone(),
+        entities: f
+            .entities
+            .iter()
+            .map(|(k, v)| (k.clone(), v.as_str_lossy().into_owned()))
+            .collect(),
+    }
+}
+
+/// Build query filters from Python keyword arguments.
+///
+/// List values become "any of" filters; a bare string becomes an equality
+/// filter. `extension` values are normalised to have a leading dot, matching
+/// the behaviour of `get()`.
+fn kwargs_to_filters(
+    kwargs: Option<&Bound<'_, PyDict>>,
+) -> PyResult<Vec<bids_layout::QueryFilter>> {
+    let mut filters = Vec::new();
+    let Some(kw) = kwargs else {
+        return Ok(filters);
+    };
+    for (key, val) in kw.iter() {
+        let k: String = key.extract()?;
+        let mut values: Vec<String> = if let Ok(list) = val.extract::<Vec<String>>() {
+            list
+        } else if let Ok(s) = val.extract::<String>() {
+            vec![s]
+        } else {
+            continue;
+        };
+        if values.is_empty() {
+            continue;
+        }
+        if k == "extension" {
+            for v in &mut values {
+                if !v.starts_with('.') {
+                    v.insert(0, '.');
+                }
+            }
+        }
+        if values.len() == 1 {
+            filters.push(bids_layout::QueryFilter::eq(&k, &values[0]));
+        } else {
+            let refs: Vec<&str> = values.iter().map(String::as_str).collect();
+            filters.push(bids_layout::QueryFilter::one_of(&k, &refs));
+        }
+    }
+    Ok(filters)
+}
 
 fn to_py_err(e: bids_core::error::BidsError) -> PyErr {
     pyo3::exceptions::PyRuntimeError::new_err(e.to_string())

@@ -1,0 +1,4 @@
+# Local benchmark environment — recreate with the steps in README.md.
+.venv/
+__pycache__/
+*.json

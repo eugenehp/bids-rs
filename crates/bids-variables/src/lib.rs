@@ -52,10 +52,28 @@
 
 pub mod collections;
 pub mod io;
+pub mod layout_ext;
 pub mod node;
 pub mod variables;
 
-pub use collections::{RunVariableCollection, VariableCollection, merge_collections};
-pub use io::load_variables;
-pub use node::{Node, NodeIndex, RunInfo, RunNode};
+pub use collections::{
+    DEFAULT_SAMPLING_RATE, RunVariableCollection, VariableCollection, VariableTiming,
+    merge_collections,
+};
+pub use io::{VariableType, load_variables, load_variables_with};
+pub use layout_ext::LayoutVariables;
+pub use node::{Node, NodeIndex, NodeRef, RunInfo, RunNode};
 pub use variables::{DenseRunVariable, SimpleVariable, SparseRunVariable};
+
+/// The BIDS variable system.
+///
+/// ```
+/// use bids_variables::prelude::*;
+/// ```
+pub mod prelude {
+    pub use crate::collections::{RunVariableCollection, VariableCollection, VariableTiming};
+    pub use crate::io::{VariableType, load_variables, load_variables_with};
+    pub use crate::layout_ext::LayoutVariables;
+    pub use crate::node::{Node, NodeIndex, NodeRef, RunInfo, RunNode};
+    pub use crate::variables::{DenseRunVariable, SimpleVariable, SparseRunVariable};
+}

@@ -49,12 +49,14 @@
 //! let val = img.get_voxel(&[32, 32, 16, 0]);
 //! ```
 
+pub mod bidsfile;
 pub mod cifti;
 pub mod gifti;
 #[allow(unsafe_code)]
 pub mod mmap;
 pub mod qmri;
 
+pub use bidsfile::BidsImageFile;
 pub use cifti::{BrainModel, CiftiHeader, read_cifti_header};
 pub use gifti::{GiftiImage, read_gifti_header};
 pub use qmri::QmriMetadata;
@@ -1289,8 +1291,8 @@ mod tests {
         // Timeseries for voxel [0,0,0]
         let ts = img.get_timeseries(0, 0, 0).unwrap();
         assert_eq!(ts.len(), nt);
-        for t in 0..nt {
-            assert_eq!(ts[t], (t * vol_size) as f64);
+        for (t, &v) in ts.iter().enumerate() {
+            assert_eq!(v, (t * vol_size) as f64);
         }
 
         // Temporal mean
@@ -1984,4 +1986,16 @@ mod tests {
         assert_eq!(h.qfac(), 1.0);
         assert_eq!(h.voxel_to_world([0.0, 0.0, 0.0]), [0.0, 0.0, 0.0]);
     }
+}
+
+/// NIfTI, CIFTI and GIFTI headers and image data.
+///
+/// ```
+/// use bids_nifti::prelude::*;
+/// ```
+pub mod prelude {
+    pub use crate::bidsfile::BidsImageFile;
+    pub use crate::cifti::{CiftiHeader, read_cifti_header};
+    pub use crate::gifti::{GiftiImage, read_gifti_header};
+    pub use crate::qmri::QmriMetadata;
 }
