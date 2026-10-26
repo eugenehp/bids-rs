@@ -32,7 +32,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.0.3"
+version = "0.0.4"
 edition = "2024"
 authors = ["Eugene Hauptmann <eugene@hauptmann.me>"]
 license = "GPL-3.0-or-later"
@@ -54,30 +54,30 @@ redundant_closure_for_method_calls = "warn"
 large_futures = "warn"
 
 [workspace.dependencies]
-bids-dataset = { path = "crates/bids-dataset", version = "0.0.3" }
-bids-core = { path = "crates/bids-core", version = "0.0.3" }
-bids-io = { path = "crates/bids-io", version = "0.0.3" }
-bids-layout = { path = "crates/bids-layout", version = "0.0.3" }
-bids-variables = { path = "crates/bids-variables", version = "0.0.3" }
-bids-eeg = { path = "crates/bids-eeg", version = "0.0.3" }
-bids-validate = { path = "crates/bids-validate", version = "0.0.3" }
-bids-derive = { path = "crates/bids-derive", version = "0.0.3" }
-bids-ieeg = { path = "crates/bids-ieeg", version = "0.0.3" }
-bids-meg = { path = "crates/bids-meg", version = "0.0.3" }
-bids-pet = { path = "crates/bids-pet", version = "0.0.3" }
-bids-perf = { path = "crates/bids-perf", version = "0.0.3" }
-bids-motion = { path = "crates/bids-motion", version = "0.0.3" }
-bids-nirs = { path = "crates/bids-nirs", version = "0.0.3" }
-bids-mrs = { path = "crates/bids-mrs", version = "0.0.3" }
-bids-micr = { path = "crates/bids-micr", version = "0.0.3" }
-bids-beh = { path = "crates/bids-beh", version = "0.0.3" }
-bids-nifti = { path = "crates/bids-nifti", version = "0.0.3" }
-bids-filter = { path = "crates/bids-filter", version = "0.0.3" }
-bids-formula = { path = "crates/bids-formula", version = "0.0.3" }
-bids-schema = { path = "crates/bids-schema", version = "0.0.3" }
-bids-inflect = { path = "crates/bids-inflect", version = "0.0.3" }
-bids-modeling = { path = "crates/bids-modeling", version = "0.0.3" }
-bids-reports = { path = "crates/bids-reports", version = "0.0.3" }
+bids-dataset = { path = "crates/bids-dataset", version = "0.0.4" }
+bids-core = { path = "crates/bids-core", version = "0.0.4" }
+bids-io = { path = "crates/bids-io", version = "0.0.4" }
+bids-layout = { path = "crates/bids-layout", version = "0.0.4" }
+bids-variables = { path = "crates/bids-variables", version = "0.0.4" }
+bids-eeg = { path = "crates/bids-eeg", version = "0.0.4" }
+bids-validate = { path = "crates/bids-validate", version = "0.0.4" }
+bids-derive = { path = "crates/bids-derive", version = "0.0.4" }
+bids-ieeg = { path = "crates/bids-ieeg", version = "0.0.4" }
+bids-meg = { path = "crates/bids-meg", version = "0.0.4" }
+bids-pet = { path = "crates/bids-pet", version = "0.0.4" }
+bids-perf = { path = "crates/bids-perf", version = "0.0.4" }
+bids-motion = { path = "crates/bids-motion", version = "0.0.4" }
+bids-nirs = { path = "crates/bids-nirs", version = "0.0.4" }
+bids-mrs = { path = "crates/bids-mrs", version = "0.0.4" }
+bids-micr = { path = "crates/bids-micr", version = "0.0.4" }
+bids-beh = { path = "crates/bids-beh", version = "0.0.4" }
+bids-nifti = { path = "crates/bids-nifti", version = "0.0.4" }
+bids-filter = { path = "crates/bids-filter", version = "0.0.4" }
+bids-formula = { path = "crates/bids-formula", version = "0.0.4" }
+bids-schema = { path = "crates/bids-schema", version = "0.0.4" }
+bids-inflect = { path = "crates/bids-inflect", version = "0.0.4" }
+bids-modeling = { path = "crates/bids-modeling", version = "0.0.4" }
+bids-reports = { path = "crates/bids-reports", version = "0.0.4" }
 
 serde = { version = "1", features = ["derive"] }
 # float_roundtrip makes JSON float parsing bit-exact. Without it serde_json
@@ -89,7 +89,7 @@ thiserror = "2"
 walkdir = "2"
 csv = "1"
 indexmap = { version = "2", features = ["serde"] }
-rusqlite = { version = "0.37", features = ["bundled", "backup", "functions"] }
+duckdb = { version = "1.10506", features = ["bundled"] }
 clap = { version = "4", features = ["derive"] }
 flate2 = "1"
 log = "0.4"

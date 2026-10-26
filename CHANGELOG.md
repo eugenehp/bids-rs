@@ -4,6 +4,42 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [0.0.4]
+
+### Added
+
+- **`bids_eeg::writer` — write BIDS-EEG.** `BrainVisionWriter` streams samples
+  into `_eeg.vhdr`/`.vmrk`/`.eeg` (IEEE float32, multiplexed) in constant
+  memory, with `Comment` markers and a timestamped `New Segment`.
+  `write_eeg_sidecar` (drops `null`s, merges extra keys), `write_channels_tsv`,
+  `write_events_tsv` and `PhysioWriter` (headerless `_physio.tsv.gz` + JSON
+  sidecar) complete the set. Everything round-trips through the existing
+  readers and `BidsLayout`.
+- `Database::all_tags` and `Database::get_tags_many` read tags for many files
+  in one query.
+
+### Changed
+
+- **`bids-layout` uses DuckDB instead of SQLite.** This drops the
+  `rusqlite`/`libsqlite3-sys` dependency, whose `links = "sqlite3"` clashed
+  with any host app on a different rusqlite. Regex filters use DuckDB's native
+  `regexp_matches` (RE2), so the custom `REGEXP` UDF is gone. Inserts made
+  inside a transaction are buffered and land through the Appender plus one
+  set-based merge per table. The indexer and `to_df`/`return_unique`/
+  `get_nearest` no longer query once per file. The default index file is now
+  `layout_index.duckdb`; old `.sqlite` indices are not read and are rebuilt
+  on demand. Indexing all of bids-examples: 2.40 s vs 1.83 s with SQLite
+  (release, same machine). Re-measure before quoting the README speedups.
+
+### Fixed
+
+- **`EegLayout::get_physio` dropped the first sample.** BIDS physio files have
+  no header row, but the reader treated line 1 as one. Rows are now named from
+  the sidecar's `Columns`. The old behaviour remains only when the sidecar
+  doesn't list them.
+
 ## [0.0.3]
 
 Full PyBIDS parity. Every crate in the workspace now shares one version — `bids`
@@ -143,6 +179,8 @@ at 0.0.1.
 
 - Initial release.
 
+[Unreleased]: https://github.com/eugenehp/bids-rs/compare/v0.0.4...HEAD
+[0.0.4]: https://github.com/eugenehp/bids-rs/compare/v0.0.3...v0.0.4
 [0.0.3]: https://github.com/eugenehp/bids-rs/releases/tag/v0.0.3
 [0.0.2]: https://github.com/eugenehp/bids-rs/releases/tag/v0.0.2
 [0.0.1]: https://github.com/eugenehp/bids-rs/releases/tag/v0.0.1

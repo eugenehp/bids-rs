@@ -19,7 +19,7 @@ Add `bids` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-bids = "0.0.3"
+bids = "0.0.4"
 ```
 
 ### Feature Flags
@@ -35,7 +35,7 @@ All features are opt-in:
 
 ```toml
 [dependencies]
-bids = { version = "0.0.3", features = ["ndarray", "mmap"] }
+bids = { version = "0.0.4", features = ["ndarray", "mmap"] }
 ```
 
 ## Quick Start
@@ -189,7 +189,7 @@ The `bids` crate re-exports the following sub-crates:
 |--------|-----------|-------------|
 | `bids::core` | `bids-core` | Fundamental types — `BidsFile`, `Entity`, `EntityValue`, `BidsMetadata`, `Config`, errors |
 | `bids::io` | `bids-io` | TSV/JSON I/O, BIDS path building, sidecar inheritance, file writing |
-| `bids::layout` | `bids-layout` | Dataset indexing, `BidsLayout`, fluent `GetBuilder` query API, SQLite backend |
+| `bids::layout` | `bids-layout` | Dataset indexing, `BidsLayout`, fluent `GetBuilder` query API, DuckDB backend |
 | `bids::variables` | `bids-variables` | BIDS variable system — `SimpleVariable`, `SparseRunVariable`, `DenseRunVariable` |
 | `bids::modeling` | `bids-modeling` | BIDS-StatsModels — graph, nodes, contrasts, HRF convolution, transformations |
 | `bids::reports` | `bids-reports` | Auto-generated publication-quality methods sections |
@@ -237,7 +237,7 @@ for full reads, up to **32× faster** for selective channel/time-window reads.
 
 ### Dataset Indexing (vs PyBIDS)
 
-Layout indexing with SQLite-backed storage — **2–6× faster** than PyBIDS.
+Layout indexing with DuckDB-backed storage — **2–6× faster** than PyBIDS.
 Entity queries are **up to 1000× faster** once the layout is indexed.
 
 ![Layout Indexing Benchmark](../../figures/layout_indexing_benchmark.png)

@@ -246,7 +246,7 @@ fn test_persistent_database() {
     let _ = std::fs::remove_dir_all(&tmp);
     create_fixture(&tmp);
 
-    let db_path = tmp.join("index.sqlite");
+    let db_path = tmp.join("index.duckdb");
 
     // Create layout with persistent database
     {

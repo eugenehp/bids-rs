@@ -3,7 +3,7 @@
 //!
 //! This is the central crate for interacting with BIDS datasets on disk. It
 //! provides [`BidsLayout`], the main entry point that indexes a dataset directory
-//! into a SQLite database and exposes a fluent query API for finding files.
+//! into a DuckDB database and exposes a fluent query API for finding files.
 //!
 //! Corresponds to PyBIDS' `BIDSLayout` class.
 //!
@@ -12,7 +12,7 @@
 //! When a `BidsLayout` is created, the dataset directory is walked recursively.
 //! Each file's path is matched against entity regex patterns from the configuration
 //! to extract BIDS entities (subject, session, task, run, suffix, extension, etc.).
-//! Files and their entity tags are stored in a SQLite database — either in-memory
+//! Files and their entity tags are stored in a DuckDB database — either in-memory
 //! for fast one-off use, or on disk for persistent caching of large datasets.
 //!
 //! JSON sidecar metadata is also indexed following the BIDS inheritance principle,
@@ -51,7 +51,7 @@
 //! ```no_run
 //! # use bids_layout::BidsLayout;
 //! let layout = BidsLayout::builder("/path/to/dataset")
-//!     .database_path("/path/to/index.sqlite")
+//!     .database_path("/path/to/index.duckdb")
 //!     .build()
 //!     .unwrap();
 //! ```

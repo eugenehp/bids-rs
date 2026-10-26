@@ -1,7 +1,7 @@
 //! The main `BidsLayout` type and its builder.
 //!
 //! [`BidsLayout`] is the primary entry point for working with a BIDS dataset.
-//! It indexes the directory tree into a SQLite database and provides fluent
+//! It indexes the directory tree into a DuckDB database and provides fluent
 //! query methods, metadata inheritance, derivative support, and path building.
 
 use bids_core::config::Config;
@@ -20,7 +20,7 @@ use crate::query::{QueryFilter, Scope};
 
 /// The main entry point for interacting with a BIDS dataset.
 ///
-/// `BidsLayout` indexes a BIDS dataset directory into a SQLite database and
+/// `BidsLayout` indexes a BIDS dataset directory into a DuckDB database and
 /// provides a fluent query API for finding files by their BIDS entities. It
 /// handles JSON sidecar metadata inheritance, file associations, derivative
 /// datasets, and path building.
@@ -29,8 +29,8 @@ use crate::query::{QueryFilter, Scope};
 ///
 /// # Thread Safety
 ///
-/// `BidsLayout` wraps a `rusqlite::Connection` and is therefore `!Send` and
-/// `!Sync`. It **cannot** be shared across threads or sent to async tasks.
+/// `BidsLayout` wraps a `duckdb::Connection` plus interior-mutable buffers
+/// and is therefore `!Sync`. It **cannot** be shared across threads.
 ///
 /// For multi-threaded or async workloads:
 ///
@@ -39,10 +39,10 @@ use crate::query::{QueryFilter, Scope};
 ///    ```no_run
 ///    # use bids_layout::BidsLayout;
 ///    let layout = BidsLayout::new("/data").unwrap();
-///    layout.save(std::path::Path::new("/tmp/index.sqlite")).unwrap();
+///    layout.save(std::path::Path::new("/tmp/index.duckdb")).unwrap();
 ///
 ///    // In each thread:
-///    let local = BidsLayout::load(std::path::Path::new("/tmp/index.sqlite")).unwrap();
+///    let local = BidsLayout::load(std::path::Path::new("/tmp/index.duckdb")).unwrap();
 ///    ```
 ///
 /// 2. **Create per-thread** — Call `BidsLayout::new()` in each thread. The
@@ -59,7 +59,7 @@ use crate::query::{QueryFilter, Scope};
 /// // Builder: customize indexing behavior
 /// let layout = BidsLayout::builder("/path/to/dataset")
 ///     .validate(false)                            // skip BIDS validation
-///     .database_path("/tmp/index.sqlite")         // persistent database
+///     .database_path("/tmp/index.duckdb")         // persistent database
 ///     .index_metadata(true)                       // index JSON sidecars
 ///     .add_derivative("/path/to/derivatives/fmriprep")
 ///     .build()
@@ -487,6 +487,8 @@ impl BidsLayout {
             .map(|f| (f.entity.clone(), f.values.clone(), f.regex))
             .collect();
         let candidates = self.db.query_files(&filter_tuples)?;
+        let candidate_tags = self.db.get_tags_many(&candidates)?;
+        let no_tags = Vec::new();
 
         // Group candidates by directory
         let mut dir_files: HashMap<PathBuf, Vec<String>> = HashMap::new();
@@ -503,7 +505,7 @@ impl BidsLayout {
                 // Score candidates by matching entities
                 let mut best: Option<(usize, String)> = None;
                 for file_path in files_in_dir {
-                    let tags = self.db.get_tags(file_path)?;
+                    let tags = candidate_tags.get(file_path).unwrap_or(&no_tags);
                     let file_ents: HashMap<String, String> = tags
                         .iter()
                         .filter(|(_, _, _, m)| !m)
@@ -607,10 +609,10 @@ impl BidsLayout {
     /// Export file index as rows of (path, entity_name, value).
     pub fn to_df(&self, metadata: bool) -> Result<Vec<(String, String, String)>> {
         let paths = self.db.all_file_paths()?;
+        let tags_by_path = self.db.all_tags()?;
         let mut rows = Vec::new();
         for path in &paths {
-            let tags = self.db.get_tags(path)?;
-            for (name, value, _, is_meta) in &tags {
+            for (name, value, _, is_meta) in tags_by_path.get(path).into_iter().flatten() {
                 if metadata || !is_meta {
                     rows.push((path.clone(), name.clone(), value.clone()));
                 }
@@ -845,7 +847,7 @@ impl std::fmt::Display for BidsLayout {
 /// let layout = BidsLayout::builder("/path/to/dataset")
 ///     .validate(true)
 ///     .index_metadata(true)
-///     .database_path("/tmp/bids_index.sqlite")
+///     .database_path("/tmp/bids_index.duckdb")
 ///     .add_derivative("/path/to/derivatives/fmriprep")
 ///     .build()
 ///     .unwrap();

@@ -1,4 +1,4 @@
-//! `bids layout` subcommand: create persistent SQLite index.
+//! `bids layout` subcommand: create persistent DuckDB index.
 
 use bids_layout::BidsLayout;
 use std::path::Path;
@@ -10,7 +10,7 @@ pub fn run(
     validate: bool,
     index_metadata: bool,
 ) -> bids_core::error::Result<()> {
-    let db_file = db_path.join("layout_index.sqlite");
+    let db_file = db_path.join("layout_index.duckdb");
     if reset_db && db_file.exists() {
         std::fs::remove_file(&db_file)?;
     }

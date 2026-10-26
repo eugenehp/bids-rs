@@ -1,20 +1,22 @@
-//! SQLite database backend for the BIDS file index.
+//! DuckDB database backend for the BIDS file index.
 //!
-//! Stores files, entity tags, metadata, and file associations in a SQLite
-//! database (in-memory or on-disk). Supports REGEXP queries via a custom
-//! function and transactional bulk inserts for fast indexing.
+//! Stores files, entity tags, metadata, and file associations in a DuckDB
+//! database (in-memory or on-disk). Regex queries use DuckDB's built-in
+//! `regexp_matches`, and bulk inserts run inside explicit transactions.
 
 use bids_core::error::{BidsError, Result};
 use bids_core::file::BidsFile;
-use rusqlite::{Connection, functions::FunctionFlags, params};
+use duckdb::{Connection, params};
+use indexmap::{IndexMap, IndexSet};
+use std::cell::{Cell, RefCell};
 use std::path::Path;
 
-/// Convert a `rusqlite::Error` into a `BidsError::Database`.
-fn db_err(e: rusqlite::Error) -> BidsError {
+/// Convert a `duckdb::Error` into a `BidsError::Database`.
+fn db_err(e: duckdb::Error) -> BidsError {
     BidsError::Database(e.to_string())
 }
 
-/// Manages the SQLite database backing a [`BidsLayout`](crate::BidsLayout) index.
+/// Manages the DuckDB database backing a [`BidsLayout`](crate::BidsLayout) index.
 ///
 /// Stores the complete file index for a BIDS dataset, including:
 /// - **Files** — Path, filename, directory, file type for every indexed file
@@ -25,8 +27,8 @@ fn db_err(e: rusqlite::Error) -> BidsError {
 /// - **Layout info** — Root path and config names for database reloading
 ///
 /// The database supports both in-memory operation (fast, ephemeral) and
-/// on-disk persistence (for caching large dataset indices). It registers
-/// a custom `REGEXP` function for SQLite to support regex-based queries.
+/// on-disk persistence (for caching large dataset indices). Regex filters
+/// are evaluated with DuckDB's native `regexp_matches` (RE2 syntax).
 ///
 /// # Schema
 ///
@@ -38,14 +40,41 @@ fn db_err(e: rusqlite::Error) -> BidsError {
 /// ```
 pub struct Database {
     conn: Connection,
+    /// True between `begin_transaction` and `commit`/`rollback`. While set,
+    /// inserts are buffered in `pending` instead of hitting the database.
+    in_tx: Cell<bool>,
+    pending: RefCell<Pending>,
+}
+
+/// Inserts buffered during a transaction.
+///
+/// DuckDB is a columnar engine: one `INSERT OR REPLACE` per row costs a full
+/// statement execution and an index probe, which made indexing a dataset
+/// orders of magnitude slower than SQLite. Buffering lets a transaction land
+/// as one Appender load plus one set-based merge per table. Keys are
+/// deduplicated here with the same last-write-wins (files, tags) and
+/// first-write-wins (associations) semantics as the SQL they replace.
+#[derive(Default)]
+struct Pending {
+    /// path → (filename, dirname, is_dir, file_type)
+    files: IndexMap<String, (String, String, bool, String)>,
+    /// (file_path, entity_name) → (value, dtype, is_metadata)
+    tags: IndexMap<(String, String), (String, String, bool)>,
+    /// (src, dst, kind)
+    associations: IndexSet<(String, String, String)>,
+}
+
+impl Pending {
+    fn is_empty(&self) -> bool {
+        self.files.is_empty() && self.tags.is_empty() && self.associations.is_empty()
+    }
 }
 
 impl Database {
     /// Create a new in-memory database.
     pub fn in_memory() -> Result<Self> {
         let conn = Connection::open_in_memory().map_err(db_err)?;
-        let db = Self { conn };
-        db.register_regexp()?;
+        let db = Self::wrap(conn);
         db.create_tables()?;
         Ok(db)
     }
@@ -56,10 +85,17 @@ impl Database {
             std::fs::create_dir_all(parent)?;
         }
         let conn = Connection::open(path).map_err(db_err)?;
-        let db = Self { conn };
-        db.register_regexp()?;
+        let db = Self::wrap(conn);
         db.create_tables()?;
         Ok(db)
+    }
+
+    fn wrap(conn: Connection) -> Self {
+        Self {
+            conn,
+            in_tx: Cell::new(false),
+            pending: RefCell::new(Pending::default()),
+        }
     }
 
     /// Check if a database file exists.
@@ -69,7 +105,7 @@ impl Database {
 
     /// The conventional index file inside a database directory.
     ///
-    /// Creates `dir` if it does not exist and returns `dir/layout_index.sqlite`.
+    /// Creates `dir` if it does not exist and returns `dir/layout_index.duckdb`.
     /// Passing `None` returns `None`, matching PyBIDS' `get_database_file`.
     ///
     /// # Errors
@@ -78,7 +114,7 @@ impl Database {
     pub fn get_database_file(dir: Option<&Path>) -> Result<Option<std::path::PathBuf>> {
         let Some(dir) = dir else { return Ok(None) };
         std::fs::create_dir_all(dir)?;
-        Ok(Some(dir.join("layout_index.sqlite")))
+        Ok(Some(dir.join("layout_index.duckdb")))
     }
 
     /// Drop every table and recreate the schema, discarding all indexed data.
@@ -99,7 +135,7 @@ impl Database {
 
     /// Discard any uncommitted work and start clean.
     ///
-    /// The rusqlite analogue of PyBIDS' `ConnectionManager.reset_session`:
+    /// The DuckDB analogue of PyBIDS' `ConnectionManager.reset_session`:
     /// there is no session object to replace, so this rolls back an in-flight
     /// transaction if one is open. Succeeds when there is nothing to roll back.
     ///
@@ -108,58 +144,12 @@ impl Database {
     /// Returns an error if the rollback itself fails for a reason other than
     /// there being no active transaction.
     pub fn reset_session(&self) -> Result<()> {
-        match self.conn.execute_batch("ROLLBACK") {
-            Ok(()) => Ok(()),
-            // "cannot rollback - no transaction is active" is the expected
-            // case when nothing is in flight.
-            Err(e) if e.to_string().contains("no transaction is active") => Ok(()),
-            Err(e) => Err(db_err(e)),
+        *self.pending.borrow_mut() = Pending::default();
+        self.in_tx.set(false);
+        if self.conn.is_autocommit() {
+            return Ok(());
         }
-    }
-
-    /// Register REGEXP function for SQLite.
-    ///
-    /// Caches compiled regexes so the same pattern is only compiled once per
-    /// query, not once per row. Uses SQLite's auxiliary data API for O(1) reuse.
-    fn register_regexp(&self) -> Result<()> {
-        use std::cell::RefCell;
-        use std::collections::HashMap;
-
-        // Thread-local regex cache shared across all REGEXP invocations on this
-        // connection. Avoids recompiling the same pattern for every row.
-        thread_local! {
-            static CACHE: RefCell<HashMap<String, regex::Regex>> = RefCell::new(HashMap::new());
-        }
-
-        self.conn
-            .create_scalar_function(
-                "regexp",
-                2,
-                FunctionFlags::SQLITE_UTF8 | FunctionFlags::SQLITE_DETERMINISTIC,
-                |ctx| {
-                    let pattern = ctx
-                        .get_raw(0)
-                        .as_str()
-                        .map_err(|e| rusqlite::Error::UserFunctionError(Box::new(e)))?;
-                    let value = ctx
-                        .get_raw(1)
-                        .as_str()
-                        .map_err(|e| rusqlite::Error::UserFunctionError(Box::new(e)))?;
-                    CACHE.with(|cache| {
-                        let mut cache = cache.borrow_mut();
-                        if let Some(re) = cache.get(pattern) {
-                            return Ok(re.is_match(value));
-                        }
-                        let re = regex::Regex::new(pattern)
-                            .map_err(|e| rusqlite::Error::UserFunctionError(Box::new(e)))?;
-                        let result = re.is_match(value);
-                        cache.insert(pattern.to_string(), re);
-                        Ok(result)
-                    })
-                },
-            )
-            .map_err(db_err)?;
-        Ok(())
+        self.conn.execute_batch("ROLLBACK").map_err(db_err)
     }
 
     fn create_tables(&self) -> Result<()> {
@@ -169,7 +159,7 @@ impl Database {
                 path TEXT PRIMARY KEY,
                 filename TEXT NOT NULL,
                 dirname TEXT NOT NULL,
-                is_dir INTEGER NOT NULL DEFAULT 0,
+                is_dir BOOLEAN NOT NULL DEFAULT false,
                 file_type TEXT NOT NULL DEFAULT 'Generic'
             );
             CREATE TABLE IF NOT EXISTS tags (
@@ -177,7 +167,7 @@ impl Database {
                 entity_name TEXT NOT NULL,
                 value TEXT NOT NULL,
                 dtype TEXT NOT NULL DEFAULT 'str',
-                is_metadata INTEGER NOT NULL DEFAULT 0,
+                is_metadata BOOLEAN NOT NULL DEFAULT false,
                 PRIMARY KEY (file_path, entity_name)
             );
             CREATE TABLE IF NOT EXISTS associations (
@@ -204,29 +194,121 @@ impl Database {
 
     /// Begin an explicit transaction for bulk operations.
     ///
-    /// Wrapping many inserts in a single transaction avoids per-statement
-    /// fsyncs, giving ~100× better insert throughput on large datasets.
+    /// Inserts made until [`commit_transaction`](Self::commit_transaction)
+    /// are buffered and written in bulk, which is what makes indexing large
+    /// datasets fast on DuckDB. Reads inside the transaction still see them.
     pub fn begin_transaction(&self) -> Result<()> {
         self.conn
             .execute_batch("BEGIN TRANSACTION")
             .map_err(db_err)?;
+        self.in_tx.set(true);
         Ok(())
     }
 
     /// Commit the current transaction.
     pub fn commit_transaction(&self) -> Result<()> {
+        if let Err(e) = self.flush_pending() {
+            let _ = self.rollback_transaction();
+            return Err(e);
+        }
+        self.in_tx.set(false);
         self.conn.execute_batch("COMMIT").map_err(db_err)?;
         Ok(())
     }
 
     /// Roll back the current transaction.
     pub fn rollback_transaction(&self) -> Result<()> {
+        *self.pending.borrow_mut() = Pending::default();
+        self.in_tx.set(false);
         self.conn.execute_batch("ROLLBACK").map_err(db_err)?;
+        Ok(())
+    }
+
+    /// Write buffered inserts: Appender into temp staging tables, then one
+    /// `INSERT OR REPLACE … SELECT` (or `OR IGNORE`) per target table.
+    fn flush_pending(&self) -> Result<()> {
+        let pending = std::mem::take(&mut *self.pending.borrow_mut());
+        if pending.is_empty() {
+            return Ok(());
+        }
+        self.conn
+            .execute_batch(
+                "CREATE TEMP TABLE IF NOT EXISTS stage_files AS SELECT * FROM files LIMIT 0;
+                 CREATE TEMP TABLE IF NOT EXISTS stage_tags AS SELECT * FROM tags LIMIT 0;
+                 CREATE TEMP TABLE IF NOT EXISTS stage_associations AS SELECT * FROM associations LIMIT 0;",
+            )
+            .map_err(db_err)?;
+
+        if !pending.files.is_empty() {
+            let mut app = self
+                .conn
+                .appender_to_catalog_and_db("stage_files", "temp", "main")
+                .map_err(db_err)?;
+            for (path, (filename, dirname, is_dir, file_type)) in &pending.files {
+                app.append_row(params![path, filename, dirname, is_dir, file_type])
+                    .map_err(db_err)?;
+            }
+            app.flush().map_err(db_err)?;
+            drop(app);
+            self.conn
+                .execute_batch(
+                    "INSERT OR REPLACE INTO files SELECT * FROM temp.stage_files;
+                     DELETE FROM temp.stage_files;",
+                )
+                .map_err(db_err)?;
+        }
+        if !pending.tags.is_empty() {
+            let mut app = self
+                .conn
+                .appender_to_catalog_and_db("stage_tags", "temp", "main")
+                .map_err(db_err)?;
+            for ((file_path, entity_name), (value, dtype, is_metadata)) in &pending.tags {
+                app.append_row(params![file_path, entity_name, value, dtype, is_metadata])
+                    .map_err(db_err)?;
+            }
+            app.flush().map_err(db_err)?;
+            drop(app);
+            self.conn
+                .execute_batch(
+                    "INSERT OR REPLACE INTO tags SELECT * FROM temp.stage_tags;
+                     DELETE FROM temp.stage_tags;",
+                )
+                .map_err(db_err)?;
+        }
+        if !pending.associations.is_empty() {
+            let mut app = self
+                .conn
+                .appender_to_catalog_and_db("stage_associations", "temp", "main")
+                .map_err(db_err)?;
+            for (src, dst, kind) in &pending.associations {
+                app.append_row(params![src, dst, kind]).map_err(db_err)?;
+            }
+            app.flush().map_err(db_err)?;
+            drop(app);
+            self.conn
+                .execute_batch(
+                    "INSERT OR IGNORE INTO associations SELECT * FROM temp.stage_associations;
+                     DELETE FROM temp.stage_associations;",
+                )
+                .map_err(db_err)?;
+        }
         Ok(())
     }
 
     /// Insert a file into the database.
     pub fn insert_file(&self, file: &BidsFile) -> Result<()> {
+        if self.in_tx.get() {
+            self.pending.borrow_mut().files.insert(
+                file.path.to_string_lossy().into_owned(),
+                (
+                    file.filename.clone(),
+                    file.dirname.to_string_lossy().into_owned(),
+                    file.is_dir,
+                    format!("{:?}", file.file_type),
+                ),
+            );
+            return Ok(());
+        }
         self.conn
             .execute(
                 "INSERT OR REPLACE INTO files (path, filename, dirname, is_dir, file_type)
@@ -235,7 +317,7 @@ impl Database {
                     file.path.to_string_lossy().as_ref(),
                     file.filename,
                     file.dirname.to_string_lossy().as_ref(),
-                    file.is_dir as i32,
+                    file.is_dir,
                     format!("{:?}", file.file_type),
                 ],
             )
@@ -252,11 +334,18 @@ impl Database {
         dtype: &str,
         is_metadata: bool,
     ) -> Result<()> {
+        if self.in_tx.get() {
+            self.pending.borrow_mut().tags.insert(
+                (file_path.to_string(), entity_name.to_string()),
+                (value.to_string(), dtype.to_string(), is_metadata),
+            );
+            return Ok(());
+        }
         self.conn
             .execute(
                 "INSERT OR REPLACE INTO tags (file_path, entity_name, value, dtype, is_metadata)
              VALUES (?1, ?2, ?3, ?4, ?5)",
-                params![file_path, entity_name, value, dtype, is_metadata as i32],
+                params![file_path, entity_name, value, dtype, is_metadata],
             )
             .map_err(db_err)?;
         Ok(())
@@ -264,6 +353,14 @@ impl Database {
 
     /// Insert a file association.
     pub fn insert_association(&self, src: &str, dst: &str, kind: &str) -> Result<()> {
+        if self.in_tx.get() {
+            self.pending.borrow_mut().associations.insert((
+                src.to_string(),
+                dst.to_string(),
+                kind.to_string(),
+            ));
+            return Ok(());
+        }
         self.conn
             .execute(
                 "INSERT OR IGNORE INTO associations (src, dst, kind) VALUES (?1, ?2, ?3)",
@@ -286,6 +383,7 @@ impl Database {
 
     /// Get layout info (root, config).
     pub fn get_layout_info(&self) -> Result<Option<(String, String)>> {
+        self.flush_pending()?;
         let mut stmt = self
             .conn
             .prepare("SELECT root, config FROM layout_info LIMIT 1")
@@ -301,9 +399,10 @@ impl Database {
 
     /// Query all file paths.
     pub fn all_file_paths(&self) -> Result<Vec<String>> {
+        self.flush_pending()?;
         let mut stmt = self
             .conn
-            .prepare("SELECT path FROM files WHERE is_dir = 0")
+            .prepare("SELECT path FROM files WHERE NOT is_dir")
             .map_err(db_err)?;
         let paths: std::result::Result<Vec<String>, _> = stmt
             .query_map([], |row| row.get(0))
@@ -314,6 +413,7 @@ impl Database {
 
     /// Get tags for a specific file.
     pub fn get_tags(&self, file_path: &str) -> Result<Vec<(String, String, String, bool)>> {
+        self.flush_pending()?;
         let mut stmt = self
             .conn
             .prepare("SELECT entity_name, value, dtype, is_metadata FROM tags WHERE file_path = ?1")
@@ -332,8 +432,64 @@ impl Database {
         tags.map_err(db_err)
     }
 
+    /// Tags for every file, keyed by path, in one scan.
+    ///
+    /// Prefer this (or [`get_tags_many`](Self::get_tags_many)) over calling
+    /// [`get_tags`](Self::get_tags) in a loop: each DuckDB query carries a
+    /// fixed planning/execution cost that dominates per-file point lookups.
+    pub fn all_tags(&self) -> Result<std::collections::HashMap<String, Vec<TagRow>>> {
+        self.flush_pending()?;
+        let mut stmt = self
+            .conn
+            .prepare("SELECT file_path, entity_name, value, dtype, is_metadata FROM tags")
+            .map_err(db_err)?;
+        collect_tag_rows(&mut stmt, [])
+    }
+
+    /// Tags for the given files, keyed by path, in one query.
+    ///
+    /// Files with no tags are absent from the map.
+    pub fn get_tags_many(
+        &self,
+        paths: &[String],
+    ) -> Result<std::collections::HashMap<String, Vec<TagRow>>> {
+        self.flush_pending()?;
+        if paths.is_empty() {
+            return Ok(std::collections::HashMap::new());
+        }
+        self.conn
+            .execute_batch(
+                "CREATE TEMP TABLE IF NOT EXISTS lookup_paths (path TEXT);
+                 DELETE FROM temp.lookup_paths;",
+            )
+            .map_err(db_err)?;
+        {
+            let mut app = self
+                .conn
+                .appender_to_catalog_and_db("lookup_paths", "temp", "main")
+                .map_err(db_err)?;
+            for p in paths {
+                app.append_row(params![p]).map_err(db_err)?;
+            }
+            app.flush().map_err(db_err)?;
+        }
+        let mut stmt = self
+            .conn
+            .prepare(
+                "SELECT t.file_path, t.entity_name, t.value, t.dtype, t.is_metadata
+                 FROM tags t SEMI JOIN temp.lookup_paths l ON t.file_path = l.path",
+            )
+            .map_err(db_err)?;
+        let out = collect_tag_rows(&mut stmt, []);
+        self.conn
+            .execute_batch("DELETE FROM temp.lookup_paths")
+            .map_err(db_err)?;
+        out
+    }
+
     /// Get all unique values for a given entity.
     pub fn get_unique_entity_values(&self, entity_name: &str) -> Result<Vec<String>> {
+        self.flush_pending()?;
         let mut stmt = self
             .conn
             .prepare("SELECT DISTINCT value FROM tags WHERE entity_name = ?1 ORDER BY value")
@@ -347,6 +503,7 @@ impl Database {
 
     /// Get all unique entity names.
     pub fn get_entity_names(&self) -> Result<Vec<String>> {
+        self.flush_pending()?;
         let mut stmt = self
             .conn
             .prepare("SELECT DISTINCT entity_name FROM tags ORDER BY entity_name")
@@ -366,11 +523,12 @@ impl Database {
     /// - Query::None: (entity, ["__NONE__"], false) — entity must NOT exist
     /// - Query::Any: (entity, ["__ANY__"], false) — entity must exist (any value)
     pub fn query_files(&self, filters: &[(String, Vec<String>, bool)]) -> Result<Vec<String>> {
+        self.flush_pending()?;
         if filters.is_empty() {
             return self.all_file_paths();
         }
 
-        let mut sql = String::from("SELECT f.path FROM files f WHERE f.is_dir = 0");
+        let mut sql = String::from("SELECT f.path FROM files f WHERE NOT f.is_dir");
         let mut bind_values: Vec<String> = Vec::new();
 
         for (i, (entity_name, values, is_regex)) in filters.iter().enumerate() {
@@ -395,7 +553,7 @@ impl Database {
             }
 
             if *is_regex && !values.is_empty() {
-                write!(sql, " AND EXISTS (SELECT 1 FROM tags t{i} WHERE t{i}.file_path = f.path AND t{i}.entity_name = ? AND t{i}.value REGEXP ?)").unwrap();
+                write!(sql, " AND EXISTS (SELECT 1 FROM tags t{i} WHERE t{i}.file_path = f.path AND t{i}.entity_name = ? AND regexp_matches(t{i}.value, ?))").unwrap();
                 bind_values.push(entity_name.clone());
                 bind_values.push(values[0].clone());
             } else if values.len() == 1 {
@@ -414,9 +572,9 @@ impl Database {
         sql.push_str(" ORDER BY f.path");
 
         let mut stmt = self.conn.prepare(&sql).map_err(db_err)?;
-        let params: Vec<&dyn rusqlite::types::ToSql> = bind_values
+        let params: Vec<&dyn duckdb::ToSql> = bind_values
             .iter()
-            .map(|v| v as &dyn rusqlite::types::ToSql)
+            .map(|v| v as &dyn duckdb::ToSql)
             .collect();
         let paths: std::result::Result<Vec<String>, _> = stmt
             .query_map(params.as_slice(), |row| row.get::<_, String>(0))
@@ -432,13 +590,14 @@ impl Database {
         filters: &[(String, Vec<String>, bool)],
     ) -> Result<Vec<String>> {
         let paths = self.query_files(filters)?;
+        let tags_by_path = self.get_tags_many(&paths)?;
         let mut dirs = std::collections::BTreeSet::new();
         for path_str in &paths {
             // Check if the file has the target entity
-            let tags = self.get_tags(path_str)?;
-            if tags.iter().any(|(n, _, _, _)| n == target_entity)
-                && let Some(parent) = std::path::Path::new(path_str).parent()
-            {
+            let has_target = tags_by_path
+                .get(path_str)
+                .is_some_and(|tags| tags.iter().any(|(n, _, _, _)| n == target_entity));
+            if has_target && let Some(parent) = std::path::Path::new(path_str).parent() {
                 dirs.insert(parent.to_string_lossy().to_string());
             }
         }
@@ -447,6 +606,7 @@ impl Database {
 
     /// Get associated files for a given source file.
     pub fn get_associations(&self, src: &str, kind: Option<&str>) -> Result<Vec<(String, String)>> {
+        self.flush_pending()?;
         let (sql, params_vec): (String, Vec<String>) = if let Some(k) = kind {
             (
                 "SELECT dst, kind FROM associations WHERE src = ?1 AND kind = ?2".to_string(),
@@ -460,10 +620,8 @@ impl Database {
         };
 
         let mut stmt = self.conn.prepare(&sql).map_err(db_err)?;
-        let params: Vec<&dyn rusqlite::types::ToSql> = params_vec
-            .iter()
-            .map(|v| v as &dyn rusqlite::types::ToSql)
-            .collect();
+        let params: Vec<&dyn duckdb::ToSql> =
+            params_vec.iter().map(|v| v as &dyn duckdb::ToSql).collect();
         let assocs: std::result::Result<Vec<_>, _> = stmt
             .query_map(params.as_slice(), |row| {
                 Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
@@ -475,24 +633,71 @@ impl Database {
 
     /// Get the total number of indexed files.
     pub fn file_count(&self) -> Result<usize> {
+        self.flush_pending()?;
         let mut stmt = self
             .conn
-            .prepare("SELECT COUNT(*) FROM files WHERE is_dir = 0")
+            .prepare("SELECT COUNT(*) FROM files WHERE NOT is_dir")
             .map_err(db_err)?;
         let count: i64 = stmt.query_row([], |row| row.get(0)).map_err(db_err)?;
         Ok(count as usize)
     }
 
-    /// Save the current in-memory database to a file.
+    /// Save the current database to a file.
+    ///
+    /// Copies every table into a fresh DuckDB file via `ATTACH` +
+    /// `COPY FROM DATABASE`. Any existing file at `path` is replaced.
     pub fn save_to(&self, path: &Path) -> Result<()> {
+        self.flush_pending()?;
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
         }
-        let mut backup = Connection::open(path).map_err(db_err)?;
-        let b = rusqlite::backup::Backup::new(&self.conn, &mut backup).map_err(db_err)?;
-        b.step(-1).map_err(db_err)?;
+        for p in [path.to_path_buf(), wal_path(path)] {
+            if p.exists() {
+                std::fs::remove_file(&p)?;
+            }
+        }
+        let current: String = self
+            .conn
+            .query_row("SELECT current_database()", [], |row| row.get(0))
+            .map_err(db_err)?;
+        let target = path.to_string_lossy().replace('\'', "''");
+        self.conn
+            .execute_batch(&format!(
+                "ATTACH '{target}' AS bids_save_target;
+                 COPY FROM DATABASE \"{current}\" TO bids_save_target;
+                 DETACH bids_save_target;"
+            ))
+            .map_err(db_err)?;
         Ok(())
     }
+}
+
+/// One tag: `(entity_name, value, dtype, is_metadata)`.
+pub type TagRow = (String, String, String, bool);
+
+fn collect_tag_rows(
+    stmt: &mut duckdb::Statement<'_>,
+    params: impl duckdb::Params,
+) -> Result<std::collections::HashMap<String, Vec<TagRow>>> {
+    let mut out: std::collections::HashMap<String, Vec<TagRow>> = std::collections::HashMap::new();
+    let mut rows = stmt.query(params).map_err(db_err)?;
+    while let Some(row) = rows.next().map_err(db_err)? {
+        let path: String = row.get(0).map_err(db_err)?;
+        out.entry(path).or_default().push((
+            row.get(1).map_err(db_err)?,
+            row.get(2).map_err(db_err)?,
+            row.get(3).map_err(db_err)?,
+            row.get(4).map_err(db_err)?,
+        ));
+    }
+    Ok(out)
+}
+
+/// DuckDB's write-ahead log sits next to the database as `<file>.wal`.
+fn wal_path(path: &Path) -> std::path::PathBuf {
+    let mut s = path.as_os_str().to_os_string();
+    s.push(".wal");
+    std::path::PathBuf::from(s)
 }
 
 #[cfg(test)]
@@ -626,5 +831,68 @@ mod tests {
         let filters = vec![("subject".to_string(), vec!["0[12]".to_string()], true)];
         let results = db.query_files(&filters).unwrap();
         assert_eq!(results.len(), 2);
+    }
+
+    #[test]
+    fn test_buffered_transaction_semantics() {
+        let db = Database::in_memory().unwrap();
+        db.insert_file(&BidsFile::new("/d/a.edf")).unwrap();
+        db.insert_tag("/d/a.edf", "subject", "01", "str", false)
+            .unwrap();
+
+        db.begin_transaction().unwrap();
+        db.insert_file(&BidsFile::new("/d/b.edf")).unwrap();
+        // Replaces a row committed before the transaction…
+        db.insert_tag("/d/a.edf", "subject", "99", "str", false)
+            .unwrap();
+        // …and the last of two buffered writes to the same key wins.
+        db.insert_tag("/d/b.edf", "subject", "02", "str", false)
+            .unwrap();
+        db.insert_tag("/d/b.edf", "subject", "03", "str", false)
+            .unwrap();
+        db.insert_association("/d/a.edf", "/d/b.edf", "Child")
+            .unwrap();
+        db.insert_association("/d/a.edf", "/d/b.edf", "Child")
+            .unwrap();
+        // Reads inside the transaction see buffered rows.
+        assert_eq!(db.file_count().unwrap(), 2);
+        db.insert_file(&BidsFile::new("/d/c.edf")).unwrap();
+        db.commit_transaction().unwrap();
+
+        assert_eq!(db.file_count().unwrap(), 3);
+        assert_eq!(
+            db.get_unique_entity_values("subject").unwrap(),
+            ["03", "99"]
+        );
+        assert_eq!(db.get_associations("/d/a.edf", None).unwrap().len(), 1);
+
+        db.begin_transaction().unwrap();
+        db.insert_file(&BidsFile::new("/d/z.edf")).unwrap();
+        db.rollback_transaction().unwrap();
+        assert_eq!(db.file_count().unwrap(), 3);
+    }
+
+    #[test]
+    fn test_save_and_reopen() {
+        let dir = std::env::temp_dir().join(format!("bids_db_save_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let path = dir.join("index.duckdb");
+        let db = Database::in_memory().unwrap();
+        db.insert_file(&BidsFile::new("/d/a.edf")).unwrap();
+        db.insert_tag("/d/a.edf", "subject", "01", "str", false)
+            .unwrap();
+        db.set_layout_info("/d", "bids").unwrap();
+        db.save_to(&path).unwrap();
+        // Saving over an existing file replaces it.
+        db.save_to(&path).unwrap();
+        drop(db);
+
+        let back = Database::open(&path).unwrap();
+        assert_eq!(back.file_count().unwrap(), 1);
+        assert_eq!(
+            back.get_layout_info().unwrap(),
+            Some(("/d".into(), "bids".into()))
+        );
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 }

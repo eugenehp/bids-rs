@@ -58,6 +58,7 @@ pub mod events;
 pub mod harmonize;
 pub mod metadata;
 pub mod pipeline;
+pub mod writer;
 
 pub use channels::{Channel, ChannelType, read_channels_tsv};
 pub use coordsystem::CoordinateSystem;
@@ -72,6 +73,10 @@ pub use events::{EegEvent, read_events_tsv};
 pub use harmonize::{ChannelStrategy, HarmonizationPlan, apply_harmonization, plan_harmonization};
 pub use metadata::EegMetadata;
 pub use pipeline::{Pipeline as EegPipeline, PipelineResult};
+pub use writer::{
+    BrainVisionFiles, BrainVisionWriter, PhysioWriter, write_channels_tsv, write_eeg_sidecar,
+    write_events_tsv,
+};
 
 /// EEG channels, electrodes, events and signal data.
 ///

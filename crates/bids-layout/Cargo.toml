@@ -19,6 +19,6 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 regex = { workspace = true }
 walkdir = { workspace = true }
-rusqlite = { workspace = true }
+duckdb = { workspace = true }
 indexmap = { workspace = true }
 log = { workspace = true }

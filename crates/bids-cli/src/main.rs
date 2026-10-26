@@ -9,7 +9,7 @@
 //! - `ls` — List files matching entity filters
 //! - `eeg` — EEG-specific queries (channels, events, summary)
 //! - `entities` — List all entities and their unique values
-//! - `layout` — Create/load a persistent SQLite index
+//! - `layout` — Create/load a persistent DuckDB index
 //! - `report` — Generate a publication-quality methods section
 //! - `auto-model` — Auto-generate BIDS Stats Model JSON
 //! - `upgrade` — Upgrade dataset_description.json to latest BIDS version
@@ -61,7 +61,7 @@ enum Commands {
     },
     /// List entities and their values
     Entities { root: PathBuf },
-    /// Create/load a persistent SQLite index
+    /// Create/load a persistent DuckDB index
     Layout {
         root: PathBuf,
         db_path: PathBuf,

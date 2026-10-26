@@ -76,7 +76,6 @@ impl<'a> EegLayout<'a> {
         if !p.exists() {
             return Ok(None);
         }
-        let rows = read_tsv_gz(&p)?;
         let json_path = p.with_extension("").with_extension("json");
         let md = if json_path.exists() {
             Some(bids_io::json::read_json_sidecar(&json_path)?)
@@ -100,6 +99,14 @@ impl<'a> EegLayout<'a> {
                     .collect()
             })
             .unwrap_or_default();
+        // BIDS physio files have no header row — the names come from the
+        // sidecar's `Columns`. Only fall back to treating the first line as a
+        // header when the sidecar doesn't list them.
+        let rows = if columns.is_empty() {
+            read_tsv_gz(&p)?
+        } else {
+            read_headerless_tsv_gz(&p, &columns)?
+        };
         Ok(Some(PhysioData {
             rows,
             sampling_frequency: sampling_freq,
@@ -265,6 +272,30 @@ pub struct PhysioData {
     pub sampling_frequency: f64,
     pub start_time: f64,
     pub columns: Vec<String>,
+}
+
+/// Parse a headerless gzipped TSV, naming fields from `columns`.
+fn read_headerless_tsv_gz(
+    path: &std::path::Path,
+    columns: &[String],
+) -> Result<Vec<std::collections::HashMap<String, String>>> {
+    use std::io::BufRead;
+    let reader = std::io::BufReader::new(flate2::read::GzDecoder::new(std::fs::File::open(path)?));
+    let mut rows = Vec::new();
+    for line in reader.lines() {
+        let line = line?;
+        if line.trim().is_empty() {
+            continue;
+        }
+        rows.push(
+            columns
+                .iter()
+                .cloned()
+                .zip(line.split('\t').map(|v| v.trim().to_string()))
+                .collect(),
+        );
+    }
+    Ok(rows)
 }
 
 #[derive(Debug)]
