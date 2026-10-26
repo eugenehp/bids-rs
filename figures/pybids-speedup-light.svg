@@ -5,57 +5,58 @@
 <circle cx="29.0" cy="72" r="5" fill="#2a78d6"/><text x="40.0" y="76" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="11" fill="#52514e">Entity queries</text>
 <circle cx="144.4" cy="72" r="5" fill="#eb6834"/><text x="155.4" y="76" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="11" fill="#52514e">File queries</text>
 <circle cx="247.6" cy="72" r="5" fill="#1baf7a"/><text x="258.6" y="76" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="11" fill="#52514e">Indexing &amp; metadata</text>
-<line x1="282.9" y1="106.0" x2="282.9" y2="496.0" stroke="#e1e0d9" stroke-width="1"/><text x="282.9" y="514.0" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="10" fill="#898781">1×</text>
-<line x1="384.7" y1="106.0" x2="384.7" y2="496.0" stroke="#e1e0d9" stroke-width="1"/><text x="384.7" y="514.0" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="10" fill="#898781">10×</text>
-<line x1="486.5" y1="106.0" x2="486.5" y2="496.0" stroke="#e1e0d9" stroke-width="1"/><text x="486.5" y="514.0" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="10" fill="#898781">100×</text>
-<line x1="588.4" y1="106.0" x2="588.4" y2="496.0" stroke="#e1e0d9" stroke-width="1"/><text x="588.4" y="514.0" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="10" fill="#898781">1.0k×</text>
-<line x1="690.2" y1="106.0" x2="690.2" y2="496.0" stroke="#e1e0d9" stroke-width="1"/><text x="690.2" y="514.0" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="10" fill="#898781">10.0k×</text>
-<line x1="792.0" y1="106.0" x2="792.0" y2="496.0" stroke="#e1e0d9" stroke-width="1"/><text x="792.0" y="514.0" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="10" fill="#898781">100.0k×</text>
-<line x1="282.9" y1="100.0" x2="282.9" y2="500.0" stroke="#c3c2b7" stroke-width="1.5"/><text x="288.9" y="97.0" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="10" fill="#898781">parity — left of this line bids-rs is slower</text>
-<text x="218.0" y="119.0" text-anchor="end" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" fill="#52514e">get_sessions</text>
-<line x1="564.3" y1="119.0" x2="743.4" y2="119.0" stroke="#2a78d6" stroke-width="2" stroke-linecap="round" opacity="0.45"/><circle cx="639.1" cy="119.0" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
-<text x="802.0" y="119.0" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" font-weight="600" fill="#0b0b0b">3.2k×</text>
-<text x="218.0" y="145.0" text-anchor="end" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" fill="#52514e">get_datatypes</text>
-<line x1="567.7" y1="145.0" x2="639.2" y2="145.0" stroke="#2a78d6" stroke-width="2" stroke-linecap="round" opacity="0.45"/><circle cx="598.0" cy="145.0" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
-<text x="802.0" y="145.0" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" font-weight="600" fill="#0b0b0b">1.2k×</text>
-<text x="218.0" y="171.0" text-anchor="end" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" fill="#52514e">get_tasks</text>
-<line x1="574.7" y1="171.0" x2="655.7" y2="171.0" stroke="#2a78d6" stroke-width="2" stroke-linecap="round" opacity="0.45"/><circle cx="597.5" cy="171.0" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
-<text x="802.0" y="171.0" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" font-weight="600" fill="#0b0b0b">1.2k×</text>
+<line x1="232.0" y1="106.0" x2="232.0" y2="496.0" stroke="#e1e0d9" stroke-width="1"/><text x="232.0" y="514.0" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="10" fill="#898781">1×</text>
+<line x1="325.3" y1="106.0" x2="325.3" y2="496.0" stroke="#e1e0d9" stroke-width="1"/><text x="325.3" y="514.0" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="10" fill="#898781">10×</text>
+<line x1="418.7" y1="106.0" x2="418.7" y2="496.0" stroke="#e1e0d9" stroke-width="1"/><text x="418.7" y="514.0" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="10" fill="#898781">100×</text>
+<line x1="512.0" y1="106.0" x2="512.0" y2="496.0" stroke="#e1e0d9" stroke-width="1"/><text x="512.0" y="514.0" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="10" fill="#898781">1.0k×</text>
+<line x1="605.3" y1="106.0" x2="605.3" y2="496.0" stroke="#e1e0d9" stroke-width="1"/><text x="605.3" y="514.0" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="10" fill="#898781">10.0k×</text>
+<line x1="698.7" y1="106.0" x2="698.7" y2="496.0" stroke="#e1e0d9" stroke-width="1"/><text x="698.7" y="514.0" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="10" fill="#898781">100k×</text>
+<line x1="792.0" y1="106.0" x2="792.0" y2="496.0" stroke="#e1e0d9" stroke-width="1"/><text x="792.0" y="514.0" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="10" fill="#898781">1M×</text>
+<line x1="232.0" y1="100.0" x2="232.0" y2="500.0" stroke="#c3c2b7" stroke-width="1.5"/><text x="238.0" y="97.0" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="10" fill="#898781">parity — left of this line bids-rs is slower</text>
+<text x="218.0" y="119.0" text-anchor="end" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" fill="#52514e">get_datatypes</text>
+<line x1="603.6" y1="119.0" x2="769.5" y2="119.0" stroke="#2a78d6" stroke-width="2" stroke-linecap="round" opacity="0.45"/><circle cx="693.8" cy="119.0" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
+<text x="802.0" y="119.0" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" font-weight="600" fill="#0b0b0b">88.7k×</text>
+<text x="218.0" y="145.0" text-anchor="end" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" fill="#52514e">get_tasks</text>
+<line x1="586.5" y1="145.0" x2="755.7" y2="145.0" stroke="#2a78d6" stroke-width="2" stroke-linecap="round" opacity="0.45"/><circle cx="688.5" cy="145.0" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
+<text x="802.0" y="145.0" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" font-weight="600" fill="#0b0b0b">77.8k×</text>
+<text x="218.0" y="171.0" text-anchor="end" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" fill="#52514e">get_sessions</text>
+<line x1="590.7" y1="171.0" x2="753.3" y2="171.0" stroke="#2a78d6" stroke-width="2" stroke-linecap="round" opacity="0.45"/><circle cx="686.3" cy="171.0" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
+<text x="802.0" y="171.0" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" font-weight="600" fill="#0b0b0b">73.6k×</text>
 <text x="218.0" y="197.0" text-anchor="end" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" fill="#52514e">get_suffixes</text>
-<line x1="568.1" y1="197.0" x2="672.0" y2="197.0" stroke="#2a78d6" stroke-width="2" stroke-linecap="round" opacity="0.45"/><circle cx="591.6" cy="197.0" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
-<text x="802.0" y="197.0" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" font-weight="600" fill="#0b0b0b">1.1k×</text>
+<line x1="597.2" y1="197.0" x2="741.8" y2="197.0" stroke="#2a78d6" stroke-width="2" stroke-linecap="round" opacity="0.45"/><circle cx="683.4" cy="197.0" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
+<text x="802.0" y="197.0" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" font-weight="600" fill="#0b0b0b">68.7k×</text>
 <text x="218.0" y="223.0" text-anchor="end" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" fill="#52514e">get_subjects</text>
-<line x1="566.5" y1="223.0" x2="679.7" y2="223.0" stroke="#2a78d6" stroke-width="2" stroke-linecap="round" opacity="0.45"/><circle cx="590.1" cy="223.0" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
-<text x="802.0" y="223.0" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" font-weight="600" fill="#0b0b0b">1.0k×</text>
+<line x1="591.3" y1="223.0" x2="737.7" y2="223.0" stroke="#2a78d6" stroke-width="2" stroke-linecap="round" opacity="0.45"/><circle cx="663.3" cy="223.0" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
+<text x="802.0" y="223.0" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" font-weight="600" fill="#0b0b0b">41.8k×</text>
 <text x="218.0" y="249.0" text-anchor="end" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" fill="#52514e">get(subject=…)</text>
-<line x1="517.4" y1="249.0" x2="630.2" y2="249.0" stroke="#eb6834" stroke-width="2" stroke-linecap="round" opacity="0.45"/><circle cx="538.8" cy="249.0" r="5" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"/>
-<text x="802.0" y="249.0" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" font-weight="600" fill="#0b0b0b">326×</text>
+<line x1="512.1" y1="249.0" x2="579.9" y2="249.0" stroke="#eb6834" stroke-width="2" stroke-linecap="round" opacity="0.45"/><circle cx="567.7" cy="249.0" r="5" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"/>
+<text x="802.0" y="249.0" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" font-weight="600" fill="#0b0b0b">4.0k×</text>
 <text x="218.0" y="275.0" text-anchor="end" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" fill="#52514e">get_metadata (×25)</text>
-<line x1="396.3" y1="275.0" x2="424.6" y2="275.0" stroke="#1baf7a" stroke-width="2" stroke-linecap="round" opacity="0.45"/><circle cx="418.7" cy="275.0" r="5" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"/>
-<text x="802.0" y="275.0" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" font-weight="600" fill="#0b0b0b">22×</text>
+<line x1="363.3" y1="275.0" x2="415.7" y2="275.0" stroke="#1baf7a" stroke-width="2" stroke-linecap="round" opacity="0.45"/><circle cx="411.5" cy="275.0" r="5" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"/>
+<text x="802.0" y="275.0" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" font-weight="600" fill="#0b0b0b">84×</text>
 <text x="218.0" y="301.0" text-anchor="end" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" fill="#52514e">get(suffix="events")</text>
-<line x1="330.9" y1="301.0" x2="458.6" y2="301.0" stroke="#eb6834" stroke-width="2" stroke-linecap="round" opacity="0.45"/><circle cx="387.6" cy="301.0" r="5" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"/>
-<text x="802.0" y="301.0" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" font-weight="600" fill="#0b0b0b">11×</text>
+<line x1="367.0" y1="301.0" x2="457.1" y2="301.0" stroke="#eb6834" stroke-width="2" stroke-linecap="round" opacity="0.45"/><circle cx="397.4" cy="301.0" r="5" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"/>
+<text x="802.0" y="301.0" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" font-weight="600" fill="#0b0b0b">59×</text>
 <text x="218.0" y="327.0" text-anchor="end" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" fill="#52514e">get(suffix="bold")</text>
-<line x1="324.9" y1="327.0" x2="453.8" y2="327.0" stroke="#eb6834" stroke-width="2" stroke-linecap="round" opacity="0.45"/><circle cx="384.3" cy="327.0" r="5" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"/>
-<text x="802.0" y="327.0" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" font-weight="600" fill="#0b0b0b">9.9×</text>
-<text x="218.0" y="353.0" text-anchor="end" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" fill="#52514e">parse_file_entities (×200)</text>
-<line x1="371.5" y1="353.0" x2="426.5" y2="353.0" stroke="#1baf7a" stroke-width="2" stroke-linecap="round" opacity="0.45"/><circle cx="384.2" cy="353.0" r="5" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"/>
-<text x="802.0" y="353.0" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" font-weight="600" fill="#0b0b0b">9.9×</text>
-<text x="218.0" y="379.0" text-anchor="end" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" fill="#52514e">get_entities</text>
-<line x1="315.4" y1="379.0" x2="414.1" y2="379.0" stroke="#2a78d6" stroke-width="2" stroke-linecap="round" opacity="0.45"/><circle cx="383.1" cy="379.0" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
-<text x="802.0" y="379.0" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" font-weight="600" fill="#0b0b0b">9.6×</text>
-<text x="218.0" y="405.0" text-anchor="end" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" fill="#52514e">get(return_type="filename")</text>
-<line x1="351.7" y1="405.0" x2="438.5" y2="405.0" stroke="#eb6834" stroke-width="2" stroke-linecap="round" opacity="0.45"/><circle cx="381.8" cy="405.0" r="5" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"/>
-<text x="802.0" y="405.0" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" font-weight="600" fill="#0b0b0b">9.4×</text>
-<text x="218.0" y="431.0" text-anchor="end" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" fill="#52514e">BIDSLayout(index_metadata=False)</text>
-<line x1="346.4" y1="431.0" x2="460.1" y2="431.0" stroke="#1baf7a" stroke-width="2" stroke-linecap="round" opacity="0.45"/><circle cx="372.2" cy="431.0" r="5" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"/>
-<text x="802.0" y="431.0" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" font-weight="600" fill="#0b0b0b">7.5×</text>
+<line x1="371.4" y1="327.0" x2="470.6" y2="327.0" stroke="#eb6834" stroke-width="2" stroke-linecap="round" opacity="0.45"/><circle cx="396.1" cy="327.0" r="5" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"/>
+<text x="802.0" y="327.0" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" font-weight="600" fill="#0b0b0b">57×</text>
+<text x="218.0" y="353.0" text-anchor="end" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" fill="#52514e">get_entities</text>
+<line x1="365.0" y1="353.0" x2="380.8" y2="353.0" stroke="#2a78d6" stroke-width="2" stroke-linecap="round" opacity="0.45"/><circle cx="378.8" cy="353.0" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="1.5"/>
+<text x="802.0" y="353.0" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" font-weight="600" fill="#0b0b0b">37×</text>
+<text x="218.0" y="379.0" text-anchor="end" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" fill="#52514e">get(return_type="filename")</text>
+<line x1="344.0" y1="379.0" x2="421.5" y2="379.0" stroke="#eb6834" stroke-width="2" stroke-linecap="round" opacity="0.45"/><circle cx="359.5" cy="379.0" r="5" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"/>
+<text x="802.0" y="379.0" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" font-weight="600" fill="#0b0b0b">23×</text>
+<text x="218.0" y="405.0" text-anchor="end" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" fill="#52514e">parse_file_entities (×200)</text>
+<line x1="323.2" y1="405.0" x2="332.0" y2="405.0" stroke="#1baf7a" stroke-width="2" stroke-linecap="round" opacity="0.45"/><circle cx="326.0" cy="405.0" r="5" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"/>
+<text x="802.0" y="405.0" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" font-weight="600" fill="#0b0b0b">10×</text>
+<text x="218.0" y="431.0" text-anchor="end" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" fill="#52514e">get() → BIDSFile objects</text>
+<line x1="256.5" y1="431.0" x2="456.3" y2="431.0" stroke="#eb6834" stroke-width="2" stroke-linecap="round" opacity="0.45"/><circle cx="310.5" cy="431.0" r="5" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"/>
+<text x="802.0" y="431.0" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" font-weight="600" fill="#0b0b0b">6.9×</text>
 <text x="218.0" y="457.0" text-anchor="end" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" fill="#52514e">BIDSLayout(…)</text>
-<line x1="311.2" y1="457.0" x2="399.7" y2="457.0" stroke="#1baf7a" stroke-width="2" stroke-linecap="round" opacity="0.45"/><circle cx="346.2" cy="457.0" r="5" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"/>
-<text x="802.0" y="457.0" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" font-weight="600" fill="#0b0b0b">4.2×</text>
-<text x="218.0" y="483.0" text-anchor="end" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" fill="#52514e">get() → BIDSFile objects</text>
-<line x1="264.6" y1="483.0" x2="453.0" y2="483.0" stroke="#eb6834" stroke-width="2" stroke-linecap="round" opacity="0.45"/><circle cx="330.9" cy="483.0" r="5" fill="#eb6834" stroke="#fcfcfb" stroke-width="1.5"/>
-<text x="802.0" y="483.0" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" font-weight="600" fill="#0b0b0b">3.0×</text>
+<line x1="261.3" y1="457.0" x2="323.1" y2="457.0" stroke="#1baf7a" stroke-width="2" stroke-linecap="round" opacity="0.45"/><circle cx="296.5" cy="457.0" r="5" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"/>
+<text x="802.0" y="457.0" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" font-weight="600" fill="#0b0b0b">4.9×</text>
+<text x="218.0" y="483.0" text-anchor="end" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" fill="#52514e">BIDSLayout(index_metadata=False)</text>
+<line x1="261.3" y1="483.0" x2="307.2" y2="483.0" stroke="#1baf7a" stroke-width="2" stroke-linecap="round" opacity="0.45"/><circle cx="296.4" cy="483.0" r="5" fill="#1baf7a" stroke="#fcfcfb" stroke-width="1.5"/>
+<text x="802.0" y="483.0" dominant-baseline="middle" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" font-weight="600" fill="#0b0b0b">4.9×</text>
 <text x="24" y="538" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="10" fill="#898781">Every operation compared for equality first; all results identical between backends.</text>
 </svg>

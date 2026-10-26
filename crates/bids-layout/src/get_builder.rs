@@ -286,10 +286,11 @@ impl<'a> GetBuilder<'a> {
         let paths = self.layout.query_files_internal(&filters, &self.scope)?;
         let mut seen = std::collections::HashSet::new();
         let mut values = Vec::new();
+        let tags_by_path = self.layout.db().get_tags_many(&paths)?;
         for path in &paths {
-            for (name, value, _, _) in self.layout.db().get_tags(path)? {
+            for (name, value, _, _) in tags_by_path.get(path).into_iter().flatten() {
                 if name == target && seen.insert(value.clone()) {
-                    values.push(value);
+                    values.push(value.clone());
                 }
             }
         }

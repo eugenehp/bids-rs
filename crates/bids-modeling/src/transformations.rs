@@ -929,7 +929,7 @@ fn apply_replace(
         let new_values: Vec<String> = var
             .str_values
             .iter()
-            .map(|v| replace_map.get(v).map_or_else(|| v.clone(), &as_text))
+            .map(|v| replace_map.get(v).map_or_else(|| v.clone(), as_text))
             .collect();
         let out_name = outputs.get(i).unwrap_or(input_name).clone();
         let new_var = SimpleVariable::new(&out_name, &var.source, new_values, var.index.clone());

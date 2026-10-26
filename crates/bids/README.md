@@ -19,7 +19,7 @@ Add `bids` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-bids = "0.0.3"
+bids = "0.0.4"
 ```
 
 ### Feature Flags
@@ -35,7 +35,7 @@ All features are opt-in:
 
 ```toml
 [dependencies]
-bids = { version = "0.0.3", features = ["ndarray", "mmap"] }
+bids = { version = "0.0.4", features = ["ndarray", "mmap"] }
 ```
 
 ## Quick Start
@@ -189,7 +189,7 @@ The `bids` crate re-exports the following sub-crates:
 |--------|-----------|-------------|
 | `bids::core` | `bids-core` | Fundamental types — `BidsFile`, `Entity`, `EntityValue`, `BidsMetadata`, `Config`, errors |
 | `bids::io` | `bids-io` | TSV/JSON I/O, BIDS path building, sidecar inheritance, file writing |
-| `bids::layout` | `bids-layout` | Dataset indexing, `BidsLayout`, fluent `GetBuilder` query API, SQLite backend |
+| `bids::layout` | `bids-layout` | Dataset indexing, `BidsLayout`, fluent `GetBuilder` query API, DuckDB backend |
 | `bids::variables` | `bids-variables` | BIDS variable system — `SimpleVariable`, `SparseRunVariable`, `DenseRunVariable` |
 | `bids::modeling` | `bids-modeling` | BIDS-StatsModels — graph, nodes, contrasts, HRF convolution, transformations |
 | `bids::reports` | `bids-reports` | Auto-generated publication-quality methods sections |
@@ -224,8 +224,9 @@ MNE-Python, SciPy, nibabel). All benchmarks are reproducible via
 
 ### EEG Data Reading (vs MNE-Python)
 
-Pure-Rust EEG readers for EDF, BDF, and BrainVision formats — **3–7× faster**
-for full reads, up to **32× faster** for selective channel/time-window reads.
+Pure-Rust EEG readers for EDF, BDF, and BrainVision formats — **2–4× faster**
+than MNE-Python 1.13 for full reads, up to **19× faster** for selective
+channel/time-window reads.
 
 ![EEG Reading Benchmark](../../figures/eeg_reading_benchmark.png)
 
@@ -237,8 +238,12 @@ for full reads, up to **32× faster** for selective channel/time-window reads.
 
 ### Dataset Indexing (vs PyBIDS)
 
-Layout indexing with SQLite-backed storage — **2–6× faster** than PyBIDS.
-Entity queries are **up to 1000× faster** once the layout is indexed.
+Building a layout in-process is **2–10× faster** than PyBIDS (median 4.9×
+across 19 `bids-examples` datasets), and entity queries answered from the
+in-memory index are **tens of thousands of times faster** (see
+[Comparison with PyBIDS](https://github.com/eugenehp/bids-rs#comparison-with-pybids)). The chart below times the
+`bids` CLI end to end, so it includes process startup — about 10 ms, mostly
+DuckDB's static initialisation — and shows parity on the smallest dataset.
 
 ![Layout Indexing Benchmark](../../figures/layout_indexing_benchmark.png)
 
@@ -246,13 +251,16 @@ Entity queries are **up to 1000× faster** once the layout is indexed.
 
 | Category | Avg Speedup | Range |
 |----------|------------|-------|
-| Layout indexing | 3–6× | 1.6–5.6× |
-| Entity queries | 3–1200× | 3.6–1298× |
-| EEG data reading | 3–7× | 2.7–7.2× |
-| EEG selective read | 20–32× | 20.4–32.3× |
-| NIfTI header parsing | 10–20× | 10.4–19.9× |
-| Butterworth filter design | 30–43× | 30–43× |
-| filtfilt (small signals) | 2–5× | 1.1–2.6× |
+| Layout indexing (in-process) | 5× | 2.1–9.5× |
+| Layout indexing (CLI, incl. startup) | 1–3× | 1.0–3.3× |
+| Entity queries | 40,000–90,000× | 6,300–574,000× |
+| Filtered file queries | 4,000× | 1,000–5,300× |
+| Metadata access | 84× | 25–93× |
+| EEG data reading | 2–4× | 2.0–4.2× |
+| EEG selective read | 13–19× | 13.3–18.8× |
+| NIfTI header parsing | 7–13× | 7.3–12.6× |
+| Butterworth filter design | 37–60× | 37–60× |
+| filtfilt (small signals) | 1–4× | 1.4–3.9× |
 
 > Benchmarks run on Apple M-series. Results vary by hardware. Reproduce with
 > `cargo build -p bids-eeg --release --example bench_vs_python && python3 tests/run_benchmarks.py`
@@ -260,7 +268,7 @@ Entity queries are **up to 1000× faster** once the layout is indexed.
 ## Key Highlights
 
 - **BIDS v1.9.0 specification parity** across all 14 datatypes.
-- **2–32× faster** than Python across EEG reading, layout indexing, and signal processing.
+- **Faster than Python** across EEG reading (2–19×), layout indexing (2–10×), and signal processing (1.4–60×).
 - **HRF convolution** (SPM/Glover canonical + derivatives, FIR) validated against SciPy to <1e-10 relative error.
 - **Pure-Rust signal processing** — Butterworth filter design and zero-phase `filtfilt`.
 - **`#[deny(unsafe_code)]`** on all crates.

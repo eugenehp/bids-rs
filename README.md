@@ -16,7 +16,7 @@ For more information about the BIDS standard, visit
 - **BIDS v1.9.0 specification parity** — See [`SPEC_PARITY.md`](SPEC_PARITY.md)
   for a detailed audit of coverage across all 14 BIDS datatypes.
 - **Fast dataset indexing** — Walk a BIDS directory tree, extract entities from
-  filenames using regex, and store everything in a SQLite-backed index. Optional
+  filenames using regex, and store everything in a DuckDB-backed index. Optional
   persistent database for instant re-loads of large datasets.
 - **Fluent query API** — Chain filters to find files by subject, session, task,
   run, datatype, suffix, extension, or any custom entity. Supports regex
@@ -61,7 +61,7 @@ For more information about the BIDS standard, visit
   via PyO3, serving as a drop-in accelerator for PyBIDS workflows.
 - **Data reading** — Read signal data from all BIDS formats: EDF, BDF,
   BrainVision (EEG/iEEG), FIFF (MEG), SNIRF (NIRS), NIfTI-1/NIfTI-2
-  (MRI/PET/ASL/MRS), and TIFF (microscopy). 2-14× faster than Python MNE.
+  (MRI/PET/ASL/MRS), and TIFF (microscopy). 2–19× faster than Python MNE.
 - **OpenNeuro integration** — Search, list, and download datasets from
   [OpenNeuro](https://openneuro.org) with a HuggingFace-style local cache,
   resume support, and retry logic.
@@ -204,7 +204,7 @@ bids report /path/to/dataset
 # Auto-generate a BIDS Stats Model
 bids auto-model /path/to/dataset
 
-# Create a persistent SQLite index
+# Create a persistent DuckDB index
 bids layout /path/to/dataset /path/to/index/
 
 # Upgrade dataset_description.json to latest BIDS version
@@ -261,7 +261,7 @@ layout.add_derivatives("/path/to/derivatives")
 | **`bids`** | Umbrella crate re-exporting all sub-crates |
 | **`bids-core`** | Core types: `BidsFile`, `Entity`, `EntityValue`, `BidsMetadata`, `DatasetDescription`, `Config`, error types |
 | **`bids-io`** | File I/O: TSV/TSV.GZ reading & writing, JSON sidecar parsing with inheritance, BIDS path building, file writing with conflict strategies |
-| **`bids-layout`** | Dataset indexing and querying: `BidsLayout`, `GetBuilder` fluent API, SQLite database backend, BIDS validation integration |
+| **`bids-layout`** | Dataset indexing and querying: `BidsLayout`, `GetBuilder` fluent API, DuckDB database backend, BIDS validation integration |
 | **`bids-variables`** | BIDS variable system: `SimpleVariable`, `SparseRunVariable` (events), `DenseRunVariable` (physio/regressors), variable collections, node hierarchy, sparse-to-dense conversion |
 | **`bids-modeling`** | BIDS-StatsModels: `StatsModelsGraph`, analysis nodes, edges, contrasts, variable transformations, auto-model generation, GLM/meta-analysis specs |
 | **`bids-filter`** | Signal processing: Butterworth IIR filter design, `lfilter`, zero-phase `filtfilt` |
@@ -270,7 +270,7 @@ layout.add_derivatives("/path/to/derivatives")
 | **`bids-validate`** | BIDS validation: root/derivative path validation, ignore/force-index patterns |
 | **`bids-schema`** | Built-in BIDS schema for path and datatype validation |
 | **`bids-nifti`** | NIfTI-1/NIfTI-2 reader: headers, voxel data, volume extraction, affine, scaling, gzip, mmap lazy access. Optional `ndarray` feature. |
-| **`bids-eeg`** | EEG: read EDF/BDF/BrainVision signal data, channels, electrodes, events, annotations, physio. Optional `ndarray` feature. 2-14× faster than MNE-Python. |
+| **`bids-eeg`** | EEG: read EDF/BDF/BrainVision signal data, channels, electrodes, events, annotations, physio. Optional `ndarray` feature. 2–19× faster than MNE-Python. |
 | **`bids-ieeg`** | iEEG: same data reading as EEG + iEEG electrodes, coordinate systems |
 | **`bids-meg`** | MEG: metadata, channels, events. Optional `fiff` feature for FIFF data reading. |
 | **`bids-pet`** | PET: NIfTI image reading, blood samples, tracer metadata |
@@ -364,8 +364,9 @@ MNE-Python, SciPy, nibabel). All benchmarks are reproducible via
 
 ### EEG Data Reading (vs MNE-Python)
 
-Pure-Rust EEG readers for EDF, BDF, and BrainVision formats — **3–7× faster**
-for full reads, up to **32× faster** for selective channel/time-window reads.
+Pure-Rust EEG readers for EDF, BDF, and BrainVision formats — **2–4× faster**
+than MNE-Python 1.13 for full reads, up to **19× faster** for selective
+channel/time-window reads.
 
 ![EEG Reading Benchmark](figures/eeg_reading_benchmark.png)
 
@@ -377,8 +378,12 @@ for full reads, up to **32× faster** for selective channel/time-window reads.
 
 ### Dataset Indexing (vs PyBIDS)
 
-Layout indexing with SQLite-backed storage — **2–6× faster** than PyBIDS.
-Entity queries are **up to 1000× faster** once the layout is indexed.
+Building a layout in-process is **2–10× faster** than PyBIDS (median 4.9×
+across 19 `bids-examples` datasets), and entity queries answered from the
+in-memory index are **tens of thousands of times faster** (see
+[Comparison with PyBIDS](#comparison-with-pybids)). The chart below times the
+`bids` CLI end to end, so it includes process startup — about 10 ms, mostly
+DuckDB's static initialisation — and shows parity on the smallest dataset.
 
 ![Layout Indexing Benchmark](figures/layout_indexing_benchmark.png)
 
@@ -386,13 +391,16 @@ Entity queries are **up to 1000× faster** once the layout is indexed.
 
 | Category | Avg Speedup | Range |
 |----------|------------|-------|
-| Layout indexing | 3–6× | 1.6–5.6× |
-| Entity queries | 3–1200× | 3.6–1298× |
-| EEG data reading | 3–7× | 2.7–7.2× |
-| EEG selective read | 20–32× | 20.4–32.3× |
-| NIfTI header parsing | 10–20× | 10.4–19.9× |
-| Butterworth filter design | 30–43× | 30–43× |
-| filtfilt (small signals) | 2–5× | 1.1–2.6× |
+| Layout indexing (in-process) | 5× | 2.1–9.5× |
+| Layout indexing (CLI, incl. startup) | 1–3× | 1.0–3.3× |
+| Entity queries | 40,000–90,000× | 6,300–574,000× |
+| Filtered file queries | 4,000× | 1,000–5,300× |
+| Metadata access | 84× | 25–93× |
+| EEG data reading | 2–4× | 2.0–4.2× |
+| EEG selective read | 13–19× | 13.3–18.8× |
+| NIfTI header parsing | 7–13× | 7.3–12.6× |
+| Butterworth filter design | 37–60× | 37–60× |
+| filtfilt (small signals) | 1–4× | 1.4–3.9× |
 
 > Benchmarks run on Apple M-series. Results vary by hardware. Reproduce with:
 > ```bash
@@ -414,14 +422,16 @@ before it is timed — all results were identical across the 19 datasets.
 
 | | median speedup |
 |---|---|
-| Entity queries (`get_subjects`, `get_tasks`, …) | **1,000–3,000×** |
-| Filtered file queries (`get(subject=…)`) | **326×** |
-| Metadata access (`get_metadata`) | **22×** |
-| File listing, entity parsing | **~10×** |
-| Indexing a dataset (`BIDSLayout(…)`) | **4.2×** |
+| Entity queries (`get_subjects`, `get_tasks`, …) | **40,000–90,000×** |
+| Filtered file queries (`get(subject=…)`) | **3,950×** |
+| Metadata access (`get_metadata`) | **84×** |
+| File queries (`get(suffix=…)`, `get(return_type="filename")`) | **23–59×** |
+| Entity parsing (`parse_file_entities`) | **10×** |
+| `get()` → `BIDSFile` objects | **6.9×** |
+| Indexing a dataset (`BIDSLayout(…)`) | **4.9×** |
 
-Query speedups are large because `bids-rs` answers them from the SQLite index
-rather than materialising Python objects; indexing is the honest floor, since
+Query speedups are large because `bids-rs` answers them from an in-memory
+snapshot of the index rather than through SQL and Python objects; indexing is the honest floor, since
 both implementations must walk the tree and parse every sidecar.
 
 ### Numerical agreement
@@ -443,10 +453,10 @@ advantage of Rust's type system and performance characteristics:
 
 | Feature | PyBIDS | bids-rs |
 |---------|--------|---------|
-| Layout indexing | SQLAlchemy + SQLite | rusqlite + SQLite (transactional bulk inserts) |
+| Layout indexing | SQLAlchemy + SQLite | DuckDB (transactional bulk inserts, native regex) |
 | Entity parsing | JSON config / BIDS schema | JSON config with compiled regex (cached) |
 | Metadata inheritance | Python dict merging | IndexMap-based merging |
-| EEG data reading | MNE-Python | Pure Rust, 2-14× faster (channel-major decoding) |
+| EEG data reading | MNE-Python | Pure Rust, 2–19× faster (channel-major decoding) |
 | Variables | pandas DataFrame | Custom `SimpleVariable` / `SparseRunVariable` / `DenseRunVariable` |
 | StatsModels | Full spec with numpy/pandas | Full spec with pure Rust; all 24 transformations, unapplied instructions surface as errors |
 | Model reports | Altair/Vega + matplotlib | Self-contained HTML with inline SVG, no runtime deps |
@@ -534,13 +544,13 @@ If you use `bids-rs` in your research, please cite it:
   year         = {2026},
   url          = {https://github.com/eugenehp/bids-rs},
   license      = {GPL-3.0-or-later},
-  version      = {0.0.3}
+  version      = {0.0.4}
 }
 ```
 
 **APA:**
 
-> Hauptmann, E. (2026). *bids-rs: Rust tools for BIDS (Brain Imaging Data Structure) datasets* (Version 0.0.3) [Computer software]. https://github.com/eugenehp/bids-rs
+> Hauptmann, E. (2026). *bids-rs: Rust tools for BIDS (Brain Imaging Data Structure) datasets* (Version 0.0.4) [Computer software]. https://github.com/eugenehp/bids-rs
 
 A machine-readable [`CITATION.cff`](CITATION.cff) and [`CITATION.bib`](CITATION.bib)
 are also provided — GitHub will automatically show a "Cite this repository" button.

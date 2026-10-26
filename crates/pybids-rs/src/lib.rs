@@ -77,7 +77,7 @@ impl BIDSLayout {
         Ok(Self { inner })
     }
 
-    /// Load a layout from an existing SQLite database.
+    /// Load a layout from an existing DuckDB database.
     #[staticmethod]
     fn load(database_path: &str) -> PyResult<Self> {
         let inner = bids_layout::BidsLayout::load(std::path::Path::new(database_path))

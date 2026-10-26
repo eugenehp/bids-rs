@@ -26,8 +26,10 @@ bids-variables = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 bytemuck = { workspace = true }
+flate2 = { workspace = true }
 ndarray = { workspace = true, optional = true }
 safetensors = { workspace = true, optional = true }
 
 [dev-dependencies]
 bids-nifti = { workspace = true }
+bids-validate = { workspace = true }

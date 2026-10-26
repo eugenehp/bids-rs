@@ -28,4 +28,4 @@ __all__ = [
 #: Identifies which implementation backs this ``bids`` package.
 BACKEND = 'bids-rs'
 
-__version__ = '0.0.3+bids-rs'
+__version__ = '0.0.4+bids-rs'

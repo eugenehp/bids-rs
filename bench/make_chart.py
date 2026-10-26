@@ -108,6 +108,10 @@ def collect(path):
 
 def fmt(v):
     """Format a speedup for a direct label."""
+    if v >= 1_000_000:
+        return f'{v / 1_000_000:g}M×'
+    if v >= 100_000:
+        return f'{v / 1000:.0f}k×'
     if v >= 1000:
         return f'{v / 1000:.1f}k×'
     if v >= 100:

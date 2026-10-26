@@ -1,53 +1,53 @@
 {
   "layout": {
     "index_small": {
-      "rust_ms": 9.41,
-      "python_ms": 52.3,
-      "speedup": 5.6,
+      "rust_ms": 53.95,
+      "python_ms": 52.06,
+      "speedup": 1.0,
       "n_files": 60,
       "n_subjects": 5
     },
     "index_medium": {
-      "rust_ms": 66.02,
-      "python_ms": 218.6,
+      "rust_ms": 66.72,
+      "python_ms": 222.33,
       "speedup": 3.3,
       "n_files": 360,
       "n_subjects": 15
     },
     "index_large": {
-      "rust_ms": 393.3,
-      "python_ms": 621.17,
-      "speedup": 1.6,
+      "rust_ms": 182.96,
+      "python_ms": 609.88,
+      "speedup": 3.3,
       "n_files": 1080,
       "n_subjects": 30
     },
     "query_subjects_large": {
-      "rust_ms": 0.2497,
-      "python_ms": 180.43,
+      "rust_ms": 0.1608,
+      "python_ms": 116.16,
       "speedup": 722.6
     },
     "query_eeg_large": {
-      "rust_ms": 1.8442,
-      "python_ms": 6.64,
+      "rust_ms": 1.3988,
+      "python_ms": 5.04,
       "speedup": 3.6
     },
     "query_filtered_large": {
-      "rust_ms": 0.1398,
-      "python_ms": 1.96,
+      "rust_ms": 0.1127,
+      "python_ms": 1.58,
       "speedup": 14.0
     },
     "metadata_large": {
-      "rust_ms": 0.009,
-      "python_ms": 0.14,
+      "rust_ms": 0.005,
+      "python_ms": 0.08,
       "speedup": 15.5
     }
   },
   "eeg": {
     "edf_32ch_30s": {
       "label": "EDF 32ch\u00d730s",
-      "rust_ms": 0.33,
-      "python_ms": 2.13,
-      "speedup": 6.54,
+      "rust_ms": 0.34,
+      "python_ms": 1.43,
+      "speedup": 4.21,
       "file_mb": 1.0,
       "n_channels": 32,
       "duration_s": 30,
@@ -55,9 +55,9 @@
     },
     "edf_64ch_60s": {
       "label": "EDF 64ch\u00d760s",
-      "rust_ms": 1.31,
-      "python_ms": 4.86,
-      "speedup": 3.69,
+      "rust_ms": 1.32,
+      "python_ms": 3.33,
+      "speedup": 2.51,
       "file_mb": 3.9,
       "n_channels": 64,
       "duration_s": 60,
@@ -65,9 +65,9 @@
     },
     "edf_128ch_30s": {
       "label": "EDF 128ch\u00d730s",
-      "rust_ms": 0.81,
-      "python_ms": 5.81,
-      "speedup": 7.22,
+      "rust_ms": 0.78,
+      "python_ms": 3.25,
+      "speedup": 4.18,
       "file_mb": 2.0,
       "n_channels": 128,
       "duration_s": 30,
@@ -75,9 +75,9 @@
     },
     "edf_64ch_300s": {
       "label": "EDF 64ch\u00d7300s",
-      "rust_ms": 2.63,
-      "python_ms": 7.19,
-      "speedup": 2.73,
+      "rust_ms": 2.65,
+      "python_ms": 5.28,
+      "speedup": 1.99,
       "file_mb": 7.9,
       "n_channels": 64,
       "duration_s": 120,
@@ -85,9 +85,9 @@
     },
     "bdf_32ch_30s": {
       "label": "BDF 32ch\u00d730s",
-      "rust_ms": 0.48,
-      "python_ms": 3.21,
-      "speedup": 6.63,
+      "rust_ms": 0.47,
+      "python_ms": 1.65,
+      "speedup": 3.5,
       "file_mb": 1.5,
       "n_channels": 32,
       "duration_s": 30,
@@ -95,9 +95,9 @@
     },
     "bdf_64ch_60s": {
       "label": "BDF 64ch\u00d760s",
-      "rust_ms": 1.98,
-      "python_ms": 9.84,
-      "speedup": 4.97,
+      "rust_ms": 1.93,
+      "python_ms": 4.39,
+      "speedup": 2.28,
       "file_mb": 5.9,
       "n_channels": 64,
       "duration_s": 60,
@@ -106,8 +106,8 @@
     "bv_64ch_60s": {
       "label": "BV 64ch\u00d760s",
       "rust_ms": 0.99,
-      "python_ms": 5.11,
-      "speedup": 5.14,
+      "python_ms": 3.11,
+      "speedup": 3.13,
       "file_mb": 3.9,
       "n_channels": 64,
       "duration_s": 60,
@@ -115,16 +115,16 @@
     },
     "edf_2ch_select": {
       "label": "EDF 2ch select",
-      "rust_ms": 0.15,
-      "python_ms": 4.91,
-      "speedup": 32.28,
+      "rust_ms": 0.17,
+      "python_ms": 3.21,
+      "speedup": 18.76,
       "format": "EDF"
     },
     "edf_10s_window": {
       "label": "EDF 10s window",
       "rust_ms": 0.25,
-      "python_ms": 5.05,
-      "speedup": 20.36,
+      "python_ms": 3.33,
+      "speedup": 13.27,
       "format": "EDF"
     }
   },
@@ -132,52 +132,52 @@
     "butter_o1": {
       "label": "butter(n=1, Wn=0.5)",
       "rust_ms": 0.001,
-      "python_ms": 0.03,
-      "speedup": 30.0
+      "python_ms": 0.0374,
+      "speedup": 37.0
     },
     "butter_o3": {
       "label": "butter(n=3, Wn=0.3)",
       "rust_ms": 0.001,
-      "python_ms": 0.034,
-      "speedup": 34.0
+      "python_ms": 0.0448,
+      "speedup": 45.0
     },
     "butter_o5": {
       "label": "butter(n=5, Wn=0.2)",
       "rust_ms": 0.001,
-      "python_ms": 0.0384,
-      "speedup": 38.0
+      "python_ms": 0.0512,
+      "speedup": 51.0
     },
     "butter_o8": {
       "label": "butter(n=8, Wn=0.1)",
       "rust_ms": 0.001,
-      "python_ms": 0.0432,
-      "speedup": 43.0
+      "python_ms": 0.0603,
+      "speedup": 60.0
     },
     "filtfilt_200": {
       "label": "filtfilt(200 samples)",
       "rust_ms": 0.008,
-      "python_ms": 0.021,
-      "speedup": 2.6
+      "python_ms": 0.031,
+      "speedup": 3.9
     },
     "filtfilt_2000": {
       "label": "filtfilt(2000 samples)",
       "rust_ms": 0.03,
-      "python_ms": 0.04,
-      "speedup": 1.3
+      "python_ms": 0.054,
+      "speedup": 1.8
     },
     "filtfilt_20000": {
       "label": "filtfilt(20000 samples)",
       "rust_ms": 0.2,
-      "python_ms": 0.223,
-      "speedup": 1.1
+      "python_ms": 0.273,
+      "speedup": 1.4
     }
   },
   "nifti": {
     "small_3d": {
       "label": "NIfTI small_3d (0.5MB)",
       "rust_ms": 0.01,
-      "python_ms": 0.2,
-      "speedup": 19.9,
+      "python_ms": 0.13,
+      "speedup": 12.6,
       "shape": [
         64,
         64,
@@ -188,8 +188,8 @@
     "medium_4d": {
       "label": "NIfTI medium_4d (52.4MB)",
       "rust_ms": 0.01,
-      "python_ms": 0.18,
-      "speedup": 18.5,
+      "python_ms": 0.12,
+      "speedup": 12.4,
       "shape": [
         64,
         64,
@@ -201,8 +201,8 @@
     "large_4d": {
       "label": "NIfTI large_4d (707.8MB)",
       "rust_ms": 0.01,
-      "python_ms": 0.19,
-      "speedup": 18.6,
+      "python_ms": 0.12,
+      "speedup": 12.3,
       "shape": [
         96,
         96,
@@ -214,8 +214,8 @@
     "small_gz": {
       "label": "NIfTI small_gz (0.0MB)",
       "rust_ms": 0.02,
-      "python_ms": 0.23,
-      "speedup": 11.4,
+      "python_ms": 0.15,
+      "speedup": 7.3,
       "shape": [
         64,
         64,
@@ -226,8 +226,8 @@
     "medium_gz": {
       "label": "NIfTI medium_gz (0.2MB)",
       "rust_ms": 0.02,
-      "python_ms": 0.21,
-      "speedup": 10.4,
+      "python_ms": 0.16,
+      "speedup": 7.8,
       "shape": [
         64,
         64,

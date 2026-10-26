@@ -1,4 +1,4 @@
-//! Dataset indexer: walks the filesystem and populates the SQLite database.
+//! Dataset indexer: walks the filesystem and populates the DuckDB database.
 //!
 //! Recursively walks a BIDS dataset directory, extracts entities from each
 //! file using regex patterns, indexes JSON sidecar metadata following the
@@ -82,7 +82,7 @@ impl Default for IndexerOptions {
 /// Files in the `derivatives/` directory at the root level are excluded
 /// (derivatives should be added separately via `BidsLayout::add_derivatives`).
 ///
-/// Bulk inserts use a single SQLite transaction for dramatically better
+/// Bulk inserts use a single DuckDB transaction for dramatically better
 /// performance on large datasets (100× faster than autocommit per-file).
 pub fn index_dataset(
     root: &Path,
@@ -277,13 +277,18 @@ fn index_metadata(root: &Path, db: &Database) -> Result<()> {
     }
 
     // Build existing tags to avoid duplicates and detect conflicts
+    // One scan instead of a query per file — per-query overhead dominates
+    // point lookups on DuckDB. The metadata pass below only adds tags, so
+    // this snapshot is what per-file reads would have returned.
+    let tags_by_path = db.all_tags()?;
     let mut existing_tags: HashMap<String, String> = HashMap::new();
-    for path_str in &all_paths {
-        let tags = db.get_tags(path_str)?;
-        for (entity_name, value, _, _) in &tags {
+    for (path_str, tags) in &tags_by_path {
+        for (entity_name, value, _, _) in tags {
             existing_tags.insert(format!("{path_str}_{entity_name}"), value.clone());
         }
     }
+    let no_tags = Vec::new();
+    let entity_index = EntityIndex::new(&tags_by_path);
 
     let mut seen_assocs: HashSet<String> = HashSet::new();
     // Sidecars are shared: a top-level task JSON applies to every run in the
@@ -292,7 +297,7 @@ fn index_metadata(root: &Path, db: &Database) -> Result<()> {
 
     for data_path_str in &data_files {
         let data_path = PathBuf::from(data_path_str);
-        let data_tags = db.get_tags(data_path_str)?;
+        let data_tags = tags_by_path.get(data_path_str).unwrap_or(&no_tags);
 
         let suffix = data_tags
             .iter()
@@ -427,6 +432,7 @@ fn index_metadata(root: &Path, db: &Database) -> Result<()> {
         // Link companion files (events↔bold, bvec/bval↔DWI)
         index_companion_associations(
             db,
+            &entity_index,
             data_path_str,
             &suffix,
             extension.as_deref(),
@@ -464,6 +470,7 @@ fn index_intended_for(
 /// Link companion files (events/physio/stim/sbref ↔ bold/eeg, bvec/bval ↔ DWI).
 fn index_companion_associations(
     db: &Database,
+    entity_index: &EntityIndex<'_>,
     data_path: &str,
     suffix: &str,
     extension: Option<&str>,
@@ -481,7 +488,8 @@ fn index_companion_associations(
             .collect();
         filters.push(("suffix".into(), vec!["bold".into(), "eeg".into()], false));
 
-        if let Ok(images) = db.query_files(&filters) {
+        {
+            let images = entity_index.query(&filters);
             for img in &images {
                 db.insert_association(data_path, img, "IntendedFor")?;
                 db.insert_association(img, data_path, "InformedBy")?;
@@ -502,7 +510,8 @@ fn index_companion_associations(
             false,
         ));
 
-        if let Ok(images) = db.query_files(&filters) {
+        {
+            let images = entity_index.query(&filters);
             for img in &images {
                 db.insert_association(data_path, img, "IntendedFor")?;
                 db.insert_association(img, data_path, "InformedBy")?;
@@ -511,6 +520,60 @@ fn index_companion_associations(
     }
 
     Ok(())
+}
+
+/// In-memory inverted index over entity tags: `(entity, value) → paths`.
+///
+/// The metadata pass looks up companion files once per data file. Answering
+/// those from the tag snapshot instead of a database query keeps indexing
+/// linear without a per-file round trip (and, on DuckDB, without a buffer
+/// flush per lookup). Matches `Database::query_files` for plain value
+/// filters: every filter must match, any of its values may.
+struct EntityIndex<'a> {
+    by_value: HashMap<(&'a str, &'a str), HashSet<&'a str>>,
+}
+
+impl<'a> EntityIndex<'a> {
+    fn new(tags_by_path: &'a HashMap<String, Vec<crate::db::TagRow>>) -> Self {
+        let mut by_value: HashMap<(&str, &str), HashSet<&str>> = HashMap::new();
+        for (path, tags) in tags_by_path {
+            for (name, value, _, is_metadata) in tags {
+                if !is_metadata {
+                    by_value
+                        .entry((name.as_str(), value.as_str()))
+                        .or_default()
+                        .insert(path.as_str());
+                }
+            }
+        }
+        Self { by_value }
+    }
+
+    fn query(&self, filters: &[(String, Vec<String>, bool)]) -> Vec<String> {
+        let mut result: Option<HashSet<&str>> = None;
+        for (name, values, _) in filters {
+            let mut matching: HashSet<&str> = HashSet::new();
+            for v in values {
+                if let Some(paths) = self.by_value.get(&(name.as_str(), v.as_str())) {
+                    matching.extend(paths.iter().copied());
+                }
+            }
+            result = Some(match result {
+                None => matching,
+                Some(acc) => acc.intersection(&matching).copied().collect(),
+            });
+            if result.as_ref().is_some_and(HashSet::is_empty) {
+                return Vec::new();
+            }
+        }
+        let mut out: Vec<String> = result
+            .unwrap_or_default()
+            .into_iter()
+            .map(String::from)
+            .collect();
+        out.sort();
+        out
+    }
 }
 
 /// Extract key-value pairs from a BIDS filename stem.

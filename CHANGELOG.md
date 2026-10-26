@@ -4,6 +4,57 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [0.0.4]
+
+### Added
+
+- **`bids_eeg::writer` — write BIDS-EEG.** `BrainVisionWriter` streams samples
+  into `_eeg.vhdr`/`.vmrk`/`.eeg` (IEEE float32, multiplexed) in constant
+  memory, with `Comment` markers and a timestamped `New Segment`.
+  `write_eeg_sidecar` (drops `null`s, merges extra keys), `write_channels_tsv`,
+  `write_events_tsv` and `PhysioWriter` (headerless `_physio.tsv.gz` + JSON
+  sidecar) complete the set. Everything round-trips through the existing
+  readers and `BidsLayout`.
+- `Database::all_tags` and `Database::get_tags_many` read tags for many files
+  in one call.
+
+### Changed
+
+- **`bids-layout` uses DuckDB instead of SQLite.** This drops the
+  `rusqlite`/`libsqlite3-sys` dependency, whose `links = "sqlite3"` clashed
+  with any host app on a different rusqlite. The custom `REGEXP` UDF is gone.
+  Inserts made inside a transaction are buffered and land through the
+  Appender plus one set-based merge per table. The default index file is now
+  `layout_index.duckdb`; old `.sqlite` indices are not read and are rebuilt
+  on demand.
+- **Layout reads come from an in-memory snapshot of the index.** DuckDB costs
+  50–80 µs per point lookup and several hundred µs per `SELECT DISTINCT`,
+  against ~3 µs for SQLite, and most layout queries are a single small
+  lookup — on DuckDB alone `get_subjects` was 13× and `get_metadata` 57×
+  slower than 0.0.3. The first read after a write now loads the tables into
+  hash maps, and every write drops them. Against 0.0.3 (19 bids-examples
+  datasets, median): entity queries 12–100× faster, `get(subject=…)` 12×,
+  `get_metadata` 3.8×, `get()` → `BIDSFile` objects 2.7×. Regex filters are
+  matched with the `regex` crate (`Regex::is_match`, as in 0.0.3); an invalid
+  pattern is now `BidsError::InvalidFilter`.
+- **Indexing: faster on large datasets, slower on small ones.** The tables have
+  no secondary indexes (reads no longer use them), and a load into an empty
+  table appends directly instead of staging and merging. All 108
+  bids-examples datasets index in 1.93 s vs 2.03 s on 0.0.3 (in-process, best
+  of 3); large datasets are 2–3× faster (`ds000117`: 108 vs 324 ms), but
+  DuckDB adds ~5–10 ms of fixed cost per layout, so 0.0.4 is faster on only
+  23 of the 108. The `bids` CLI also pays ~8 ms of DuckDB static
+  initialisation per process, and the binary grew from 9 MB to 67 MB.
+
+### Fixed
+
+- **`EegLayout::get_physio` dropped the first sample.** BIDS physio files have
+  no header row, but the reader treated line 1 as one. Rows are now named from
+  the sidecar's `Columns`. The old behaviour remains only when the sidecar
+  doesn't list them.
+
 ## [0.0.3]
 
 Full PyBIDS parity. Every crate in the workspace now shares one version — `bids`
@@ -143,6 +194,8 @@ at 0.0.1.
 
 - Initial release.
 
+[Unreleased]: https://github.com/eugenehp/bids-rs/compare/v0.0.4...HEAD
+[0.0.4]: https://github.com/eugenehp/bids-rs/compare/v0.0.3...v0.0.4
 [0.0.3]: https://github.com/eugenehp/bids-rs/releases/tag/v0.0.3
 [0.0.2]: https://github.com/eugenehp/bids-rs/releases/tag/v0.0.2
 [0.0.1]: https://github.com/eugenehp/bids-rs/releases/tag/v0.0.1
