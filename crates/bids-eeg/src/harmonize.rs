@@ -129,8 +129,11 @@ pub fn plan_harmonization(
     let channel_availability = inputs
         .iter()
         .map(|d| {
-            let input_channels: HashSet<&str> =
-                d.channel_labels.iter().map(std::string::String::as_str).collect();
+            let input_channels: HashSet<&str> = d
+                .channel_labels
+                .iter()
+                .map(std::string::String::as_str)
+                .collect();
             channels
                 .iter()
                 .map(|ch| input_channels.contains(ch.as_str()))

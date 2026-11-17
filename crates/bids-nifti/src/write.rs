@@ -78,7 +78,10 @@ impl NiftiHeader {
     /// affine leaves the header as it is. Returns whether the header changed.
     pub fn harmonize_affine(&mut self, affine: [[f64; 4]; 4]) -> bool {
         let current = *self.affine();
-        let close = (0..4).all(|r| (0..4).all(|c| (affine[r][c] - current[r][c]).abs() <= 1e-8 + 1e-5 * current[r][c].abs()));
+        let close = (0..4).all(|r| {
+            (0..4)
+                .all(|c| (affine[r][c] - current[r][c]).abs() <= 1e-8 + 1e-5 * current[r][c].abs())
+        });
         if close {
             return false;
         }
@@ -125,7 +128,11 @@ impl NiftiHeader {
         b[0..4].copy_from_slice(&348i32.to_le_bytes());
         // `regular` stays empty, as nibabel writes a new header.
         for (i, &d) in self.dim.iter().enumerate() {
-            put_i16(&mut b, 40 + 2 * i, d.clamp(i16::MIN as i64, i16::MAX as i64) as i16);
+            put_i16(
+                &mut b,
+                40 + 2 * i,
+                d.clamp(i16::MIN as i64, i16::MAX as i64) as i16,
+            );
         }
         put_i16(&mut b, 70, self.datatype);
         put_i16(&mut b, 72, self.bitpix);
@@ -173,7 +180,10 @@ pub fn voxel_bytes(bytes: &[u8]) -> Result<(NiftiHeader, Cow<'_, [u8]>), NiftiEr
     if !gzip {
         let start = usize::try_from(offset).map_err(|_| short())?;
         let end = start.checked_add(total).ok_or_else(short)?;
-        return Ok((header, Cow::Borrowed(bytes.get(start..end).ok_or_else(short)?)));
+        return Ok((
+            header,
+            Cow::Borrowed(bytes.get(start..end).ok_or_else(short)?),
+        ));
     }
     std::io::copy(&mut (&mut gz).take(offset - hdr_size), &mut std::io::sink())?;
     let mut raw = vec![0u8; total];
@@ -185,7 +195,11 @@ pub fn voxel_bytes(bytes: &[u8]) -> Result<(NiftiHeader, Cow<'_, [u8]>), NiftiEr
 /// and `values` (x fastest), encoded as the header's datatype: when
 /// `scl_slope` is non-zero they are stored as `(value - inter) / slope`,
 /// and integer types round to nearest and saturate.
-pub fn nifti1_bytes(header: &NiftiHeader, values: impl ExactSizeIterator<Item = f64>, gzip: bool) -> Result<Vec<u8>, NiftiError> {
+pub fn nifti1_bytes(
+    header: &NiftiHeader,
+    values: impl ExactSizeIterator<Item = f64>,
+    gzip: bool,
+) -> Result<Vec<u8>, NiftiError> {
     let mut out = header.to_nifti1_bytes();
     let n = header.n_voxels();
     if values.len() != n {
@@ -208,7 +222,12 @@ impl NiftiImage {
     /// Load a `.nii` or `.nii.gz` file held in memory.
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, NiftiError> {
         let (header, raw) = voxel_bytes(bytes)?;
-        let data = crate::decode_raw_to_f64(&raw, DataType::from_code(header.datatype), header.scl_slope, header.scl_inter)?;
+        let data = crate::decode_raw_to_f64(
+            &raw,
+            DataType::from_code(header.datatype),
+            header.scl_slope,
+            header.scl_inter,
+        )?;
         Ok(Self { header, data })
     }
 
@@ -228,7 +247,11 @@ impl NiftiImage {
 
 /// Append `data` encoded as `header`'s datatype (inverse of the reader's
 /// scaling).
-fn encode_voxels(out: &mut Vec<u8>, data: impl ExactSizeIterator<Item = f64>, header: &NiftiHeader) -> Result<(), NiftiError> {
+fn encode_voxels(
+    out: &mut Vec<u8>,
+    data: impl ExactSizeIterator<Item = f64>,
+    header: &NiftiHeader,
+) -> Result<(), NiftiError> {
     let dt = DataType::from_code(header.datatype);
     let (slope, inter) = if header.scl_slope != 0.0 && header.scl_slope.is_finite() {
         (header.scl_slope, header.scl_inter)
@@ -270,7 +293,11 @@ fn encode_voxels(out: &mut Vec<u8>, data: impl ExactSizeIterator<Item = f64>, he
 #[inline(always)]
 fn round(x: f64) -> f64 {
     let t = x.trunc();
-    if (x - t).abs() >= 0.5 { t + 1f64.copysign(x) } else { t }
+    if (x - t).abs() >= 0.5 {
+        t + 1f64.copysign(x)
+    } else {
+        t
+    }
 }
 
 /// `nifti_mat44_to_quatern`: the qform (quaternion b, c, d; offset; voxel
@@ -413,7 +440,23 @@ mod tests {
     fn round_is_f64_round() {
         let mut s = 0x9e37_79b9_7f4a_7c15u64;
         let check = |x: f64| assert_eq!(super::round(x).to_bits(), x.round().to_bits(), "{x:e}");
-        for x in [0.0, -0.0, 0.5, -0.5, 1.5, 2.5, -2.5, 0.49999999999999994, 4503599627370495.5, 4503599627370496.0, 1e300, f64::INFINITY, f64::NEG_INFINITY, f64::MIN_POSITIVE, 5e-324] {
+        for x in [
+            0.0,
+            -0.0,
+            0.5,
+            -0.5,
+            1.5,
+            2.5,
+            -2.5,
+            0.49999999999999994,
+            4503599627370495.5,
+            4503599627370496.0,
+            1e300,
+            f64::INFINITY,
+            f64::NEG_INFINITY,
+            f64::MIN_POSITIVE,
+            5e-324,
+        ] {
             check(x);
             check(-x);
         }
@@ -441,14 +484,24 @@ mod tests {
 
     #[test]
     fn harmonize_affine_follows_nibabel() {
-        let a = [[2.0, 0.0, 0.0, -10.0], [0.0, 2.0, 0.0, 5.0], [0.0, 0.0, 3.0, 1.0], [0.0, 0.0, 0.0, 1.0]];
+        let a = [
+            [2.0, 0.0, 0.0, -10.0],
+            [0.0, 2.0, 0.0, 5.0],
+            [0.0, 0.0, 3.0, 1.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ];
         let mut h = NiftiHeader::for_volume(&[4, 4, 4], DataType::Float32, a);
         h.set_affine(a, 1, 1);
         // An affine within allclose leaves the codes alone.
         assert!(!h.harmonize_affine(a));
         assert_eq!((h.sform_code, h.qform_code), (1, 1));
         // Another goes to sform (aligned), qform unknown, zooms from it.
-        let b = [[1.0, 0.0, 0.0, 0.0], [0.0, -1.0, 0.0, 0.0], [0.0, 0.0, 1.5, 0.0], [0.0, 0.0, 0.0, 1.0]];
+        let b = [
+            [1.0, 0.0, 0.0, 0.0],
+            [0.0, -1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.5, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ];
         assert!(h.harmonize_affine(b));
         assert_eq!((h.sform_code, h.qform_code), (2, 0));
         assert_eq!(h.pixdim[1..4], [1.0, 1.0, 1.5]);
@@ -521,11 +574,29 @@ mod tests {
     /// Slope and intercept: stored values are the inverse map, read back as given.
     #[test]
     fn units_round_trip() {
-        let mut h = NiftiHeader::for_volume(&[2, 2, 2], DataType::UInt8, [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]]);
+        let mut h = NiftiHeader::for_volume(
+            &[2, 2, 2],
+            DataType::UInt8,
+            [
+                [1.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+            ],
+        );
         assert_eq!(h.xyzt_units, 0);
         h.xyzt_units = 3 | 16; // micron, msec
-        let img = NiftiImage { header: h, data: vec![0.0; 8] };
-        assert_eq!(NiftiImage::from_bytes(&img.to_bytes(true).unwrap()).unwrap().header.xyzt_units, 3 | 16);
+        let img = NiftiImage {
+            header: h,
+            data: vec![0.0; 8],
+        };
+        assert_eq!(
+            NiftiImage::from_bytes(&img.to_bytes(true).unwrap())
+                .unwrap()
+                .header
+                .xyzt_units,
+            3 | 16
+        );
     }
 
     #[test]

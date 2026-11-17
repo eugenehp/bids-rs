@@ -99,7 +99,10 @@ pub fn collect_schema(source: SchemaSource<'_>) -> Result<serde_json::Value> {
     not(any(
         feature = "tls-rustcrypto",
         target_family = "wasm",
-        all(feature = "tls-graviola", any(target_arch = "x86_64", target_arch = "aarch64"))
+        all(
+            feature = "tls-graviola",
+            any(target_arch = "x86_64", target_arch = "aarch64")
+        )
     ))
 ))]
 compile_error!(
@@ -111,11 +114,17 @@ fn fetch(url: &str) -> Result<String> {
     // TLS in pure Rust: rustls with webpki's roots, the cryptography by feature
     // graviola's cryptography where it runs and is enabled, else RustCrypto's
     // (always on wasm, where graviola has no backend)
-    #[cfg(all(feature = "tls-graviola", any(target_arch = "x86_64", target_arch = "aarch64")))]
+    #[cfg(all(
+        feature = "tls-graviola",
+        any(target_arch = "x86_64", target_arch = "aarch64")
+    ))]
     let crypto = rustls_graviola::default_provider();
     #[cfg(all(
         any(feature = "tls-rustcrypto", target_family = "wasm"),
-        not(all(feature = "tls-graviola", any(target_arch = "x86_64", target_arch = "aarch64")))
+        not(all(
+            feature = "tls-graviola",
+            any(target_arch = "x86_64", target_arch = "aarch64")
+        ))
     ))]
     let crypto = rustls_rustcrypto::provider();
     let tls = ureq::tls::TlsConfig::builder()

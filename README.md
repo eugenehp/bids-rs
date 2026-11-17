@@ -16,7 +16,7 @@ For more information about the BIDS standard, visit
 - **BIDS v1.9.0 specification parity** — See [`SPEC_PARITY.md`](SPEC_PARITY.md)
   for a detailed audit of coverage across all 14 BIDS datatypes.
 - **Fast dataset indexing** — Walk a BIDS directory tree, extract entities from
-  filenames using regex, and store everything in a DuckDB-backed index. Optional
+  filenames using regex, and store everything in an in-memory index. Optional
   persistent database for instant re-loads of large datasets.
 - **Fluent query API** — Chain filters to find files by subject, session, task,
   run, datatype, suffix, extension, or any custom entity. Supports regex
@@ -204,7 +204,7 @@ bids report /path/to/dataset
 # Auto-generate a BIDS Stats Model
 bids auto-model /path/to/dataset
 
-# Create a persistent DuckDB index
+# Create a persistent index
 bids layout /path/to/dataset /path/to/index/
 
 # Upgrade dataset_description.json to latest BIDS version
@@ -261,7 +261,7 @@ layout.add_derivatives("/path/to/derivatives")
 | **`bids`** | Umbrella crate re-exporting all sub-crates |
 | **`bids-core`** | Core types: `BidsFile`, `Entity`, `EntityValue`, `BidsMetadata`, `DatasetDescription`, `Config`, error types |
 | **`bids-io`** | File I/O: TSV/TSV.GZ reading & writing, JSON sidecar parsing with inheritance, BIDS path building, file writing with conflict strategies |
-| **`bids-layout`** | Dataset indexing and querying: `BidsLayout`, `GetBuilder` fluent API, DuckDB database backend, BIDS validation integration |
+| **`bids-layout`** | Dataset indexing and querying: `BidsLayout`, `GetBuilder` fluent API, pure-Rust index backend (persisted as JSON), BIDS validation integration |
 | **`bids-variables`** | BIDS variable system: `SimpleVariable`, `SparseRunVariable` (events), `DenseRunVariable` (physio/regressors), variable collections, node hierarchy, sparse-to-dense conversion |
 | **`bids-modeling`** | BIDS-StatsModels: `StatsModelsGraph`, analysis nodes, edges, contrasts, variable transformations, auto-model generation, GLM/meta-analysis specs |
 | **`bids-filter`** | Signal processing: Butterworth IIR filter design, `lfilter`, zero-phase `filtfilt` |
@@ -453,7 +453,7 @@ advantage of Rust's type system and performance characteristics:
 
 | Feature | PyBIDS | bids-rs |
 |---------|--------|---------|
-| Layout indexing | SQLAlchemy + SQLite | DuckDB (transactional bulk inserts, native regex) |
+| Layout indexing | SQLAlchemy + SQLite | Pure-Rust in-memory index, persisted as JSON (transactional bulk inserts, `regex` crate) |
 | Entity parsing | JSON config / BIDS schema | JSON config with compiled regex (cached) |
 | Metadata inheritance | Python dict merging | IndexMap-based merging |
 | EEG data reading | MNE-Python | Pure Rust, 2–19× faster (channel-major decoding) |
@@ -544,13 +544,13 @@ If you use `bids-rs` in your research, please cite it:
   year         = {2026},
   url          = {https://github.com/eugenehp/bids-rs},
   license      = {GPL-3.0-or-later},
-  version      = {0.0.4}
+  version      = {0.0.5}
 }
 ```
 
 **APA:**
 
-> Hauptmann, E. (2026). *bids-rs: Rust tools for BIDS (Brain Imaging Data Structure) datasets* (Version 0.0.4) [Computer software]. https://github.com/eugenehp/bids-rs
+> Hauptmann, E. (2026). *bids-rs: Rust tools for BIDS (Brain Imaging Data Structure) datasets* (Version 0.0.5) [Computer software]. https://github.com/eugenehp/bids-rs
 
 A machine-readable [`CITATION.cff`](CITATION.cff) and [`CITATION.bib`](CITATION.bib)
 are also provided — GitHub will automatically show a "Cite this repository" button.

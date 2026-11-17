@@ -92,10 +92,24 @@ impl IndexFile {
         IndexFile {
             format: FORMAT.into(),
             version: VERSION,
-            files: t.files.iter().map(|(p, (f, d, is_dir, ty))| (p.clone(), f.clone(), d.clone(), *is_dir, ty.clone())).collect(),
-            tags: t.tags.iter().map(|((p, e), (v, dt, m))| (p.clone(), e.clone(), v.clone(), dt.clone(), *m)).collect(),
+            files: t
+                .files
+                .iter()
+                .map(|(p, (f, d, is_dir, ty))| {
+                    (p.clone(), f.clone(), d.clone(), *is_dir, ty.clone())
+                })
+                .collect(),
+            tags: t
+                .tags
+                .iter()
+                .map(|((p, e), (v, dt, m))| (p.clone(), e.clone(), v.clone(), dt.clone(), *m))
+                .collect(),
             associations: t.associations.iter().cloned().collect(),
-            layout_info: t.layout_info.iter().map(|(r, (c, d))| (r.clone(), c.clone(), d.clone())).collect(),
+            layout_info: t
+                .layout_info
+                .iter()
+                .map(|(r, (c, d))| (r.clone(), c.clone(), d.clone()))
+                .collect(),
         }
     }
 
@@ -152,7 +166,11 @@ impl Database {
             std::fs::create_dir_all(parent)?;
         }
         let existing = Self::exists(path);
-        let tables = if existing { read_index(path)? } else { Tables::default() };
+        let tables = if existing {
+            read_index(path)?
+        } else {
+            Tables::default()
+        };
         let db = Self::wrap(tables, Some(path.to_path_buf()));
         // a new index is written at once (so `exists` sees it); an existing
         // one already holds exactly these tables, so it is not rewritten
@@ -245,7 +263,12 @@ impl Database {
         }
         let unique_values = distinct
             .into_iter()
-            .map(|(name, values)| (name.to_string(), values.into_iter().map(str::to_string).collect()))
+            .map(|(name, values)| {
+                (
+                    name.to_string(),
+                    values.into_iter().map(str::to_string).collect(),
+                )
+            })
             .collect();
 
         let mut associations: HashMap<String, Vec<(String, String)>> = HashMap::new();
@@ -270,7 +293,9 @@ impl Database {
     /// Whether `path` holds an index this version can read.
     #[must_use]
     pub fn exists(path: &Path) -> bool {
-        let Ok(mut f) = std::fs::File::open(path) else { return false };
+        let Ok(mut f) = std::fs::File::open(path) else {
+            return false;
+        };
         let mut head = [0u8; 64];
         let n = std::io::Read::read(&mut f, &mut head).unwrap_or(0);
         let head = String::from_utf8_lossy(&head[..n]);
@@ -330,7 +355,9 @@ impl Database {
     /// Returns an error if a transaction is already open.
     pub fn begin_transaction(&self) -> Result<()> {
         if self.in_tx.get() {
-            return Err(BidsError::Database("cannot start a transaction within a transaction".into()));
+            return Err(BidsError::Database(
+                "cannot start a transaction within a transaction".into(),
+            ));
         }
         *self.rollback.borrow_mut() = Some(self.tables.borrow().clone());
         self.in_tx.set(true);
@@ -345,7 +372,9 @@ impl Database {
     /// written to its file (the transaction is then rolled back).
     pub fn commit_transaction(&self) -> Result<()> {
         if !self.in_tx.get() {
-            return Err(BidsError::Database("cannot commit - no transaction is active".into()));
+            return Err(BidsError::Database(
+                "cannot commit - no transaction is active".into(),
+            ));
         }
         if let Err(e) = self.persist() {
             let _ = self.rollback_transaction();
@@ -371,7 +400,9 @@ impl Database {
                 *self.tables.borrow_mut() = t;
                 Ok(())
             }
-            None => Err(BidsError::Database("cannot rollback - no transaction is active".into())),
+            None => Err(BidsError::Database(
+                "cannot rollback - no transaction is active".into(),
+            )),
         }
     }
 
@@ -408,10 +439,11 @@ impl Database {
 
     /// Insert a file association (a repeat of an existing one is ignored).
     pub fn insert_association(&self, src: &str, dst: &str, kind: &str) -> Result<()> {
-        self.tables
-            .borrow_mut()
-            .associations
-            .insert((src.to_string(), dst.to_string(), kind.to_string()));
+        self.tables.borrow_mut().associations.insert((
+            src.to_string(),
+            dst.to_string(),
+            kind.to_string(),
+        ));
         self.written()
     }
 
@@ -594,7 +626,13 @@ impl Database {
         if let Some(snap) = self.snapshot.borrow().as_ref() {
             return Ok(snap.files.len());
         }
-        Ok(self.tables.borrow().files.values().filter(|(_, _, is_dir, _)| !is_dir).count())
+        Ok(self
+            .tables
+            .borrow()
+            .files
+            .values()
+            .filter(|(_, _, is_dir, _)| !is_dir)
+            .count())
     }
 
     /// Save the current index to a file (replacing any file at `path`), for
@@ -613,8 +651,9 @@ pub type TagRow = (String, String, String, bool);
 
 fn read_index(path: &Path) -> Result<Tables> {
     let bytes = std::fs::read(path)?;
-    let file: IndexFile = serde_json::from_slice(&bytes)
-        .map_err(|e| BidsError::Database(format!("{}: not a readable index: {e}", path.display())))?;
+    let file: IndexFile = serde_json::from_slice(&bytes).map_err(|e| {
+        BidsError::Database(format!("{}: not a readable index: {e}", path.display()))
+    })?;
     if file.format != FORMAT || file.version != VERSION {
         return Err(BidsError::Database(format!(
             "{}: index format {:?} version {} (this bids-rs reads {FORMAT:?} version {VERSION})",
@@ -632,7 +671,8 @@ fn write_index(path: &Path, tables: &Tables) -> Result<()> {
     if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
         std::fs::create_dir_all(parent)?;
     }
-    let bytes = serde_json::to_vec(&IndexFile::of(tables)).map_err(|e| BidsError::Database(e.to_string()))?;
+    let bytes = serde_json::to_vec(&IndexFile::of(tables))
+        .map_err(|e| BidsError::Database(e.to_string()))?;
     let mut tmp = path.as_os_str().to_owned();
     tmp.push(".tmp");
     let tmp = PathBuf::from(tmp);
@@ -926,7 +966,8 @@ mod tests {
         let path = dir.join("index.json");
         let db = Database::in_memory().unwrap();
         db.insert_file(&BidsFile::new("/d/a.edf")).unwrap();
-        db.insert_tag("/d/a.edf", "subject", "01", "str", false).unwrap();
+        db.insert_tag("/d/a.edf", "subject", "01", "str", false)
+            .unwrap();
         db.set_layout_info("/d", "bids").unwrap();
         db.save_to(&path).unwrap();
         let bytes = std::fs::read(&path).unwrap();
@@ -935,7 +976,10 @@ mod tests {
         std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o755)).unwrap();
         let back = opened.expect("a read-only index opens");
         assert_eq!(back.file_count().unwrap(), 1);
-        assert_eq!(back.get_unique_entity_values("subject").unwrap(), vec!["01"]);
+        assert_eq!(
+            back.get_unique_entity_values("subject").unwrap(),
+            vec!["01"]
+        );
         assert_eq!(std::fs::read(&path).unwrap(), bytes);
         assert!(!dir.join("index.json.tmp").exists());
         std::fs::remove_dir_all(&dir).unwrap();

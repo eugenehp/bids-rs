@@ -1,4 +1,4 @@
-//! Dataset indexer: walks the filesystem and populates the DuckDB database.
+//! Dataset indexer: walks the filesystem and populates the layout database.
 //!
 //! Recursively walks a BIDS dataset directory, extracts entities from each
 //! file using regex patterns, indexes JSON sidecar metadata following the
@@ -82,7 +82,7 @@ impl Default for IndexerOptions {
 /// Files in the `derivatives/` directory at the root level are excluded
 /// (derivatives should be added separately via `BidsLayout::add_derivatives`).
 ///
-/// Bulk inserts use a single DuckDB transaction for dramatically better
+/// Bulk inserts use a single transaction for dramatically better
 /// performance on large datasets (100× faster than autocommit per-file).
 pub fn index_dataset(
     root: &Path,

@@ -24,13 +24,13 @@ pub mod version;
 
 // `tls-graviola` is a default feature but only `http` uses it; without `http`
 // it is linked and unused.
+use regex::Regex;
 #[cfg(all(
     feature = "tls-graviola",
     not(feature = "http"),
     any(target_arch = "x86_64", target_arch = "aarch64")
 ))]
 use rustls_graviola as _;
-use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 

@@ -152,7 +152,11 @@ impl BidsLayout {
                 "{}: not an index this bids-rs can read{}; build one with \
                  `BidsLayout::builder(root).database_path(..)`",
                 database_path.display(),
-                if database_path.exists() { " (a DuckDB index from bids-rs 0.0.4?)" } else { " (no such file)" }
+                if database_path.exists() {
+                    " (a DuckDB index from bids-rs 0.0.4?)"
+                } else {
+                    " (no such file)"
+                }
             )));
         }
         let db = Database::open(database_path)?;
