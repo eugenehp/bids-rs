@@ -28,11 +28,17 @@ pub fn make_agent() -> Agent {
 pub fn tls_config() -> ureq::tls::TlsConfig {
     // graviola's cryptography where it runs and is enabled, else RustCrypto's
     // (always on wasm, where graviola has no backend)
-    #[cfg(all(feature = "tls-graviola", any(target_arch = "x86_64", target_arch = "aarch64")))]
+    #[cfg(all(
+        feature = "tls-graviola",
+        any(target_arch = "x86_64", target_arch = "aarch64")
+    ))]
     let crypto = rustls_graviola::default_provider();
     #[cfg(all(
         any(feature = "tls-rustcrypto", target_family = "wasm"),
-        not(all(feature = "tls-graviola", any(target_arch = "x86_64", target_arch = "aarch64")))
+        not(all(
+            feature = "tls-graviola",
+            any(target_arch = "x86_64", target_arch = "aarch64")
+        ))
     ))]
     let crypto = rustls_rustcrypto::provider();
     ureq::tls::TlsConfig::builder()
@@ -45,12 +51,14 @@ pub fn tls_config() -> ureq::tls::TlsConfig {
 #[cfg(not(any(
     feature = "tls-rustcrypto",
     target_family = "wasm",
-    all(feature = "tls-graviola", any(target_arch = "x86_64", target_arch = "aarch64"))
+    all(
+        feature = "tls-graviola",
+        any(target_arch = "x86_64", target_arch = "aarch64")
+    )
 )))]
 compile_error!(
     "https needs cryptography: enable `tls-graviola` (x86-64, aarch64) or `tls-rustcrypto` (any target; wasm always uses it)"
 );
-
 
 /// Common headers applied to every request.
 #[must_use]

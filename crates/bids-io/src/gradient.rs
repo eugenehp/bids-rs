@@ -40,10 +40,8 @@ pub type Bvecs = Vec<[f64; 3]>;
 /// Returns an error if the file can't be read or contains non-numeric values.
 pub fn read_bvals(path: &Path) -> Result<Bvals> {
     let contents = std::fs::read_to_string(path)?;
-    let values: std::result::Result<Vec<f64>, _> = contents
-        .split_whitespace()
-        .map(str::parse::<f64>)
-        .collect();
+    let values: std::result::Result<Vec<f64>, _> =
+        contents.split_whitespace().map(str::parse::<f64>).collect();
     values.map_err(|e| BidsError::DataFormat(format!("Invalid bval file {}: {e}", path.display())))
 }
 

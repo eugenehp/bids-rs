@@ -77,7 +77,7 @@ impl BIDSLayout {
         Ok(Self { inner })
     }
 
-    /// Load a layout from an existing DuckDB database.
+    /// Load a layout from an existing index file.
     #[staticmethod]
     fn load(database_path: &str) -> PyResult<Self> {
         let inner = bids_layout::BidsLayout::load(std::path::Path::new(database_path))
@@ -201,7 +201,8 @@ impl BIDSLayout {
                                 }
                             })
                             .collect();
-                        let refs: Vec<&str> = normed.iter().map(std::string::String::as_str).collect();
+                        let refs: Vec<&str> =
+                            normed.iter().map(std::string::String::as_str).collect();
                         query = query.filter_any("extension", &refs);
                     }
                     other => {
@@ -352,7 +353,10 @@ impl BIDSLayout {
             .map(|(k, v)| (k, EntityValue::Str(v)))
             .collect();
         let patterns_owned = path_patterns.unwrap_or_default();
-        let pattern_refs: Vec<&str> = patterns_owned.iter().map(std::string::String::as_str).collect();
+        let pattern_refs: Vec<&str> = patterns_owned
+            .iter()
+            .map(std::string::String::as_str)
+            .collect();
         let pats = if pattern_refs.is_empty() {
             None
         } else {
@@ -641,7 +645,9 @@ impl BIDSFile {
     #[getter]
     fn suffix(&self) -> Option<String> {
         let stem = self.filename.split('.').next()?;
-        stem.rsplit('_').next().map(std::string::ToString::to_string)
+        stem.rsplit('_')
+            .next()
+            .map(std::string::ToString::to_string)
     }
 
     /// Get the entity value for a key, or None.

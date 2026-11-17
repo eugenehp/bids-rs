@@ -1345,7 +1345,11 @@ mod tests {
         // nibabel writes NaN slope and intercept for unscaled images.
         let dims: [i16; 8] = [3, 2, 2, 2, 1, 1, 1, 1];
         let raw_data: Vec<f32> = (1..=8).map(|v| v as f32).collect();
-        for (slope, inter, expect) in [(f32::NAN, f32::NAN, [1.0, 8.0]), (0.0, 5.0, [1.0, 8.0]), (2.0, f32::NAN, [2.0, 16.0])] {
+        for (slope, inter, expect) in [
+            (f32::NAN, f32::NAN, [1.0, 8.0]),
+            (0.0, 5.0, [1.0, 8.0]),
+            (2.0, f32::NAN, [2.0, 16.0]),
+        ] {
             let mut bytes = build_nifti1(&dims, &[1.0; 8], &raw_data);
             bytes[112..116].copy_from_slice(&slope.to_le_bytes());
             bytes[116..120].copy_from_slice(&inter.to_le_bytes());

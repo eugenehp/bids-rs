@@ -429,13 +429,18 @@ fn test_legacy_duckdb_index_is_rebuilt_not_misread() {
     std::fs::write(&db_path, &legacy).unwrap();
 
     // `load` refuses it and leaves the file alone
-    let err = bids_layout::BidsLayout::load(&db_path).err().expect("a DuckDB file is not readable");
+    let err = bids_layout::BidsLayout::load(&db_path)
+        .err()
+        .expect("a DuckDB file is not readable");
     assert!(err.to_string().contains("DuckDB"), "{err}");
     assert_eq!(std::fs::read(&db_path).unwrap(), legacy);
 
     // a builder pointed at it re-indexes into it, and that index then loads
     {
-        let layout = bids_layout::BidsLayout::builder(&tmp).database_path(&db_path).build().unwrap();
+        let layout = bids_layout::BidsLayout::builder(&tmp)
+            .database_path(&db_path)
+            .build()
+            .unwrap();
         assert_eq!(layout.get_subjects().unwrap().len(), 2);
     }
     let layout = bids_layout::BidsLayout::load(&db_path).unwrap();
