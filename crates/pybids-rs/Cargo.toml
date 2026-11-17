@@ -2,10 +2,10 @@
 name = "pybids-rs"
 description = "Python bindings for bids-rs, a Rust implementation of PyBIDS"
 version.workspace = true
+authors.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
 rust-version.workspace = true
@@ -20,10 +20,6 @@ bids-core = { workspace = true }
 bids-layout = { workspace = true }
 bids-variables = { workspace = true }
 bids-io = { workspace = true }
-bids-eeg = { workspace = true }
-bids-ieeg = { workspace = true }
-bids-meg = { workspace = true }
-bids-pet = { workspace = true }
 bids-nifti = { workspace = true }
 bids-filter = { workspace = true }
 bids-formula = { workspace = true }
@@ -32,3 +28,6 @@ bids-inflect = { workspace = true }
 bids-modeling = { workspace = true }
 bids-reports = { workspace = true }
 serde_json = { workspace = true }
+
+[lints]
+workspace = true

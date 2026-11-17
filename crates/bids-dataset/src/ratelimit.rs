@@ -26,11 +26,13 @@ pub struct RateLimiter {
 
 impl RateLimiter {
     /// Create a rate limiter allowing `max_rps` requests per second.
+    #[must_use]
     pub fn new(max_rps: f64) -> Self {
         Self::new_with_cooldown(max_rps, 30)
     }
 
     /// Create with a custom default 429 cooldown (seconds).
+    #[must_use]
     pub fn new_with_cooldown(max_rps: f64, default_cooldown_secs: u64) -> Self {
         let min_interval_us = if max_rps > 0.0 {
             (1_000_000.0 / max_rps) as u64
@@ -47,6 +49,7 @@ impl RateLimiter {
     }
 
     /// Unlimited rate limiter (no throttling).
+    #[must_use]
     pub fn unlimited() -> Self {
         Self::new(0.0)
     }
@@ -126,6 +129,7 @@ impl RateLimiter {
 ///
 /// Supports both seconds (`Retry-After: 120`) and HTTP-date formats
 /// (though we only handle the seconds format for simplicity).
+#[must_use]
 pub fn parse_retry_after(value: &str) -> Option<Duration> {
     // Try as integer seconds first
     if let Ok(secs) = value.trim().parse::<u64>() {
@@ -168,6 +172,7 @@ pub struct RateLimitConfig {
 
 impl RateLimitConfig {
     /// Load from environment variables, falling back to defaults.
+    #[must_use]
     pub fn from_env() -> Self {
         Self {
             s3_download_rps: env_f64("BIDS_S3_DOWNLOAD_RPS", 50.0),
@@ -224,14 +229,17 @@ impl RateLimitConfig {
     }
 
     /// Create the S3 download rate limiter from this config.
+    #[must_use]
     pub fn s3_download_limiter(&self) -> RateLimiter {
         RateLimiter::new_with_cooldown(self.s3_download_rps, self.default_429_cooldown_secs)
     }
     /// Create the S3 listing rate limiter from this config.
+    #[must_use]
     pub fn s3_listing_limiter(&self) -> RateLimiter {
         RateLimiter::new_with_cooldown(self.s3_listing_rps, self.default_429_cooldown_secs)
     }
     /// Create the GraphQL rate limiter from this config.
+    #[must_use]
     pub fn graphql_limiter(&self) -> RateLimiter {
         RateLimiter::new_with_cooldown(self.graphql_rps, self.default_429_cooldown_secs)
     }
@@ -273,21 +281,25 @@ pub mod defaults {
     use super::*;
 
     /// Default config (from env vars or hardcoded defaults).
+    #[must_use]
     pub fn config() -> RateLimitConfig {
         RateLimitConfig::from_env()
     }
 
     /// Rate limiter for S3 downloads.
+    #[must_use]
     pub fn s3_limiter() -> RateLimiter {
         config().s3_download_limiter()
     }
 
     /// Rate limiter for S3 listing.
+    #[must_use]
     pub fn s3_listing_limiter() -> RateLimiter {
         config().s3_listing_limiter()
     }
 
     /// Rate limiter for GraphQL API.
+    #[must_use]
     pub fn graphql_limiter() -> RateLimiter {
         config().graphql_limiter()
     }

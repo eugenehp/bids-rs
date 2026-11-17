@@ -2,10 +2,10 @@
 name = "bids"
 description = "Rust tools for BIDS (Brain Imaging Data Structure) datasets"
 version.workspace = true
+authors.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
 rust-version.workspace = true
@@ -48,3 +48,6 @@ bids-formula = { workspace = true }
 bids-schema = { workspace = true }
 bids-inflect = { workspace = true }
 bids-dataset = { workspace = true }
+
+[lints]
+workspace = true

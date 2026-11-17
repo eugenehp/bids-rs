@@ -6,6 +6,32 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- https in pure Rust: `bids-dataset` and `bids-schema` (`http`) use ureq
+  with rustls, the cryptography by feature: `tls-graviola` (default;
+  formally verified, x86-64 and aarch64) or `tls-rustcrypto` (every target).
+  On wasm it is always RustCrypto, so the defaults build there. ring (C) is
+  gone.
+- `bids-layout`'s index is pure Rust; DuckDB (C++, bundled) is gone. Same
+  `Database` API and semantics: files and tags last-write-wins in place,
+  associations first-write-wins, sorted files and entity values, transactions
+  that roll back to `BEGIN`, reads from the snapshot. A database opened on a
+  path keeps a versioned JSON index there (written atomically on every commit
+  and every write outside a transaction); the conventional file is now
+  `layout_index.json`. A DuckDB file from 0.0.4 is not read: `Database::exists`
+  says no, so a layout builder re-indexes into the path, and
+  `BidsLayout::load` reports it.
+  Checked against the DuckDB build on 610 real BIDS datasets (14,446 files):
+  every query, entity value, per-file entity, metadata, association and
+  `to_df` row identical, fresh and reloaded. Indexing ds000030 (5,961 files)
+  takes 4.7 s instead of 10.3 s.
+  Loading an index only reads it (it was rewritten on every load, and a
+  read-only index failed to load), and the read snapshot no longer clones a
+  path per tag or a value per tag: on ds000030, loading takes 11 ms instead
+  of 22 ms and the first query 7.5 ms instead of 9.5 ms; `file_count`
+  answers without building the snapshot.
+
 ## [0.0.4]
 
 ### Added

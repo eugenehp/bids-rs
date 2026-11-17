@@ -60,6 +60,7 @@ impl BidsExamples {
     }
 
     /// Root directory containing all example datasets.
+    #[must_use]
     pub fn root(&self) -> &Path {
         &self.root
     }
@@ -67,6 +68,7 @@ impl BidsExamples {
     /// Path to a specific example dataset (e.g., `"ds001"`).
     ///
     /// Returns `None` if the dataset directory doesn't exist.
+    #[must_use]
     pub fn dataset(&self, name: &str) -> Option<PathBuf> {
         let p = self.root.join(name);
         if p.is_dir() && p.join("dataset_description.json").exists() {
@@ -77,6 +79,7 @@ impl BidsExamples {
     }
 
     /// List all available example dataset names.
+    #[must_use]
     pub fn list_datasets(&self) -> Vec<String> {
         let mut names = Vec::new();
         if let Ok(entries) = std::fs::read_dir(&self.root) {

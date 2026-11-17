@@ -189,7 +189,7 @@ The `bids` crate re-exports the following sub-crates:
 |--------|-----------|-------------|
 | `bids::core` | `bids-core` | Fundamental types — `BidsFile`, `Entity`, `EntityValue`, `BidsMetadata`, `Config`, errors |
 | `bids::io` | `bids-io` | TSV/JSON I/O, BIDS path building, sidecar inheritance, file writing |
-| `bids::layout` | `bids-layout` | Dataset indexing, `BidsLayout`, fluent `GetBuilder` query API, DuckDB backend |
+| `bids::layout` | `bids-layout` | Dataset indexing, `BidsLayout`, fluent `GetBuilder` query API, pure-Rust index |
 | `bids::variables` | `bids-variables` | BIDS variable system — `SimpleVariable`, `SparseRunVariable`, `DenseRunVariable` |
 | `bids::modeling` | `bids-modeling` | BIDS-StatsModels — graph, nodes, contrasts, HRF convolution, transformations |
 | `bids::reports` | `bids-reports` | Auto-generated publication-quality methods sections |
@@ -243,7 +243,8 @@ across 19 `bids-examples` datasets), and entity queries answered from the
 in-memory index are **tens of thousands of times faster** (see
 [Comparison with PyBIDS](https://github.com/eugenehp/bids-rs#comparison-with-pybids)). The chart below times the
 `bids` CLI end to end, so it includes process startup — about 10 ms, mostly
-DuckDB's static initialisation — and shows parity on the smallest dataset.
+DuckDB's static initialisation when this was measured (the index has since
+become pure Rust) — and shows parity on the smallest dataset.
 
 ![Layout Indexing Benchmark](../../figures/layout_indexing_benchmark.png)
 

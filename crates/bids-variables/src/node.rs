@@ -35,6 +35,7 @@ pub struct Node {
 }
 
 impl Node {
+    #[must_use]
     pub fn new(level: &str, entities: StringEntities) -> Self {
         Self {
             level: level.to_lowercase(),
@@ -66,6 +67,7 @@ pub struct RunNode {
 }
 
 impl RunNode {
+    #[must_use]
     pub fn new(
         entities: StringEntities,
         image_file: Option<String>,
@@ -85,6 +87,7 @@ impl RunNode {
         }
     }
 
+    #[must_use]
     pub fn get_info(&self) -> RunInfo {
         RunInfo {
             entities: self.entities.clone(),
@@ -160,6 +163,7 @@ impl NodeRef<'_> {
 }
 
 impl NodeIndex {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -199,6 +203,7 @@ impl NodeIndex {
     }
 
     /// Find nodes matching level and entities, sorted by subject/session/task/run.
+    #[must_use]
     pub fn find_nodes(&self, level: &str, entities: &StringEntities) -> Vec<usize> {
         let sort_keys = ["subject", "session", "task", "run"];
         let mut results: Vec<(usize, Vec<String>)> = self

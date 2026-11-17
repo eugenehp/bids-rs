@@ -246,7 +246,7 @@ fn test_persistent_database() {
     let _ = std::fs::remove_dir_all(&tmp);
     create_fixture(&tmp);
 
-    let db_path = tmp.join("index.duckdb");
+    let db_path = tmp.join("index.json");
 
     // Create layout with persistent database
     {
@@ -414,4 +414,31 @@ fn test_bidsfile_builder() {
 
     assert_eq!(bf.entities.get("subject").unwrap().as_str_lossy(), "01");
     assert_eq!(bf.entities.get("task").unwrap().as_str_lossy(), "rest");
+}
+
+#[test]
+fn test_legacy_duckdb_index_is_rebuilt_not_misread() {
+    let tmp = std::env::temp_dir().join("bids_legacy_index_test");
+    let _ = std::fs::remove_dir_all(&tmp);
+    create_fixture(&tmp);
+    // what a bids-rs 0.0.4 index file starts with: a DuckDB header
+    let db_path = tmp.join("index.duckdb");
+    let mut legacy = vec![0u8; 8];
+    legacy.extend_from_slice(b"DUCK");
+    legacy.extend(std::iter::repeat_n(0u8, 4084));
+    std::fs::write(&db_path, &legacy).unwrap();
+
+    // `load` refuses it and leaves the file alone
+    let err = bids_layout::BidsLayout::load(&db_path).err().expect("a DuckDB file is not readable");
+    assert!(err.to_string().contains("DuckDB"), "{err}");
+    assert_eq!(std::fs::read(&db_path).unwrap(), legacy);
+
+    // a builder pointed at it re-indexes into it, and that index then loads
+    {
+        let layout = bids_layout::BidsLayout::builder(&tmp).database_path(&db_path).build().unwrap();
+        assert_eq!(layout.get_subjects().unwrap().len(), 2);
+    }
+    let layout = bids_layout::BidsLayout::load(&db_path).unwrap();
+    assert_eq!(layout.get_subjects().unwrap().len(), 2);
+    let _ = std::fs::remove_dir_all(&tmp);
 }

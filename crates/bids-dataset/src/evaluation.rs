@@ -34,6 +34,7 @@ pub struct SplitIndices {
 /// generalization is measured.
 ///
 /// Corresponds to MOABB's `WithinSessionEvaluation`.
+#[must_use]
 pub fn within_session_splits(metadata: &[SampleMeta], k: usize, seed: u64) -> Vec<SplitIndices> {
     let mut results = Vec::new();
 
@@ -46,7 +47,7 @@ pub fn within_session_splits(metadata: &[SampleMeta], k: usize, seed: u64) -> Ve
             .push(i);
     }
 
-    let mut group_keys: Vec<_> = groups.keys().cloned().collect();
+    let mut group_keys: Vec<_> = groups.keys().copied().collect();
     group_keys.sort();
 
     for (subj, sess) in group_keys {
@@ -96,6 +97,7 @@ pub fn within_session_splits(metadata: &[SampleMeta], k: usize, seed: u64) -> Ve
 /// Requires ≥ 2 sessions per subject.
 ///
 /// Corresponds to MOABB's `CrossSessionEvaluation`.
+#[must_use]
 pub fn cross_session_splits(metadata: &[SampleMeta]) -> Vec<SplitIndices> {
     let mut results = Vec::new();
 
@@ -105,7 +107,7 @@ pub fn cross_session_splits(metadata: &[SampleMeta]) -> Vec<SplitIndices> {
         by_subject.entry(m.subject.as_str()).or_default().push(i);
     }
 
-    let mut subjects: Vec<_> = by_subject.keys().cloned().collect();
+    let mut subjects: Vec<_> = by_subject.keys().copied().collect();
     subjects.sort();
 
     for &subj in &subjects {
@@ -153,6 +155,7 @@ pub fn cross_session_splits(metadata: &[SampleMeta]) -> Vec<SplitIndices> {
 /// Requires ≥ 2 subjects.
 ///
 /// Corresponds to MOABB's `CrossSubjectEvaluation`.
+#[must_use]
 pub fn cross_subject_splits(metadata: &[SampleMeta]) -> Vec<SplitIndices> {
     let mut results = Vec::new();
 
@@ -195,6 +198,7 @@ pub fn cross_subject_splits(metadata: &[SampleMeta]) -> Vec<SplitIndices> {
 ///
 /// Like `cross_subject_splits` but groups subjects into k folds instead
 /// of leave-one-out (faster for large N).
+#[must_use]
 pub fn cross_subject_kfold_splits(
     metadata: &[SampleMeta],
     k: usize,
@@ -225,7 +229,7 @@ pub fn cross_subject_kfold_splits(
         };
         let test_subjects: BTreeSet<&str> = subjects[test_start..test_end]
             .iter()
-            .map(|s| s.as_str())
+            .map(std::string::String::as_str)
             .collect();
 
         let train: Vec<usize> = metadata

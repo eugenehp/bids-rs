@@ -178,7 +178,7 @@ impl BIDSLayout {
                 }
 
                 // Map to query builder
-                let str_refs: Vec<&str> = values.iter().map(|s| s.as_str()).collect();
+                let str_refs: Vec<&str> = values.iter().map(std::string::String::as_str).collect();
                 match k.as_str() {
                     "subject" => query = query.filter_any("subject", &str_refs),
                     "session" => query = query.filter_any("session", &str_refs),
@@ -201,7 +201,7 @@ impl BIDSLayout {
                                 }
                             })
                             .collect();
-                        let refs: Vec<&str> = normed.iter().map(|s| s.as_str()).collect();
+                        let refs: Vec<&str> = normed.iter().map(std::string::String::as_str).collect();
                         query = query.filter_any("extension", &refs);
                     }
                     other => {
@@ -352,7 +352,7 @@ impl BIDSLayout {
             .map(|(k, v)| (k, EntityValue::Str(v)))
             .collect();
         let patterns_owned = path_patterns.unwrap_or_default();
-        let pattern_refs: Vec<&str> = patterns_owned.iter().map(|s| s.as_str()).collect();
+        let pattern_refs: Vec<&str> = patterns_owned.iter().map(std::string::String::as_str).collect();
         let pats = if pattern_refs.is_empty() {
             None
         } else {
@@ -641,7 +641,7 @@ impl BIDSFile {
     #[getter]
     fn suffix(&self) -> Option<String> {
         let stem = self.filename.split('.').next()?;
-        stem.rsplit('_').next().map(|s| s.to_string())
+        stem.rsplit('_').next().map(std::string::ToString::to_string)
     }
 
     /// Get the entity value for a key, or None.
@@ -771,7 +771,7 @@ fn parse_formula(formula: &str) -> HashMap<String, PyObject> {
                 .into_any()
                 .unbind(),
         );
-        let terms: Vec<String> = f.terms.iter().map(|t| t.name()).collect();
+        let terms: Vec<String> = f.terms.iter().map(bids_formula::Term::name).collect();
         m.insert(
             "terms".into(),
             terms.into_pyobject(py).unwrap().into_any().unbind(),

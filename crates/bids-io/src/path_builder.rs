@@ -17,6 +17,7 @@ static PATTERN_FIND: LazyLock<Regex> =
 /// has multiple values (Cartesian product).
 ///
 /// Returns `None` if no pattern matches all mandatory entities.
+#[must_use]
 pub fn build_path(entities: &Entities, patterns: &[&str], strict: bool) -> Option<String> {
     let result = build_path_multi(entities, patterns, strict);
     result.map(|v| match v.len() {
@@ -26,6 +27,7 @@ pub fn build_path(entities: &Entities, patterns: &[&str], strict: bool) -> Optio
 }
 
 /// Build potentially multiple paths when entities contain list values.
+#[must_use]
 pub fn build_path_multi(
     entities: &Entities,
     patterns: &[&str],
@@ -43,6 +45,7 @@ pub fn build_path_multi(
 
 /// Build paths with entity expansion: when entities map to Vec of values,
 /// produce Cartesian product of all combinations.
+#[must_use]
 pub fn build_paths_expanded(
     entities: &std::collections::HashMap<String, Vec<String>>,
     patterns: &[&str],
@@ -191,6 +194,7 @@ fn try_build_single(entities: &Entities, pattern: &str, strict: bool) -> Option<
 }
 
 /// Expand bracket options in value strings.
+#[must_use]
 pub fn expand_options(value: &str) -> Vec<String> {
     static BRACKET_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\[([^\]]*?)\]").unwrap());
     let bracket_re = &*BRACKET_RE;

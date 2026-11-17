@@ -18,6 +18,7 @@ pub enum Term {
 }
 
 impl Term {
+    #[must_use]
     pub fn name(&self) -> String {
         match self {
             Term::Intercept => "intercept".into(),

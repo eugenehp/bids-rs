@@ -41,9 +41,11 @@ pub struct IeegElectrode {
 }
 
 impl IeegElectrode {
+    #[must_use]
     pub fn has_position(&self) -> bool {
         self.x.is_some() && self.y.is_some() && self.z.is_some()
     }
+    #[must_use]
     pub fn position(&self) -> Option<(f64, f64, f64)> {
         match (self.x, self.y, self.z) {
             (Some(x), Some(y), Some(z)) => Some((x, y, z)),

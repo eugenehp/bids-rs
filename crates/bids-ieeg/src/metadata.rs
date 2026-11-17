@@ -44,10 +44,12 @@ pub struct IeegMetadata {
 }
 
 impl IeegMetadata {
+    #[must_use]
     pub fn from_metadata(md: &BidsMetadata) -> Option<Self> {
         md.deserialize_as()
     }
 
+    #[must_use]
     pub fn total_channel_count(&self) -> u32 {
         self.ecog_channel_count.unwrap_or(0)
             + self.seeg_channel_count.unwrap_or(0)

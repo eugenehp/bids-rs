@@ -2,10 +2,10 @@
 name = "bids-cli"
 description = "Command-line interface for BIDS datasets"
 version.workspace = true
+authors.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
 rust-version.workspace = true
@@ -28,3 +28,6 @@ serde_json = { workspace = true }
 indicatif = { workspace = true }
 regex = { workspace = true }
 globset = "0.4"
+
+[lints]
+workspace = true

@@ -22,6 +22,14 @@
 pub mod collect;
 pub mod version;
 
+// `tls-graviola` is a default feature but only `http` uses it; without `http`
+// it is linked and unused.
+#[cfg(all(
+    feature = "tls-graviola",
+    not(feature = "http"),
+    any(target_arch = "x86_64", target_arch = "aarch64")
+))]
+use rustls_graviola as _;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -55,6 +63,7 @@ pub struct BidsSchema {
 
 impl BidsSchema {
     /// Load the bundled default schema.
+    #[must_use]
     pub fn load() -> Self {
         Self::built_in()
     }
@@ -266,6 +275,7 @@ impl BidsSchema {
     }
 
     /// Validate a relative file path against BIDS naming rules.
+    #[must_use]
     pub fn is_valid(&self, relative_path: &str) -> bool {
         let path = relative_path.trim_start_matches('/');
 
@@ -287,31 +297,37 @@ impl BidsSchema {
     }
 
     /// Get entity definition by name.
+    #[must_use]
     pub fn get_entity(&self, name: &str) -> Option<&EntityDef> {
         self.entities.iter().find(|e| e.name == name)
     }
 
     /// Get entity definition by BIDS key (e.g., "sub", "ses").
+    #[must_use]
     pub fn get_entity_by_key(&self, key: &str) -> Option<&EntityDef> {
         self.entities.iter().find(|e| e.key == key)
     }
 
     /// Check if a datatype is valid.
+    #[must_use]
     pub fn is_valid_datatype(&self, dt: &str) -> bool {
         self.datatypes.contains(dt)
     }
 
     /// Check if a suffix is valid.
+    #[must_use]
     pub fn is_valid_suffix(&self, s: &str) -> bool {
         self.suffixes.contains(s)
     }
 
     /// Check if an extension is valid.
+    #[must_use]
     pub fn is_valid_extension(&self, e: &str) -> bool {
         self.extensions.contains(e)
     }
 
     /// Generate a regex pattern string for an entity.
+    #[must_use]
     pub fn entity_pattern(&self, name: &str) -> Option<String> {
         let ent = self.get_entity(name)?;
         let value_pattern = match ent.format.as_str() {

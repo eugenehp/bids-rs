@@ -50,6 +50,7 @@ impl<'a> MegLayout<'a> {
         bids_core::try_read_companion(&f.companion("events", "tsv"), bids_eeg::read_events_tsv)
     }
     /// Get the headshape file path for a MEG recording.
+    #[must_use]
     pub fn get_headshape_path(&self, f: &BidsFile) -> Option<std::path::PathBuf> {
         let p = f.companion("headshape", "pos");
         if p.exists() { Some(p) } else { None }

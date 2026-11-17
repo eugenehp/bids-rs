@@ -68,6 +68,7 @@ impl Entity {
     /// Eagerly compiles the regex. If the pattern is invalid, the entity will
     /// never match any path. Prefer [`Entity::try_new()`] when working with
     /// user-supplied patterns so you can surface the error.
+    #[must_use]
     pub fn new(name: &str, pattern: &str) -> Self {
         let lock = OnceLock::new();
         let compiled = Regex::new(pattern).ok();

@@ -29,11 +29,13 @@ pub struct Electrode {
 
 impl Electrode {
     /// Whether this electrode has valid 3D coordinates.
+    #[must_use]
     pub fn has_position(&self) -> bool {
         self.x.is_some() && self.y.is_some() && self.z.is_some()
     }
 
     /// Get position as (x, y, z) tuple.
+    #[must_use]
     pub fn position(&self) -> Option<(f64, f64, f64)> {
         match (self.x, self.y, self.z) {
             (Some(x), Some(y), Some(z)) => Some((x, y, z)),

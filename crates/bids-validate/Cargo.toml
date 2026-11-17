@@ -2,10 +2,10 @@
 name = "bids-validate"
 description = "BIDS validation: filename patterns, dataset_description checks"
 version.workspace = true
+authors.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
 rust-version.workspace = true
@@ -15,3 +15,6 @@ bids-core = { workspace = true }
 bids-schema = { workspace = true }
 regex = { workspace = true }
 walkdir = { workspace = true }
+
+[lints]
+workspace = true

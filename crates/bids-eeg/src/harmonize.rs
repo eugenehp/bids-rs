@@ -130,7 +130,7 @@ pub fn plan_harmonization(
         .iter()
         .map(|d| {
             let input_channels: HashSet<&str> =
-                d.channel_labels.iter().map(|s| s.as_str()).collect();
+                d.channel_labels.iter().map(std::string::String::as_str).collect();
             channels
                 .iter()
                 .map(|ch| input_channels.contains(ch.as_str()))
@@ -151,7 +151,7 @@ pub fn plan_harmonization(
 /// Missing channels are filled with zeros.
 #[must_use]
 pub fn apply_harmonization(data: &EegData, plan: &HarmonizationPlan) -> EegData {
-    let n_samples = data.data.first().map_or(0, |ch| ch.len());
+    let n_samples = data.data.first().map_or(0, std::vec::Vec::len);
     let channel_map: std::collections::HashMap<&str, usize> = data
         .channel_labels
         .iter()

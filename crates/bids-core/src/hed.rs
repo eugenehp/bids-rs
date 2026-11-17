@@ -138,7 +138,7 @@ pub fn parse_hed_string(hed: &str) -> Vec<HedTag> {
                     let group_str = &hed[start..i];
                     let children: Vec<HedTag> = group_str
                         .split(',')
-                        .map(|s| s.trim())
+                        .map(str::trim)
                         .filter(|s| !s.is_empty())
                         .map(HedTag::simple)
                         .collect();

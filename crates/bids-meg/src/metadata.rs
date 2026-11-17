@@ -42,6 +42,7 @@ pub struct MegMetadata {
 }
 
 impl MegMetadata {
+    #[must_use]
     pub fn from_metadata(md: &BidsMetadata) -> Option<Self> {
         md.deserialize_as()
     }

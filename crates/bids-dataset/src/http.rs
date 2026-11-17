@@ -10,16 +10,50 @@ pub const USER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) \
 ///
 /// Configures a 30-second connect timeout and 5-minute read timeout to
 /// prevent stalled TCP connections from hanging forever.
+#[must_use]
 pub fn make_agent() -> Agent {
     use std::time::Duration;
     Agent::config_builder()
+        .tls_config(tls_config())
         .timeout_connect(Some(Duration::from_secs(30)))
         .timeout_recv_body(Some(Duration::from_secs(300)))
         .build()
         .new_agent()
 }
 
+/// TLS in pure Rust, no C compiler: rustls with webpki's root certificates
+/// and graviola's (`tls-graviola`) or RustCrypto's (`tls-rustcrypto`)
+/// cryptography.
+#[must_use]
+pub fn tls_config() -> ureq::tls::TlsConfig {
+    // graviola's cryptography where it runs and is enabled, else RustCrypto's
+    // (always on wasm, where graviola has no backend)
+    #[cfg(all(feature = "tls-graviola", any(target_arch = "x86_64", target_arch = "aarch64")))]
+    let crypto = rustls_graviola::default_provider();
+    #[cfg(all(
+        any(feature = "tls-rustcrypto", target_family = "wasm"),
+        not(all(feature = "tls-graviola", any(target_arch = "x86_64", target_arch = "aarch64")))
+    ))]
+    let crypto = rustls_rustcrypto::provider();
+    ureq::tls::TlsConfig::builder()
+        .provider(ureq::tls::TlsProvider::Rustls)
+        .root_certs(ureq::tls::RootCerts::WebPki)
+        .unversioned_rustls_crypto_provider(std::sync::Arc::new(crypto))
+        .build()
+}
+
+#[cfg(not(any(
+    feature = "tls-rustcrypto",
+    target_family = "wasm",
+    all(feature = "tls-graviola", any(target_arch = "x86_64", target_arch = "aarch64"))
+)))]
+compile_error!(
+    "https needs cryptography: enable `tls-graviola` (x86-64, aarch64) or `tls-rustcrypto` (any target; wasm always uses it)"
+);
+
+
 /// Common headers applied to every request.
+#[must_use]
 pub fn get(agent: &Agent, url: &str) -> ureq::RequestBuilder<ureq::typestate::WithoutBody> {
     agent
         .get(url)
@@ -124,6 +158,7 @@ pub struct StderrProgress {
 }
 
 impl StderrProgress {
+    #[must_use]
     pub fn new(total: usize) -> Self {
         Self { total, done: 0 }
     }

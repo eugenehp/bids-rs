@@ -39,6 +39,7 @@ pub enum ChannelType {
 }
 
 impl ChannelType {
+    #[must_use]
     pub fn parse(s: &str) -> Self {
         match s.to_uppercase().as_str() {
             "EEG" => Self::EEG,
@@ -110,11 +111,13 @@ pub struct Channel {
 
 impl Channel {
     /// Whether this channel is marked as "bad".
+    #[must_use]
     pub fn is_bad(&self) -> bool {
         self.status.as_deref() == Some("bad")
     }
 
     /// Whether this is an EEG-type channel.
+    #[must_use]
     pub fn is_eeg(&self) -> bool {
         self.channel_type == ChannelType::EEG
     }
@@ -173,6 +176,7 @@ fn parse_f64(val: Option<&String>) -> Option<f64> {
 }
 
 /// Count channels by type.
+#[must_use]
 pub fn count_by_type(channels: &[Channel]) -> std::collections::HashMap<ChannelType, usize> {
     let mut counts = std::collections::HashMap::new();
     for ch in channels {
@@ -182,11 +186,13 @@ pub fn count_by_type(channels: &[Channel]) -> std::collections::HashMap<ChannelT
 }
 
 /// Get only the EEG channels.
+#[must_use]
 pub fn eeg_channels(channels: &[Channel]) -> Vec<&Channel> {
     channels.iter().filter(|c| c.is_eeg()).collect()
 }
 
 /// Get only the bad channels.
+#[must_use]
 pub fn bad_channels(channels: &[Channel]) -> Vec<&Channel> {
     channels.iter().filter(|c| c.is_bad()).collect()
 }

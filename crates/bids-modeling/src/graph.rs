@@ -212,11 +212,13 @@ impl StatsModelsGraph {
     }
 
     /// Get a node by name.
+    #[must_use]
     pub fn get_node(&self, name: &str) -> Option<&StatsModelsNode> {
         self.node_map.get(name).map(|&i| &self.nodes[i])
     }
 
     /// Get the root node.
+    #[must_use]
     pub fn root_node(&self) -> &StatsModelsNode {
         &self.nodes[self.root_idx]
     }
@@ -243,6 +245,7 @@ impl StatsModelsGraph {
     }
 
     /// Write graph structure as a DOT file (text-based graphviz).
+    #[must_use]
     pub fn write_graph(&self) -> String {
         let mut dot = format!("digraph \"{}\" {{\n  node [shape=record];\n", self.name);
         for node in &self.nodes {
@@ -279,6 +282,7 @@ impl StatsModelsGraph {
     }
 
     /// Run the entire graph recursively.
+    #[must_use]
     pub fn run(&self) -> Vec<StatsModelsNodeOutput> {
         let mut all_outputs = Vec::new();
         self.run_node_recursive(self.root_idx, &[], &mut all_outputs);

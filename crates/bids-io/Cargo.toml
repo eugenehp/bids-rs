@@ -2,10 +2,10 @@
 name = "bids-io"
 description = "File I/O for BIDS datasets: TSV, JSON, compressed files, path building"
 version.workspace = true
+authors.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
 rust-version.workspace = true
@@ -14,7 +14,9 @@ rust-version.workspace = true
 bids-core = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-csv = { workspace = true }
 flate2 = { workspace = true }
 regex = { workspace = true }
 indexmap = { workspace = true }
+
+[lints]
+workspace = true

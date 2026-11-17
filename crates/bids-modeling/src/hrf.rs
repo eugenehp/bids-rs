@@ -26,6 +26,7 @@ pub enum HrfModel {
 }
 
 impl HrfModel {
+    #[must_use]
     pub fn parse(s: &str) -> Self {
         match s.to_lowercase().as_str() {
             "spm" => Self::Spm,
@@ -196,6 +197,7 @@ pub fn glover_hrf(tr: f64, oversampling: usize, time_length: f64, onset: f64) ->
 }
 
 /// SPM time derivative.
+#[must_use]
 pub fn spm_time_derivative(tr: f64, oversampling: usize, time_length: f64, onset: f64) -> Vec<f64> {
     let d = 0.1;
     let h1 = spm_hrf(tr, oversampling, time_length, onset);
@@ -204,6 +206,7 @@ pub fn spm_time_derivative(tr: f64, oversampling: usize, time_length: f64, onset
 }
 
 /// Glover time derivative.
+#[must_use]
 pub fn glover_time_derivative(
     tr: f64,
     oversampling: usize,
@@ -217,6 +220,7 @@ pub fn glover_time_derivative(
 }
 
 /// SPM dispersion derivative.
+#[must_use]
 pub fn spm_dispersion_derivative(
     tr: f64,
     oversampling: usize,
@@ -234,6 +238,7 @@ pub fn spm_dispersion_derivative(
 }
 
 /// Glover dispersion derivative.
+#[must_use]
 pub fn glover_dispersion_derivative(
     tr: f64,
     oversampling: usize,
@@ -305,6 +310,7 @@ pub fn hrf_kernel(
 ///
 /// `exp_condition`: (onsets, durations, amplitudes)
 /// `frame_times`: sample time points in seconds
+#[must_use]
 pub fn compute_regressor(
     onsets: &[f64],
     durations: &[f64],

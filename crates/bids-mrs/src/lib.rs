@@ -36,6 +36,7 @@ pub struct MrsMetadata {
     pub task_name: Option<String>,
 }
 impl MrsMetadata {
+    #[must_use]
     pub fn from_metadata(md: &BidsMetadata) -> Option<Self> {
         md.deserialize_as()
     }

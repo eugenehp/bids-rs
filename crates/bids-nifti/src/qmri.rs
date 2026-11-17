@@ -93,6 +93,7 @@ pub struct QmriMetadata {
 
 impl QmriMetadata {
     /// Parse from a `BidsMetadata` dictionary.
+    #[must_use]
     pub fn from_metadata(md: &bids_core::metadata::BidsMetadata) -> Option<Self> {
         md.deserialize_as()
     }
@@ -102,7 +103,7 @@ impl QmriMetadata {
     pub fn echo_times(&self) -> Vec<f64> {
         match &self.echo_time {
             Some(serde_json::Value::Number(n)) => n.as_f64().map_or_else(Vec::new, |v| vec![v]),
-            Some(serde_json::Value::Array(arr)) => arr.iter().filter_map(|v| v.as_f64()).collect(),
+            Some(serde_json::Value::Array(arr)) => arr.iter().filter_map(serde_json::Value::as_f64).collect(),
             _ => Vec::new(),
         }
     }
@@ -112,7 +113,7 @@ impl QmriMetadata {
     pub fn flip_angles(&self) -> Vec<f64> {
         match &self.flip_angle {
             Some(serde_json::Value::Number(n)) => n.as_f64().map_or_else(Vec::new, |v| vec![v]),
-            Some(serde_json::Value::Array(arr)) => arr.iter().filter_map(|v| v.as_f64()).collect(),
+            Some(serde_json::Value::Array(arr)) => arr.iter().filter_map(serde_json::Value::as_f64).collect(),
             _ => Vec::new(),
         }
     }

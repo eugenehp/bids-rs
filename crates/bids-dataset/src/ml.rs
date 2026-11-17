@@ -136,6 +136,7 @@ impl KFold {
     }
 
     /// Iterate over (train_subjects, test_subjects) for each fold.
+    #[must_use]
     pub fn iter_folds<'a>(&self, subjects: &'a [String]) -> Vec<FoldPair<'a>> {
         let folds = self.split_subjects(subjects);
         let subj_to_fold: HashMap<&str, usize> = folds
@@ -183,7 +184,7 @@ impl StratifiedSplit {
         for s in subjects {
             let label = subject_labels
                 .get(s)
-                .map(|l| l.as_str())
+                .map(std::string::String::as_str)
                 .unwrap_or("_unknown_");
             by_label.entry(label).or_default().push(s.clone());
         }
@@ -282,6 +283,7 @@ impl<'a> DatasetIter<'a> {
     /// Collect all samples into a Vec.
     ///
     /// For large datasets, prefer iterating lazily with `into_iter()`.
+    #[must_use]
     pub fn collect_samples(&self) -> Vec<Sample> {
         let mut samples = Vec::new();
 
@@ -429,7 +431,7 @@ mod tests {
         let kf = KFold::new(5);
         let folds = kf.split_subjects(&subjects);
         assert_eq!(folds.len(), 5);
-        let total: usize = folds.iter().map(|f| f.len()).sum();
+        let total: usize = folds.iter().map(std::vec::Vec::len).sum();
         assert_eq!(total, 10);
 
         // No overlap between folds
@@ -514,7 +516,7 @@ mod tests {
         let count_label = |group: &[String], label: &str| -> usize {
             group
                 .iter()
-                .filter(|s| labels.get(*s).map(|l| l.as_str()) == Some(label))
+                .filter(|s| labels.get(*s).map(std::string::String::as_str) == Some(label))
                 .count()
         };
         assert!(count_label(&train, "healthy") > 0);

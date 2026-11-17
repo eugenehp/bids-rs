@@ -329,6 +329,7 @@ impl TransformSpec {
 
     /// Check that every instruction names a supported transformation and
     /// carries well-formed arguments.
+    #[must_use]
     pub fn validate(&self) -> Vec<TransformError> {
         let mut errors = Vec::new();
         for raw in &self.instructions {

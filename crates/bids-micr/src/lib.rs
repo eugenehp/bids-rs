@@ -51,6 +51,7 @@ pub struct MicrMetadata {
     pub manufacturer: Option<String>,
 }
 impl MicrMetadata {
+    #[must_use]
     pub fn from_metadata(md: &BidsMetadata) -> Option<Self> {
         md.deserialize_as()
     }

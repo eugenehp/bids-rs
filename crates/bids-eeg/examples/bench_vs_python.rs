@@ -35,7 +35,7 @@ fn main() {
         match args[i].as_str() {
             "--channels" => {
                 i += 1;
-                opts.channels = Some(args[i].split(',').map(|s| s.to_string()).collect());
+                opts.channels = Some(args[i].split(',').map(std::string::ToString::to_string).collect());
             }
             "--tmin" => {
                 i += 1;
@@ -51,7 +51,7 @@ fn main() {
             }
             "--exclude" => {
                 i += 1;
-                opts.exclude = Some(args[i].split(',').map(|s| s.to_string()).collect());
+                opts.exclude = Some(args[i].split(',').map(std::string::ToString::to_string).collect());
             }
             _ => {}
         }

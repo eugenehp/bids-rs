@@ -74,7 +74,7 @@ impl PipelineResult {
     /// Number of channels per epoch.
     #[must_use]
     pub fn n_channels(&self) -> usize {
-        self.x.first().map_or(0, |e| e.len())
+        self.x.first().map_or(0, std::vec::Vec::len)
     }
 
     /// Number of samples per epoch.
@@ -83,7 +83,7 @@ impl PipelineResult {
         self.x
             .first()
             .and_then(|e| e.first())
-            .map_or(0, |c| c.len())
+            .map_or(0, std::vec::Vec::len)
     }
 
     /// Shape as (n_epochs, n_channels, n_samples).
@@ -341,6 +341,7 @@ impl Pipeline {
     /// 1. **Pre-epoch**: channel selection, referencing, filtering, resampling
     /// 2. **Epoching**: cut windows around events
     /// 3. **Post-epoch**: baseline correction, normalization
+    #[must_use]
     pub fn transform(&self, data: &EegData, events: &[EegEvent]) -> PipelineResult {
         // Partition steps into pre-epoch, epoch specs, post-epoch
         let mut pre_steps = Vec::new();
@@ -413,11 +414,11 @@ impl Pipeline {
 fn apply_step_to_data(data: EegData, step: &Step) -> EegData {
     match step {
         Step::SelectChannels(names) => {
-            let refs: Vec<&str> = names.iter().map(|s| s.as_str()).collect();
+            let refs: Vec<&str> = names.iter().map(std::string::String::as_str).collect();
             data.select_channels(&refs)
         }
         Step::ExcludeChannels(names) => {
-            let refs: Vec<&str> = names.iter().map(|s| s.as_str()).collect();
+            let refs: Vec<&str> = names.iter().map(std::string::String::as_str).collect();
             data.exclude_channels(&refs)
         }
         Step::AverageReference => data.set_average_reference(),
@@ -495,7 +496,7 @@ fn extract_epochs(
     epoch_specs: &[(String, f64, f64)],
 ) -> ExtractedEpochs {
     let sr = data.sampling_rates.first().copied().unwrap_or(1.0);
-    let n_total = data.data.first().map_or(0, |ch| ch.len()) as isize;
+    let n_total = data.data.first().map_or(0, std::vec::Vec::len) as isize;
 
     let mut epochs = Vec::new();
     let mut labels = Vec::new();

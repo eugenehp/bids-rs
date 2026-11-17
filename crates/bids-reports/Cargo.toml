@@ -2,10 +2,10 @@
 name = "bids-reports"
 description = "Auto-generate publication-quality data acquisition methods sections from BIDS datasets"
 version.workspace = true
+authors.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
 rust-version.workspace = true
@@ -15,3 +15,6 @@ bids-core = { workspace = true }
 bids-layout = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+
+[lints]
+workspace = true

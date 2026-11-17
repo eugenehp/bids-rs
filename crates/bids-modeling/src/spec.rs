@@ -222,6 +222,7 @@ impl GlmSpec {
     }
 
     /// Build from data rows and a model specification dict.
+    #[must_use]
     pub fn from_rows(
         data: &[HashMap<String, f64>],
         x_names: &[String],
@@ -259,20 +260,24 @@ impl GlmSpec {
     }
 
     /// Design matrix as (column_names, column_data).
+    #[must_use]
     pub fn design_matrix(&self) -> (Vec<String>, Vec<Vec<f64>>) {
         let names: Vec<String> = self.terms.iter().map(|t| t.name.clone()).collect();
         let columns: Vec<Vec<f64>> = self.terms.iter().map(|t| t.values.clone()).collect();
         (names, columns)
     }
 
+    #[must_use]
     pub fn n_obs(&self) -> usize {
         self.terms.first().map_or(0, |t| t.values.len())
     }
+    #[must_use]
     pub fn n_predictors(&self) -> usize {
         self.terms.len()
     }
 
     /// Get the design matrix X as column vectors.
+    #[must_use]
     pub fn x(&self) -> &[Term] {
         &self.terms
     }
@@ -531,10 +536,12 @@ pub struct MetaAnalysisSpec {
 }
 
 impl MetaAnalysisSpec {
+    #[must_use]
     pub fn new(terms: Vec<Term>) -> Self {
         Self { terms }
     }
 
+    #[must_use]
     pub fn from_rows(data: &[HashMap<String, f64>], x_names: &[String]) -> Self {
         let terms: Vec<Term> = x_names
             .iter()

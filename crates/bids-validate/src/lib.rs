@@ -87,6 +87,7 @@ pub fn validate_derivative_path(path: &Path) -> Result<String> {
 }
 
 /// Check if a path should be ignored during indexing.
+#[must_use]
 pub fn should_ignore(path: &Path, root: &Path, ignore_patterns: &[Regex]) -> bool {
     let rel = path
         .strip_prefix(root)
@@ -97,6 +98,7 @@ pub fn should_ignore(path: &Path, root: &Path, ignore_patterns: &[Regex]) -> boo
 }
 
 /// Check if a path matches BIDS naming conventions (basic validation).
+#[must_use]
 pub fn is_bids_file(path: &Path) -> bool {
     let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
         return false;
@@ -117,6 +119,7 @@ pub fn is_bids_file(path: &Path) -> bool {
 }
 
 /// Resolve a BIDS URI or relative IntendedFor path to an absolute path.
+#[must_use]
 pub fn resolve_intended_for(intent: &str, root: &Path, subject: &str) -> Option<PathBuf> {
     if let Some(rest) = intent.strip_prefix("bids::") {
         Some(root.join(rest))
@@ -333,7 +336,7 @@ fn validate_subject_dir(sub_dir: &Path, root: &Path, issues: &mut Vec<Validation
 
     let entries: Vec<walkdir::DirEntry> = walkdir::WalkDir::new(sub_dir)
         .into_iter()
-        .filter_map(|e| e.ok())
+        .filter_map(std::result::Result::ok)
         .filter(|e| e.file_type().is_file())
         .collect();
 
@@ -367,6 +370,7 @@ fn validate_subject_dir(sub_dir: &Path, root: &Path, issues: &mut Vec<Validation
 }
 
 /// Check if a path should be force-indexed.
+#[must_use]
 pub fn should_force_index(path: &Path, root: &Path, force_patterns: &[Regex]) -> bool {
     if force_patterns.is_empty() {
         return false;

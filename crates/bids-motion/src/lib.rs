@@ -29,6 +29,7 @@ pub struct MotionMetadata {
     pub recording_type: Option<String>,
 }
 impl MotionMetadata {
+    #[must_use]
     pub fn from_metadata(md: &BidsMetadata) -> Option<Self> {
         md.deserialize_as()
     }

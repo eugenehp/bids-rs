@@ -2,10 +2,10 @@
 name = "bids-derive"
 description = "Support for BIDS-Derivatives datasets"
 version.workspace = true
+authors.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
 rust-version.workspace = true
@@ -16,3 +16,6 @@ bids-layout = { workspace = true }
 bids-validate = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+
+[lints]
+workspace = true

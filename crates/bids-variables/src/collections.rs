@@ -86,6 +86,7 @@ impl Default for VariableCollection {
 }
 
 impl VariableCollection {
+    #[must_use]
     pub fn new(vars: Vec<SimpleVariable>) -> Self {
         let level = vars
             .first()
@@ -113,6 +114,7 @@ impl VariableCollection {
         }
     }
 
+    #[must_use]
     pub fn get(&self, name: &str) -> Option<&SimpleVariable> {
         self.variables.get(name)
     }
@@ -202,6 +204,7 @@ impl VariableCollection {
     }
 
     /// Create collection from tabular rows.
+    #[must_use]
     pub fn from_rows(rows: &[StringEntities], source: &str) -> Self {
         let mut by_name: HashMap<String, (Vec<String>, Vec<StringEntities>)> = HashMap::new();
         for row in rows {
@@ -571,6 +574,7 @@ pub struct RunVariableCollection {
 }
 
 impl RunVariableCollection {
+    #[must_use]
     pub fn new(
         sparse: Vec<SparseRunVariable>,
         dense: Vec<DenseRunVariable>,
@@ -583,26 +587,33 @@ impl RunVariableCollection {
         }
     }
 
+    #[must_use]
     pub fn get_sparse(&self, name: &str) -> Option<&SparseRunVariable> {
         self.sparse.iter().find(|v| v.name == name)
     }
+    #[must_use]
     pub fn get_dense(&self, name: &str) -> Option<&DenseRunVariable> {
         self.dense.iter().find(|v| v.name == name)
     }
 
+    #[must_use]
     pub fn sparse_names(&self) -> Vec<&str> {
         self.sparse.iter().map(|v| v.name.as_str()).collect()
     }
+    #[must_use]
     pub fn dense_names(&self) -> Vec<&str> {
         self.dense.iter().map(|v| v.name.as_str()).collect()
     }
+    #[must_use]
     pub fn all_sparse(&self) -> bool {
         self.dense.is_empty()
     }
+    #[must_use]
     pub fn all_dense(&self) -> bool {
         self.sparse.is_empty()
     }
 
+    #[must_use]
     pub fn names(&self) -> Vec<&str> {
         let mut n: Vec<&str> = self
             .sparse_names()
@@ -654,6 +665,7 @@ impl RunVariableCollection {
     }
 
     /// Convert to rows with sampling rate option.
+    #[must_use]
     pub fn to_rows_with_options(
         &self,
         include_sparse: bool,
@@ -707,6 +719,7 @@ impl RunVariableCollection {
 }
 
 /// Merge multiple variable collections.
+#[must_use]
 pub fn merge_collections(collections: &[VariableCollection]) -> Option<VariableCollection> {
     if collections.is_empty() {
         return None;

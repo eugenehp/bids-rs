@@ -45,9 +45,11 @@ pub struct PetMetadata {
 }
 
 impl PetMetadata {
+    #[must_use]
     pub fn from_metadata(md: &BidsMetadata) -> Option<Self> {
         md.deserialize_as()
     }
+    #[must_use]
     pub fn total_duration(&self) -> Option<f64> {
         self.frame_duration.as_ref().map(|d| d.iter().sum())
     }

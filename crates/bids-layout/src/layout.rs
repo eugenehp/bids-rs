@@ -1,7 +1,7 @@
 //! The main `BidsLayout` type and its builder.
 //!
 //! [`BidsLayout`] is the primary entry point for working with a BIDS dataset.
-//! It indexes the directory tree into a DuckDB database and provides fluent
+//! It indexes the directory tree into an in-memory index (optionally kept in a file) and provides fluent
 //! query methods, metadata inheritance, derivative support, and path building.
 
 use bids_core::config::Config;
@@ -20,7 +20,7 @@ use crate::query::{QueryFilter, Scope};
 
 /// The main entry point for interacting with a BIDS dataset.
 ///
-/// `BidsLayout` indexes a BIDS dataset directory into a DuckDB database and
+/// `BidsLayout` indexes a BIDS dataset directory into an in-memory index and
 /// provides a fluent query API for finding files by their BIDS entities. It
 /// handles JSON sidecar metadata inheritance, file associations, derivative
 /// datasets, and path building.
@@ -29,7 +29,7 @@ use crate::query::{QueryFilter, Scope};
 ///
 /// # Thread Safety
 ///
-/// `BidsLayout` wraps a `duckdb::Connection` plus interior-mutable buffers
+/// `BidsLayout` wraps its index in interior-mutable cells (`RefCell`)
 /// and is therefore `!Sync`. It **cannot** be shared across threads.
 ///
 /// For multi-threaded or async workloads:
@@ -39,10 +39,10 @@ use crate::query::{QueryFilter, Scope};
 ///    ```no_run
 ///    # use bids_layout::BidsLayout;
 ///    let layout = BidsLayout::new("/data").unwrap();
-///    layout.save(std::path::Path::new("/tmp/index.duckdb")).unwrap();
+///    layout.save(std::path::Path::new("/tmp/index.json")).unwrap();
 ///
 ///    // In each thread:
-///    let local = BidsLayout::load(std::path::Path::new("/tmp/index.duckdb")).unwrap();
+///    let local = BidsLayout::load(std::path::Path::new("/tmp/index.json")).unwrap();
 ///    ```
 ///
 /// 2. **Create per-thread** — Call `BidsLayout::new()` in each thread. The
@@ -59,7 +59,7 @@ use crate::query::{QueryFilter, Scope};
 /// // Builder: customize indexing behavior
 /// let layout = BidsLayout::builder("/path/to/dataset")
 ///     .validate(false)                            // skip BIDS validation
-///     .database_path("/tmp/index.duckdb")         // persistent database
+///     .database_path("/tmp/index.json")         // persistent database
 ///     .index_metadata(true)                       // index JSON sidecars
 ///     .add_derivative("/path/to/derivatives/fmriprep")
 ///     .build()
@@ -146,6 +146,15 @@ impl BidsLayout {
     /// Returns an error if the database file doesn't exist, can't be opened,
     /// or doesn't contain valid layout info.
     pub fn load(database_path: &Path) -> Result<Self> {
+        // never let `open` start a fresh index over a file it cannot read
+        if !Database::exists(database_path) {
+            return Err(BidsError::Database(format!(
+                "{}: not an index this bids-rs can read{}; build one with \
+                 `BidsLayout::builder(root).database_path(..)`",
+                database_path.display(),
+                if database_path.exists() { " (a DuckDB index from bids-rs 0.0.4?)" } else { " (no such file)" }
+            )));
+        }
         let db = Database::open(database_path)?;
         let (root_str, config_str) = db
             .get_layout_info()?
@@ -847,7 +856,7 @@ impl std::fmt::Display for BidsLayout {
 /// let layout = BidsLayout::builder("/path/to/dataset")
 ///     .validate(true)
 ///     .index_metadata(true)
-///     .database_path("/tmp/bids_index.duckdb")
+///     .database_path("/tmp/bids_index.json")
 ///     .add_derivative("/path/to/derivatives/fmriprep")
 ///     .build()
 ///     .unwrap();

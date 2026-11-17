@@ -54,7 +54,10 @@ pub mod cifti;
 pub mod gifti;
 #[allow(unsafe_code)]
 pub mod mmap;
+pub mod orientation;
 pub mod qmri;
+mod write;
+pub use write::{nifti1_bytes, voxel_bytes};
 
 pub use bidsfile::BidsImageFile;
 pub use cifti::{BrainModel, CiftiHeader, read_cifti_header};
@@ -100,7 +103,9 @@ impl DataType {
         }
     }
 
-    fn bytes_per_voxel(self) -> usize {
+    /// Bytes a voxel of this type takes (0 for [`Self::Unknown`]).
+    #[must_use]
+    pub fn bytes_per_voxel(self) -> usize {
         match self {
             Self::UInt8 | Self::Int8 => 1,
             Self::Int16 | Self::UInt16 => 2,
@@ -167,6 +172,10 @@ pub struct NiftiHeader {
     /// `srow_x`, `srow_y`, `srow_z` — the `sform` affine's three rows, as
     /// stored. All zero when the file carries no `sform`.
     pub srow: [[f64; 4]; 3],
+
+    /// `xyzt_units`: the spatial unit in bits 0-2 (1 metre, 2 mm, 3 micron,
+    /// 0 unknown) and the temporal unit in bits 3-5, as stored.
+    pub xyzt_units: u8,
 }
 
 /// Which of NIfTI's geometry records an [`affine`](NiftiHeader::affine) came
@@ -299,6 +308,7 @@ impl Default for NiftiHeader {
             quatern: [0.0; 3],
             qoffset: [0.0; 3],
             srow: [[0.0; 4]; 3],
+            xyzt_units: 0,
         }
     }
 }
@@ -380,6 +390,7 @@ impl NiftiHeader {
 
         let qform_code = i16_at(252);
         let sform_code = i16_at(254);
+        let xyzt_units = buf[123];
 
         let quatern = [f32_at(256), f32_at(260), f32_at(264)];
         let qoffset = [f32_at(268), f32_at(272), f32_at(276)];
@@ -420,6 +431,7 @@ impl NiftiHeader {
             quatern,
             qoffset,
             srow,
+            xyzt_units,
         })
     }
 
@@ -466,6 +478,8 @@ impl NiftiHeader {
         // take the `sform` branch.
         let qform_code = i32_at(344);
         let sform_code = i32_at(348);
+        // `int32` in NIfTI-2; the codes are small, so the low byte holds them.
+        let xyzt_units = i32_at(500).clamp(0, 255) as u8;
 
         let quatern = [f64_at(352), f64_at(360), f64_at(368)];
         let qoffset = [f64_at(376), f64_at(384), f64_at(392)];
@@ -502,10 +516,12 @@ impl NiftiHeader {
             quatern,
             qoffset,
             srow,
+            xyzt_units,
         })
     }
 
     /// Number of volumes (4th dimension). Returns 1 for 3D images.
+    #[must_use]
     pub fn n_vols(&self) -> usize {
         if self.ndim >= 4 {
             self.dim[4].max(1) as usize
@@ -520,6 +536,7 @@ impl NiftiHeader {
     /// sign, because a unit quaternion cannot express a reflection. Several
     /// writers leave the field at zero; the spec reads that as `+1`, and so
     /// does this.
+    #[must_use]
     pub fn qfac(&self) -> f64 {
         if self.pixdim[0] < 0.0 { -1.0 } else { 1.0 }
     }
@@ -529,6 +546,7 @@ impl NiftiHeader {
     /// `qfac` is **not** folded in: this is the rotation `quatern_b/c/d`
     /// encodes, and the k axis is flipped separately. That split is the point
     /// of having it — folding the two together is what an affine already does.
+    #[must_use]
     pub fn qform_rotation(&self) -> [[f64; 3]; 3] {
         let [b, c, d] = self.quatern;
         let a = (1.0 - b * b - c * c - d * d).max(0.0).sqrt();
@@ -556,16 +574,19 @@ impl NiftiHeader {
     ///
     /// Use this when the `qform` is the record you want — some pipelines
     /// require it — rather than the one NIfTI's precedence picked.
+    #[must_use]
     pub fn qform_affine(&self) -> [[f64; 4]; 4] {
         affine_from_qform(self.quatern, self.qoffset, &self.pixdim)
     }
 
     /// Voxel dimensions in mm: (x, y, z).
+    #[must_use]
     pub fn voxel_size(&self) -> (f64, f64, f64) {
         (self.pixdim[1], self.pixdim[2], self.pixdim[3])
     }
 
     /// Matrix size: (nx, ny, nz).
+    #[must_use]
     pub fn matrix_size(&self) -> (usize, usize, usize) {
         (
             self.dim[1].max(0) as usize,
@@ -575,6 +596,7 @@ impl NiftiHeader {
     }
 
     /// Repetition time in seconds (`pixdim[4]` for 4D time series).
+    #[must_use]
     pub fn tr(&self) -> Option<f64> {
         if self.ndim >= 4 && self.pixdim[4] > 0.0 {
             Some(self.pixdim[4])
@@ -584,15 +606,17 @@ impl NiftiHeader {
     }
 
     /// Total number of voxels across all dimensions.
+    #[must_use]
     pub fn n_voxels(&self) -> usize {
         let mut n = 1usize;
-        for i in 1..=self.ndim {
-            n = n.saturating_mul(self.dim[i].max(0) as usize);
+        for &d in &self.dim[1..=self.ndim] {
+            n = n.saturating_mul(d.max(0) as usize);
         }
         n
     }
 
     /// Shape as a Vec (dims 1..ndim).
+    #[must_use]
     pub fn shape(&self) -> Vec<usize> {
         (1..=self.ndim)
             .map(|i| self.dim[i].max(0) as usize)
@@ -600,22 +624,35 @@ impl NiftiHeader {
     }
 
     /// Whether slope/intercept scaling should be applied.
+    #[must_use]
     pub fn has_scaling(&self) -> bool {
-        self.scl_slope != 0.0 && (self.scl_slope != 1.0 || self.scl_inter != 0.0)
+        scaling(self.scl_slope, self.scl_inter).is_some()
+    }
+
+    /// The `(slope, inter)` applied on reading, as nibabel reads them, or
+    /// `None` for unscaled data (a zero or non-finite slope, or `(1, 0)`).
+    /// With [`Self::data_type`] this says which array type nibabel's
+    /// `dataobj` yields: the stored type when unscaled, a float otherwise.
+    #[must_use]
+    pub fn scaling(&self) -> Option<(f64, f64)> {
+        scaling(self.scl_slope, self.scl_inter)
     }
 
     /// Parsed datatype enum.
+    #[must_use]
     pub fn data_type(&self) -> DataType {
         DataType::from_code(self.datatype)
     }
 
     /// Get the 4×4 affine matrix mapping voxel indices to mm coordinates.
     /// Equivalent to nibabel's `img.affine`.
+    #[must_use]
     pub fn affine(&self) -> &[[f64; 4]; 4] {
         &self.affine
     }
 
     /// Transform voxel indices [i, j, k] to world coordinates [x, y, z] in mm.
+    #[must_use]
     pub fn voxel_to_world(&self, ijk: [f64; 3]) -> [f64; 3] {
         let a = &self.affine;
         [
@@ -802,6 +839,7 @@ impl NiftiImage {
     }
 
     /// Shape of the image as a Vec.
+    #[must_use]
     pub fn shape(&self) -> Vec<usize> {
         self.header.shape()
     }
@@ -815,6 +853,7 @@ impl NiftiImage {
     }
 
     /// Get a voxel value by multi-dimensional index [x, y, z] or [x, y, z, t].
+    #[must_use]
     pub fn get_voxel(&self, idx: &[usize]) -> Option<f64> {
         let linear = self.linear_index(idx)?;
         self.data.get(linear).copied()
@@ -822,6 +861,7 @@ impl NiftiImage {
 
     /// Get a 3D slice at time point t from a 4D image. Returns None for 3D images
     /// if t > 0.
+    #[must_use]
     pub fn get_volume(&self, t: usize) -> Option<Vec<f64>> {
         let (nx, ny, nz) = self.header.matrix_size();
         let vol_size = nx * ny * nz;
@@ -839,6 +879,7 @@ impl NiftiImage {
     }
 
     /// Extract a time series for a single voxel [x, y, z] across all volumes.
+    #[must_use]
     pub fn get_timeseries(&self, x: usize, y: usize, z: usize) -> Option<Vec<f64>> {
         let (nx, ny, nz) = self.header.matrix_size();
         if x >= nx || y >= ny || z >= nz {
@@ -855,6 +896,7 @@ impl NiftiImage {
     }
 
     /// Compute the mean across all voxels (useful for QC).
+    #[must_use]
     pub fn mean(&self) -> f64 {
         if self.data.is_empty() {
             return 0.0;
@@ -863,6 +905,7 @@ impl NiftiImage {
     }
 
     /// Compute the mean image across time (for 4D data, returns 3D mean).
+    #[must_use]
     pub fn temporal_mean(&self) -> Vec<f64> {
         let (nx, ny, nz) = self.header.matrix_size();
         let vol_size = nx * ny * nz;
@@ -962,7 +1005,7 @@ fn read_single_volume_seekable<R: Read + Seek>(
 }
 
 /// Read voxel data from a streaming reader (gzip, .img pair).
-fn read_voxel_data_stream<R: Read>(
+pub(crate) fn read_voxel_data_stream<R: Read>(
     reader: &mut R,
     header: &NiftiHeader,
 ) -> Result<Vec<f64>, NiftiError> {
@@ -998,143 +1041,63 @@ fn decode_voxels<R: Read>(reader: &mut R, header: &NiftiHeader) -> Result<Vec<f6
     decode_raw_to_f64(&raw, dt, header.scl_slope, header.scl_inter)
 }
 
-/// Convert raw bytes to f64 with optional scaling. Type-specific decode paths
-/// with no branch in the inner loop.
-#[inline(never)]
+/// The `(slope, inter)` to apply, as nibabel reads them: a zero or
+/// non-finite slope means unscaled (nibabel writes NaN for unscaled
+/// images), a non-finite intercept with a valid slope counts as 0, and
+/// `(1, 0)` is the identity.
+fn scaling(slope: f64, inter: f64) -> Option<(f64, f64)> {
+    if slope == 0.0 || !slope.is_finite() {
+        return None;
+    }
+    let inter = if inter.is_finite() { inter } else { 0.0 };
+    (slope != 1.0 || inter != 0.0).then_some((slope, inter))
+}
+
+/// Convert raw bytes to f64 with optional scaling.
 pub(crate) fn decode_raw_to_f64(
     raw: &[u8],
     dt: DataType,
     scl_slope: f64,
     scl_inter: f64,
 ) -> Result<Vec<f64>, NiftiError> {
-    let bpv = dt.bytes_per_voxel();
-    let n = raw.len() / bpv;
+    decode_voxels_as(raw, dt, scl_slope, scl_inter, |v| v)
+}
 
-    let mut data = vec![0.0f64; n];
-
-    let apply_scaling = scl_slope != 0.0 && (scl_slope != 1.0 || scl_inter != 0.0);
-    let slope = if scl_slope == 0.0 { 1.0 } else { scl_slope };
-    let inter = scl_inter;
-
-    // Helper: read a LE value from a byte slice at a known-good offset.
-    // Using explicit byte indexing avoids try_into().unwrap().
-    macro_rules! le_read {
-        (i16, $src:expr, $off:expr) => {
-            i16::from_le_bytes([$src[$off], $src[$off + 1]])
-        };
-        (u16, $src:expr, $off:expr) => {
-            u16::from_le_bytes([$src[$off], $src[$off + 1]])
-        };
-        (i32, $src:expr, $off:expr) => {
-            i32::from_le_bytes([$src[$off], $src[$off + 1], $src[$off + 2], $src[$off + 3]])
-        };
-        (u32, $src:expr, $off:expr) => {
-            u32::from_le_bytes([$src[$off], $src[$off + 1], $src[$off + 2], $src[$off + 3]])
-        };
-        (f32, $src:expr, $off:expr) => {
-            f32::from_le_bytes([$src[$off], $src[$off + 1], $src[$off + 2], $src[$off + 3]])
-        };
-        (f64, $src:expr, $off:expr) => {
-            f64::from_le_bytes([
-                $src[$off],
-                $src[$off + 1],
-                $src[$off + 2],
-                $src[$off + 3],
-                $src[$off + 4],
-                $src[$off + 5],
-                $src[$off + 6],
-                $src[$off + 7],
-            ])
-        };
-        (i64, $src:expr, $off:expr) => {
-            i64::from_le_bytes([
-                $src[$off],
-                $src[$off + 1],
-                $src[$off + 2],
-                $src[$off + 3],
-                $src[$off + 4],
-                $src[$off + 5],
-                $src[$off + 6],
-                $src[$off + 7],
-            ])
-        };
-        (u64, $src:expr, $off:expr) => {
-            u64::from_le_bytes([
-                $src[$off],
-                $src[$off + 1],
-                $src[$off + 2],
-                $src[$off + 3],
-                $src[$off + 4],
-                $src[$off + 5],
-                $src[$off + 6],
-                $src[$off + 7],
-            ])
-        };
+/// Little-endian voxels of `dt` as `cast` of their float64 values, scaled
+/// as nibabel scales them (`raw * slope + inter`, see [`NiftiHeader::scaling`])
+/// — one pass and one output array, so a caller wanting float32 never
+/// holds the float64 image. Type-specific loops with no branch inside.
+pub fn decode_voxels_as<T>(
+    raw: &[u8],
+    dt: DataType,
+    scl_slope: f64,
+    scl_inter: f64,
+    cast: impl Fn(f64) -> T,
+) -> Result<Vec<T>, NiftiError> {
+    let scale = scaling(scl_slope, scl_inter);
+    macro_rules! decode {
+        ($t:ty) => {{
+            let words = raw.chunks_exact(std::mem::size_of::<$t>());
+            let value = |b: &[u8]| <$t>::from_le_bytes(b.try_into().unwrap()) as f64;
+            match scale {
+                Some((slope, inter)) => words.map(|b| cast(value(b) * slope + inter)).collect(),
+                None => words.map(|b| cast(value(b))).collect(),
+            }
+        }};
     }
-
-    match dt {
-        DataType::UInt8 => {
-            for (dst, &src) in data.iter_mut().zip(raw.iter()) {
-                *dst = src as f64;
-            }
-        }
-        DataType::Int8 => {
-            for (dst, &src) in data.iter_mut().zip(raw.iter()) {
-                *dst = (src as i8) as f64;
-            }
-        }
-        DataType::Int16 => {
-            for (i, dst) in data.iter_mut().enumerate() {
-                *dst = le_read!(i16, raw, i * 2) as f64;
-            }
-        }
-        DataType::UInt16 => {
-            for (i, dst) in data.iter_mut().enumerate() {
-                *dst = le_read!(u16, raw, i * 2) as f64;
-            }
-        }
-        DataType::Int32 => {
-            for (i, dst) in data.iter_mut().enumerate() {
-                *dst = le_read!(i32, raw, i * 4) as f64;
-            }
-        }
-        DataType::UInt32 => {
-            for (i, dst) in data.iter_mut().enumerate() {
-                *dst = le_read!(u32, raw, i * 4) as f64;
-            }
-        }
-        DataType::Float32 => {
-            for (i, dst) in data.iter_mut().enumerate() {
-                *dst = le_read!(f32, raw, i * 4) as f64;
-            }
-        }
-        DataType::Float64 => {
-            for (i, dst) in data.iter_mut().enumerate() {
-                *dst = le_read!(f64, raw, i * 8);
-            }
-        }
-        DataType::Int64 => {
-            for (i, dst) in data.iter_mut().enumerate() {
-                *dst = le_read!(i64, raw, i * 8) as f64;
-            }
-        }
-        DataType::UInt64 => {
-            for (i, dst) in data.iter_mut().enumerate() {
-                *dst = le_read!(u64, raw, i * 8) as f64;
-            }
-        }
-        DataType::Unknown => {
-            return Err(NiftiError::UnsupportedDataType(dt as i16));
-        }
-    }
-
-    if apply_scaling {
-        for v in &mut data {
-            *v = *v * slope + inter;
-        }
-    }
-
-    Ok(data)
+    Ok(match dt {
+        DataType::UInt8 => decode!(u8),
+        DataType::Int8 => decode!(i8),
+        DataType::Int16 => decode!(i16),
+        DataType::UInt16 => decode!(u16),
+        DataType::Int32 => decode!(i32),
+        DataType::UInt32 => decode!(u32),
+        DataType::Float32 => decode!(f32),
+        DataType::Float64 => decode!(f64),
+        DataType::Int64 => decode!(i64),
+        DataType::UInt64 => decode!(u64),
+        DataType::Unknown => return Err(NiftiError::UnsupportedDataType(dt as i16)),
+    })
 }
 
 // ─── Error ─────────────────────────────────────────────────────────────────────
@@ -1151,6 +1114,8 @@ pub enum NiftiError {
     UnsupportedDataType(i16),
     #[error("Volume {requested} out of range (available: {available})")]
     VolumeOutOfRange { requested: usize, available: usize },
+    #[error("Invalid orientation: {0}")]
+    InvalidOrientation(String),
 }
 
 // ─── Tests ─────────────────────────────────────────────────────────────────────
@@ -1373,6 +1338,21 @@ mod tests {
         assert!((img.data[7] - 26.0).abs() < 0.01); // 8*2+10
 
         std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn test_nan_slope_is_unscaled() {
+        // nibabel writes NaN slope and intercept for unscaled images.
+        let dims: [i16; 8] = [3, 2, 2, 2, 1, 1, 1, 1];
+        let raw_data: Vec<f32> = (1..=8).map(|v| v as f32).collect();
+        for (slope, inter, expect) in [(f32::NAN, f32::NAN, [1.0, 8.0]), (0.0, 5.0, [1.0, 8.0]), (2.0, f32::NAN, [2.0, 16.0])] {
+            let mut bytes = build_nifti1(&dims, &[1.0; 8], &raw_data);
+            bytes[112..116].copy_from_slice(&slope.to_le_bytes());
+            bytes[116..120].copy_from_slice(&inter.to_le_bytes());
+            let img = NiftiImage::from_bytes(&bytes).unwrap();
+            assert_eq!(img.header.has_scaling(), expect[0] != 1.0);
+            assert_eq!([img.data[0], img.data[7]], expect);
+        }
     }
 
     #[test]

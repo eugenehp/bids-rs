@@ -20,6 +20,7 @@ pub struct DerivativeManager {
 }
 
 impl DerivativeManager {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             derivatives: HashMap::new(),
@@ -56,6 +57,7 @@ impl DerivativeManager {
         Ok(())
     }
 
+    #[must_use]
     pub fn get(&self, name: &str) -> Option<&BidsLayout> {
         self.derivatives.get(name)
     }
@@ -65,6 +67,7 @@ impl DerivativeManager {
             .map(std::string::String::as_str)
             .collect()
     }
+    #[must_use]
     pub fn all(&self) -> &HashMap<String, BidsLayout> {
         &self.derivatives
     }

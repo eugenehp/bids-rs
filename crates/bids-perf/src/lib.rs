@@ -40,6 +40,7 @@ pub struct PerfMetadata {
     pub manufacturer: Option<String>,
 }
 impl PerfMetadata {
+    #[must_use]
     pub fn from_metadata(md: &BidsMetadata) -> Option<Self> {
         md.deserialize_as()
     }

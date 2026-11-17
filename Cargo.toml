@@ -37,7 +37,6 @@ edition = "2024"
 authors = ["Eugene Hauptmann <eugene@hauptmann.me>"]
 license = "GPL-3.0-or-later"
 repository = "https://github.com/eugenehp/bids-rs"
-homepage = "https://github.com/eugenehp/bids-rs"
 documentation = "https://docs.rs/bids"
 keywords = ["bids", "neuroimaging", "neuroscience", "eeg", "mri"]
 categories = ["science", "parser-implementations", "filesystem"]
@@ -87,15 +86,19 @@ serde_json = { version = "1", features = ["float_roundtrip"] }
 regex = "1"
 thiserror = "2"
 walkdir = "2"
-csv = "1"
 indexmap = { version = "2", features = ["serde"] }
-duckdb = { version = "1.10506", features = ["bundled"] }
 clap = { version = "4", features = ["derive"] }
 flate2 = "1"
 log = "0.4"
 
 # HTTP / dataset downloading
-ureq = { version = "3", features = ["json"] }
+# https in pure Rust: rustls with webpki's roots, no C compiler (ureq's
+# default rustls would build ring's C); the cryptography by feature in the
+# crates that fetch: `tls-graviola` (formally verified, x86-64 and aarch64)
+# or `tls-rustcrypto` (every target, wasm32 included)
+ureq = { version = "3", default-features = false, features = ["json", "gzip", "rustls-no-provider", "rustls-webpki-roots"] }
+rustls-graviola = "0.4"
+rustls-rustcrypto = "0.0.2-alpha"
 sha2 = "0.10"
 
 # Optional deps behind feature flags

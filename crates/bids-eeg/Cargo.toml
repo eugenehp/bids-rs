@@ -2,10 +2,10 @@
 name = "bids-eeg"
 description = "EEG domain support for BIDS: channels, electrodes, metadata, coordinate systems"
 version.workspace = true
+authors.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
 rust-version.workspace = true
@@ -15,17 +15,16 @@ default = []
 ## Enable ndarray integration for EegData → Array2<f64> conversion.
 ndarray = ["dep:ndarray"]
 ## Enable safetensors export for ML frameworks (PyTorch, JAX, etc.).
-safetensors = ["dep:safetensors"]
+safetensors = ["dep:safetensors", "dep:bytemuck"]
 
 [dependencies]
 bids-core = { workspace = true }
 bids-filter = { workspace = true }
 bids-io = { workspace = true }
 bids-layout = { workspace = true }
-bids-variables = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-bytemuck = { workspace = true }
+bytemuck = { workspace = true, optional = true }
 flate2 = { workspace = true }
 ndarray = { workspace = true, optional = true }
 safetensors = { workspace = true, optional = true }
@@ -33,3 +32,6 @@ safetensors = { workspace = true, optional = true }
 [dev-dependencies]
 bids-nifti = { workspace = true }
 bids-validate = { workspace = true }
+
+[lints]
+workspace = true

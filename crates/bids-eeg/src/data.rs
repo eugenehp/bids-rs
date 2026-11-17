@@ -92,6 +92,7 @@ impl std::fmt::Display for EegData {
 impl EegData {
     /// Number of channels.
     #[inline]
+    #[must_use]
     pub fn n_channels(&self) -> usize {
         self.data.len()
     }
@@ -109,6 +110,7 @@ impl EegData {
     }
 
     /// Get a single channel's data by label.
+    #[must_use]
     pub fn channel_by_name(&self, name: &str) -> Option<&[f64]> {
         let idx = self.channel_labels.iter().position(|l| l == name)?;
         self.channel(idx)
@@ -117,6 +119,7 @@ impl EegData {
     /// Generate a times array in seconds for the given channel (like MNE's `raw.times`).
     ///
     /// Returns one f64 per sample: `[0.0, 1/sr, 2/sr, ...]`.
+    #[must_use]
     pub fn times(&self, channel: usize) -> Option<Vec<f64>> {
         let n = self.n_samples(channel);
         if n == 0 {
@@ -127,6 +130,7 @@ impl EegData {
     }
 
     /// Get the data together with the times array (like MNE's `get_data(return_times=True)`).
+    #[must_use]
     pub fn get_data_with_times(&self) -> (Vec<Vec<f64>>, Vec<f64>) {
         let times = self.times(0).unwrap_or_default();
         (self.data.clone(), times)
@@ -546,6 +550,7 @@ impl EegData {
     ///
     /// Returns `(frequencies, psd)` where `psd[ch]` is the power spectrum for each channel.
     /// `n_fft` is the FFT window size (default: sampling rate = 1 Hz resolution).
+    #[must_use]
     pub fn compute_psd(&self, n_fft: Option<usize>) -> (Vec<f64>, Vec<Vec<f64>>) {
         let sr = self.sampling_rates.first().copied().unwrap_or(1.0);
         let n_fft = n_fft.unwrap_or(sr as usize);
@@ -738,22 +743,26 @@ pub struct ReadOptions {
 }
 
 impl ReadOptions {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Include only these channels (like MNE's `include` / `picks`).
+    #[must_use]
     pub fn with_channels(mut self, channels: Vec<String>) -> Self {
         self.channels = Some(channels);
         self
     }
 
     /// Exclude these channels (like MNE's `exclude`).
+    #[must_use]
     pub fn with_exclude(mut self, exclude: Vec<String>) -> Self {
         self.exclude = Some(exclude);
         self
     }
 
+    #[must_use]
     pub fn with_time_range(mut self, start: f64, end: f64) -> Self {
         self.start_time = Some(start);
         self.end_time = Some(end);
@@ -761,6 +770,7 @@ impl ReadOptions {
     }
 
     /// Override stim channel names. Pass empty vec to disable auto-detection.
+    #[must_use]
     pub fn with_stim_channel(mut self, names: Vec<String>) -> Self {
         self.stim_channel = Some(names);
         self

@@ -150,7 +150,7 @@ impl CSP {
         };
 
         let n_ch = epoch.len();
-        let n_s = epoch.first().map_or(0, |ch| ch.len());
+        let n_s = epoch.first().map_or(0, std::vec::Vec::len);
 
         filters
             .iter()
@@ -191,7 +191,7 @@ impl CSP {
     /// Number of output features (2 × n_components).
     #[must_use]
     pub fn n_features(&self) -> usize {
-        self.filters.as_ref().map_or(0, |f| f.len())
+        self.filters.as_ref().map_or(0, std::vec::Vec::len)
     }
 
     /// Whether the CSP has been fitted.
@@ -216,7 +216,7 @@ fn mean_covariance(epochs: &[Vec<Vec<f64>>], n_ch: usize) -> Vec<f64> {
 
     for epoch in epochs {
         let nc = epoch.len().min(n_ch);
-        let ns = epoch.first().map_or(0, |ch| ch.len());
+        let ns = epoch.first().map_or(0, std::vec::Vec::len);
         if ns < 2 {
             continue;
         }

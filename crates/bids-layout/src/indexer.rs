@@ -147,13 +147,9 @@ fn index_files(
                 }
             }
             // Skip ignored directories early
-            if e.file_type().is_dir()
+            !(e.file_type().is_dir()
                 && should_ignore(e.path(), root, &options.ignore)
-                && !should_force_index(e.path(), root, &options.force_index)
-            {
-                return false;
-            }
-            true
+                && !should_force_index(e.path(), root, &options.force_index))
         })
         .filter_map(std::result::Result::ok)
     {

@@ -145,6 +145,7 @@ pub enum Scope {
 
 impl Scope {
     /// Parse scope from a string. Prefer using `str::parse::<Scope>()`.
+    #[must_use]
     pub fn parse(s: &str) -> Self {
         match s {
             "all" => Scope::All,

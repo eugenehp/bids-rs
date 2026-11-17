@@ -2,30 +2,45 @@
 name = "bids-dataset"
 description = "Download, filter, match, and aggregate BIDS datasets from OpenNeuro for ML pipelines"
 version.workspace = true
+authors.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
 rust-version.workspace = true
 
 [features]
-default = []
+default = ["tls-graviola"]
+# https's cryptography, pure Rust either way: graviola's (formally verified,
+# x86-64 and aarch64) or RustCrypto's (every target, wasm32 included). With
+# both, graviola where it runs, RustCrypto elsewhere.
+tls-graviola = ["dep:rustls-graviola"]
+tls-rustcrypto = ["dep:rustls-rustcrypto"]
 ## Enable Apache Arrow + Parquet export for manifests.
 arrow = ["dep:arrow", "dep:arrow-schema", "dep:arrow-csv", "dep:parquet"]
 
 [dependencies]
 bids-core = { workspace = true }
-bids-layout = { workspace = true }
-bids-io = { workspace = true }
 bids-schema = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 ureq = { workspace = true }
+rustls-rustcrypto = { workspace = true, optional = true }
 sha2 = { workspace = true }
 flate2 = { workspace = true }
 arrow = { workspace = true, optional = true }
 arrow-schema = { workspace = true, optional = true }
 arrow-csv = { workspace = true, optional = true }
 parquet = { workspace = true, optional = true }
+
+# on wasm the cryptography is always RustCrypto's, whatever `tls-*` says:
+# graviola has no wasm backend
+[target.'cfg(target_family = "wasm")'.dependencies]
+rustls-rustcrypto = { workspace = true }
+
+[target.'cfg(any(target_arch = "x86_64", target_arch = "aarch64"))'.dependencies]
+rustls-graviola = { workspace = true, optional = true }
+
+[lints]
+workspace = true

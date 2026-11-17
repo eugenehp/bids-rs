@@ -15,6 +15,7 @@ pub struct Split {
 
 impl Split {
     /// Create a split with given ratios. They must sum to ≈1.0.
+    #[must_use]
     pub fn ratio(train: f64, val: f64, test: f64) -> Self {
         Self {
             train,
@@ -25,6 +26,7 @@ impl Split {
     }
 
     /// Set the random seed for reproducibility.
+    #[must_use]
     pub fn with_seed(mut self, seed: u64) -> Self {
         self.seed = seed;
         self
@@ -34,6 +36,7 @@ impl Split {
     ///
     /// Uses a deterministic hash-based assignment (no external RNG needed)
     /// so the split is reproducible across runs.
+    #[must_use]
     pub fn partition(&self, subjects: &[String]) -> (Vec<String>, Vec<String>, Vec<String>) {
         let mut scored: Vec<(u64, &String)> = subjects
             .iter()
@@ -70,6 +73,7 @@ impl Default for Split {
 
 /// Deterministic hash for subject assignment. Uses a simple FNV-like hash
 /// mixed with the seed so splits are reproducible.
+#[must_use]
 pub fn hash_subject(subject: &str, seed: u64) -> u64 {
     let mut h: u64 = seed ^ 0xcbf29ce484222325;
     for b in subject.bytes() {

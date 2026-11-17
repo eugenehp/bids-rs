@@ -41,6 +41,7 @@ pub struct NirsMetadata {
     pub detector_optode_count: Option<u32>,
 }
 impl NirsMetadata {
+    #[must_use]
     pub fn from_metadata(md: &BidsMetadata) -> Option<Self> {
         md.deserialize_as()
     }
@@ -55,6 +56,7 @@ pub struct Optode {
     pub z: Option<f64>,
 }
 impl Optode {
+    #[must_use]
     pub fn has_position(&self) -> bool {
         self.x.is_some() && self.y.is_some() && self.z.is_some()
     }

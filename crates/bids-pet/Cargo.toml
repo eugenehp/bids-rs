@@ -2,10 +2,10 @@
 name = "bids-pet"
 description = "BIDS pet domain support"
 version.workspace = true
+authors.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
 rust-version.workspace = true
@@ -19,3 +19,6 @@ serde_json = { workspace = true }
 bids-eeg = { workspace = true }
 bids-nifti = { workspace = true }
 
+
+[lints]
+workspace = true

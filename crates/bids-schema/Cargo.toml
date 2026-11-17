@@ -2,22 +2,39 @@
 name = "bids-schema"
 description = "BIDS specification schema loader — entity definitions, filename validation rules, datatypes"
 version.workspace = true
+authors.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
 rust-version.workspace = true
 
 [features]
-default = []
+default = ["tls-graviola"]
 # Fetch published BIDS schemas over the network in `collect_schema`.
 http = ["dep:ureq"]
+# https's cryptography, pure Rust either way: graviola's (formally verified,
+# x86-64 and aarch64) or RustCrypto's (every target, wasm32 included). With
+# both, graviola where it runs, RustCrypto elsewhere.
+tls-graviola = ["dep:rustls-graviola"]
+tls-rustcrypto = ["dep:rustls-rustcrypto"]
 
 [dependencies]
 serde = { workspace = true }
 serde_json = { workspace = true }
 regex = { workspace = true }
 ureq = { workspace = true, optional = true }
+rustls-rustcrypto = { workspace = true, optional = true }
 bids-core = { workspace = true }
+
+# on wasm the cryptography is always RustCrypto's, whatever `tls-*` says:
+# graviola has no wasm backend
+[target.'cfg(target_family = "wasm")'.dependencies]
+rustls-rustcrypto = { workspace = true }
+
+[target.'cfg(any(target_arch = "x86_64", target_arch = "aarch64"))'.dependencies]
+rustls-graviola = { workspace = true, optional = true }
+
+[lints]
+workspace = true

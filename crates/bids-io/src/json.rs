@@ -61,6 +61,7 @@ pub fn merge_json_sidecars(sidecars: &[&Path]) -> Result<BidsMetadata> {
 /// walking up the directory tree (BIDS inheritance principle).
 ///
 /// Returns paths ordered from most specific to least specific.
+#[must_use]
 pub fn find_sidecars(data_file: &Path, root: &Path) -> Vec<std::path::PathBuf> {
     let mut sidecars = Vec::new();
 

@@ -43,11 +43,13 @@ pub struct BidsMetadata {
 
 impl BidsMetadata {
     /// Create an empty metadata dictionary.
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Create an empty metadata dictionary tagged with a source file path.
+    #[must_use]
     pub fn with_source(source_file: &str) -> Self {
         Self {
             inner: IndexMap::new(),
@@ -186,6 +188,7 @@ impl BidsMetadata {
     /// BIDS' `"n/a"` sentinel is treated as absent — see
     /// [`try_deserialize_as`](Self::try_deserialize_as) for the details and for
     /// the error when this returns `None`.
+    #[must_use]
     pub fn deserialize_as<T: serde::de::DeserializeOwned>(&self) -> Option<T> {
         self.try_deserialize_as().ok()
     }

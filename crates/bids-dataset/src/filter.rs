@@ -29,6 +29,7 @@ pub struct DatasetFilter {
 }
 
 impl DatasetFilter {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -80,6 +81,7 @@ impl DatasetFilter {
     }
 
     /// Test whether a BidsFile matches this filter.
+    #[must_use]
     pub fn matches(&self, f: &BidsFile) -> bool {
         let ent_str = |key: &str| -> Option<String> {
             f.entities.get(key).map(std::string::ToString::to_string)
@@ -147,6 +149,7 @@ impl DatasetFilter {
     /// Test whether a remote file path matches this filter.
     /// This is a lightweight check based on the path string, used for
     /// filtering remote file listings before download.
+    #[must_use]
     pub fn matches_path(&self, path: &str) -> bool {
         if let Some(ref m) = self.modality {
             // Check if path contains the datatype directory
@@ -179,6 +182,7 @@ impl DatasetFilter {
     }
 
     /// Filter a remote file list for selective download.
+    #[must_use]
     pub fn filter_remote<'a>(&self, files: &'a [crate::RemoteFile]) -> Vec<&'a crate::RemoteFile> {
         files
             .iter()

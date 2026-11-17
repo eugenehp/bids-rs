@@ -91,11 +91,13 @@ pub struct EegMetadata {
 
 impl EegMetadata {
     /// Try to extract EEG metadata from a generic BidsMetadata.
+    #[must_use]
     pub fn from_metadata(md: &BidsMetadata) -> Option<Self> {
         md.deserialize_as()
     }
 
     /// Get the total channel count.
+    #[must_use]
     pub fn total_channel_count(&self) -> u32 {
         self.eeg_channel_count.unwrap_or(0)
             + self.eog_channel_count.unwrap_or(0)

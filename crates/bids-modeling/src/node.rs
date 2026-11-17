@@ -63,6 +63,7 @@ pub struct StatsModelsNode {
 }
 
 impl StatsModelsNode {
+    #[must_use]
     pub fn new(
         level: &str,
         name: &str,
@@ -97,6 +98,7 @@ impl StatsModelsNode {
         self.collections.extend(collections);
     }
 
+    #[must_use]
     pub fn get_collections(&self) -> &[VariableCollection] {
         &self.collections
     }
@@ -300,6 +302,7 @@ impl StatsModelsNodeOutput {
 
 /// Build groups from a list of entity maps, grouping by specified keys.
 /// Returns map from group key to indices.
+#[must_use]
 pub fn build_groups(
     entity_maps: &[StringEntities],
     group_by: &[String],

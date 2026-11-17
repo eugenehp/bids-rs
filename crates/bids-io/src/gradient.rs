@@ -42,7 +42,7 @@ pub fn read_bvals(path: &Path) -> Result<Bvals> {
     let contents = std::fs::read_to_string(path)?;
     let values: std::result::Result<Vec<f64>, _> = contents
         .split_whitespace()
-        .map(|s| s.parse::<f64>())
+        .map(str::parse::<f64>)
         .collect();
     values.map_err(|e| BidsError::DataFormat(format!("Invalid bval file {}: {e}", path.display())))
 }
@@ -60,7 +60,7 @@ pub fn read_bvecs(path: &Path) -> Result<Bvecs> {
         .filter(|l| !l.trim().is_empty())
         .map(|line| {
             line.split_whitespace()
-                .map(|s| s.parse::<f64>())
+                .map(str::parse::<f64>)
                 .collect::<std::result::Result<Vec<f64>, _>>()
         })
         .collect::<std::result::Result<Vec<_>, _>>()

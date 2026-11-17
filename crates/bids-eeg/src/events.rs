@@ -83,6 +83,7 @@ pub fn read_events_tsv(path: &Path) -> Result<Vec<EegEvent>> {
 }
 
 /// Get unique trial types from events.
+#[must_use]
 pub fn unique_trial_types(events: &[EegEvent]) -> Vec<String> {
     let mut types: Vec<String> = events
         .iter()
@@ -95,6 +96,7 @@ pub fn unique_trial_types(events: &[EegEvent]) -> Vec<String> {
 }
 
 /// Filter events by trial type.
+#[must_use]
 pub fn filter_by_trial_type<'a>(events: &'a [EegEvent], trial_type: &str) -> Vec<&'a EegEvent> {
     events
         .iter()

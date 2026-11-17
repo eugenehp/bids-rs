@@ -2,10 +2,10 @@
 name = "bids-micr"
 description = "BIDS microscopy domain support — metadata, photos; optional TIFF/OME-TIFF image reading"
 version.workspace = true
+authors.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
 rust-version.workspace = true
@@ -23,3 +23,6 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 tiff = { workspace = true, optional = true }
 
+
+[lints]
+workspace = true

@@ -47,6 +47,7 @@ pub struct SimpleVariable {
 }
 
 impl SimpleVariable {
+    #[must_use]
     pub fn new(name: &str, source: &str, values: Vec<String>, index: Vec<StringEntities>) -> Self {
         let numeric_values: Vec<f64> = values
             .iter()
@@ -68,14 +69,17 @@ impl SimpleVariable {
         }
     }
 
+    #[must_use]
     pub fn len(&self) -> usize {
         self.str_values.len()
     }
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.str_values.is_empty()
     }
 
     /// Clone with optional data/name replacement.
+    #[must_use]
     pub fn clone_with(&self, data: Option<Vec<String>>, name: Option<&str>) -> Self {
         let mut cloned = self.clone();
         if let Some(d) = data {
@@ -89,6 +93,7 @@ impl SimpleVariable {
     }
 
     /// Filter rows matching given entity criteria.
+    #[must_use]
     pub fn filter(&self, filters: &StringEntities) -> Self {
         let mut values = Vec::new();
         let mut index = Vec::new();
@@ -107,6 +112,7 @@ impl SimpleVariable {
     }
 
     /// Convert to tabular rows.
+    #[must_use]
     pub fn to_rows(&self) -> Vec<StringEntities> {
         self.str_values
             .iter()
@@ -146,6 +152,7 @@ pub struct SparseRunVariable {
 }
 
 impl SparseRunVariable {
+    #[must_use]
     pub fn new(
         name: &str,
         source: &str,
@@ -182,14 +189,17 @@ impl SparseRunVariable {
         }
     }
 
+    #[must_use]
     pub fn len(&self) -> usize {
         self.onset.len()
     }
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.onset.is_empty()
     }
 
     /// Total duration of all runs.
+    #[must_use]
     pub fn get_duration(&self) -> f64 {
         self.run_info.iter().map(|r| r.duration).sum()
     }
@@ -260,6 +270,7 @@ impl SparseRunVariable {
     }
 
     /// Filter events by entity criteria.
+    #[must_use]
     pub fn filter(&self, filters: &StringEntities) -> Self {
         let mut onset = Vec::new();
         let mut duration = Vec::new();
@@ -290,6 +301,7 @@ impl SparseRunVariable {
     }
 
     /// Convert to tabular rows.
+    #[must_use]
     pub fn to_rows(&self) -> Vec<StringEntities> {
         (0..self.onset.len())
             .map(|i| {
@@ -325,6 +337,7 @@ pub struct DenseRunVariable {
 }
 
 impl DenseRunVariable {
+    #[must_use]
     pub fn new(
         name: &str,
         source: &str,
@@ -348,14 +361,17 @@ impl DenseRunVariable {
         }
     }
 
+    #[must_use]
     pub fn len(&self) -> usize {
         self.values.len()
     }
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.values.is_empty()
     }
 
     /// Resample to a different sampling rate.
+    #[must_use]
     pub fn resample(&self, new_sr: f64) -> Self {
         if (new_sr - self.sampling_rate).abs() < 0.001 {
             return self.clone();
@@ -372,6 +388,7 @@ impl DenseRunVariable {
     }
 
     /// Resample to TR-based sampling rate.
+    #[must_use]
     pub fn resample_to_tr(&self) -> Self {
         self.run_info
             .first()
@@ -381,6 +398,7 @@ impl DenseRunVariable {
     }
 
     /// Convert to tabular rows.
+    #[must_use]
     pub fn to_rows(&self) -> Vec<StringEntities> {
         let interval = 1.0 / self.sampling_rate;
         self.values
@@ -400,6 +418,7 @@ impl DenseRunVariable {
 
 impl SparseRunVariable {
     /// Select specific row indices.
+    #[must_use]
     pub fn select_rows(&self, indices: &[usize]) -> Self {
         Self::new(
             &self.name,
@@ -425,6 +444,7 @@ impl SparseRunVariable {
     }
 
     /// Split into multiple variables based on a grouper.
+    #[must_use]
     pub fn split(&self, group_col: &str) -> Vec<Self> {
         let mut groups: std::collections::HashMap<String, Vec<usize>> =
             std::collections::HashMap::new();
@@ -445,6 +465,7 @@ impl SparseRunVariable {
 
 impl DenseRunVariable {
     /// Build entity index with timestamps for each sample.
+    #[must_use]
     pub fn build_entity_index(&self) -> Vec<(f64, StringEntities)> {
         let interval = 1.0 / self.sampling_rate;
         let mut result = Vec::with_capacity(self.values.len());
@@ -469,6 +490,7 @@ impl DenseRunVariable {
 }
 
 /// Get a grouper key for groupby operations.
+#[must_use]
 pub fn get_grouper(index: &[StringEntities], group_by: &[&str]) -> Vec<String> {
     index
         .iter()
@@ -506,6 +528,7 @@ where
 // ──────────────────────── Merge functions ────────────────────────
 
 /// Merge a list of simple variables with the same name.
+#[must_use]
 pub fn merge_simple(variables: &[&SimpleVariable]) -> Option<SimpleVariable> {
     let first = variables.first()?;
     let mut all_values = Vec::new();
@@ -523,6 +546,7 @@ pub fn merge_simple(variables: &[&SimpleVariable]) -> Option<SimpleVariable> {
 }
 
 /// Merge sparse run variables.
+#[must_use]
 pub fn merge_sparse(variables: &[&SparseRunVariable]) -> Option<SparseRunVariable> {
     let first = variables.first()?;
     let mut onset = Vec::new();

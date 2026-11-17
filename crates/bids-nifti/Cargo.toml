@@ -2,10 +2,10 @@
 name = "bids-nifti"
 description = "NIfTI-1/NIfTI-2 reader for BIDS — headers, voxel data, volume extraction, scaling, gzip support"
 version.workspace = true
+authors.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
 rust-version.workspace = true
@@ -17,7 +17,7 @@ ndarray = ["dep:ndarray"]
 ## Enable true memory-mapped I/O via memmap2 (zero-copy, OS page cache).
 mmap = ["dep:memmap2"]
 ## Enable safetensors export for ML frameworks.
-safetensors = ["dep:safetensors"]
+safetensors = ["dep:safetensors", "dep:bytemuck"]
 
 [dependencies]
 bids-core = { workspace = true }
@@ -25,10 +25,13 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 flate2 = { workspace = true }
 thiserror = { workspace = true }
-bytemuck = { workspace = true }
+bytemuck = { workspace = true, optional = true }
 ndarray = { workspace = true, optional = true }
 memmap2 = { workspace = true, optional = true }
 safetensors = { workspace = true, optional = true }
 
 [dev-dependencies]
 bids-layout = { workspace = true }
+
+[lints]
+workspace = true

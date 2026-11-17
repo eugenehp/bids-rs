@@ -10,6 +10,7 @@ use bids_core::metadata::BidsMetadata;
 use std::collections::HashMap;
 
 /// Generate a description paragraph for functional (BOLD) scans.
+#[must_use]
 pub fn func_info(files: &[BidsFile], metadata: &BidsMetadata) -> String {
     let n_runs = files.len();
     let task = metadata.get_str("TaskName").unwrap_or("unknown");
@@ -42,6 +43,7 @@ pub fn func_info(files: &[BidsFile], metadata: &BidsMetadata) -> String {
 }
 
 /// Generate a description for anatomical scans.
+#[must_use]
 pub fn anat_info(files: &[BidsFile], metadata: &BidsMetadata) -> String {
     let suffix = files
         .first()
@@ -54,6 +56,7 @@ pub fn anat_info(files: &[BidsFile], metadata: &BidsMetadata) -> String {
 }
 
 /// Generate a description for diffusion scans.
+#[must_use]
 pub fn dwi_info(_files: &[BidsFile], metadata: &BidsMetadata) -> String {
     let n_dirs = parameters::describe_dmri_directions(metadata);
     let tr = parameters::describe_repetition_time(metadata);
@@ -72,6 +75,7 @@ pub fn dwi_info(_files: &[BidsFile], metadata: &BidsMetadata) -> String {
 }
 
 /// Generate a description for fieldmap scans.
+#[must_use]
 pub fn fmap_info(files: &[BidsFile], metadata: &BidsMetadata) -> String {
     let n = files.len();
     let suffix = files.first().and_then(|f| f.suffix()).unwrap_or("fieldmap");
@@ -90,6 +94,7 @@ pub fn fmap_info(files: &[BidsFile], metadata: &BidsMetadata) -> String {
 }
 
 /// Group files by acquisition parameters (suffix + shared metadata).
+#[must_use]
 pub fn parse_files(files: &[BidsFile]) -> Vec<(String, Vec<&BidsFile>)> {
     let mut by_suffix: HashMap<String, Vec<&BidsFile>> = HashMap::new();
     for f in files {
@@ -102,6 +107,7 @@ pub fn parse_files(files: &[BidsFile]) -> Vec<(String, Vec<&BidsFile>)> {
 }
 
 /// Generate a per-subject report section.
+#[must_use]
 pub fn report_subject(subject: &str, files: &[BidsFile]) -> String {
     let n_files = files.len();
     let datatypes: Vec<String> = {
@@ -123,6 +129,7 @@ pub fn report_subject(subject: &str, files: &[BidsFile]) -> String {
 }
 
 /// Generate a full methods section for all datatypes found.
+#[must_use]
 pub fn generate_methods(datatypes: &[(String, Vec<BidsFile>, BidsMetadata)]) -> String {
     let mut sections = Vec::new();
     for (datatype, files, md) in datatypes {

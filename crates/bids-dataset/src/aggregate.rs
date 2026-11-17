@@ -44,6 +44,7 @@ pub struct Aggregator {
 }
 
 impl Aggregator {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             files: Vec::new(),
@@ -94,11 +95,13 @@ impl Aggregator {
     }
 
     /// Number of files in the aggregate.
+    #[must_use]
     pub fn len(&self) -> usize {
         self.files.len()
     }
 
     /// Whether the aggregate is empty.
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.files.is_empty()
     }
@@ -148,6 +151,7 @@ impl Aggregator {
     }
 
     /// Get unique global subject IDs.
+    #[must_use]
     pub fn subjects(&self) -> Vec<String> {
         let mut s: Vec<String> = self
             .files
@@ -161,6 +165,7 @@ impl Aggregator {
     }
 
     /// Get unique tasks.
+    #[must_use]
     pub fn tasks(&self) -> Vec<String> {
         let mut t: Vec<String> = self
             .files

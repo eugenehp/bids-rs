@@ -370,6 +370,7 @@ impl EdfHeader {
             channel_labels,
         })
     }
+    #[must_use]
     pub fn duration(&self) -> f64 {
         if self.n_records > 0 {
             self.n_records as f64 * self.record_duration

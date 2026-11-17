@@ -26,6 +26,7 @@ use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 
 /// Default cache directory (~/.cache/bids-rs).
+#[must_use]
 pub fn default_cache_dir() -> PathBuf {
     dirs_cache().join("bids-rs")
 }
@@ -60,31 +61,37 @@ impl Default for Cache {
 
 impl Cache {
     /// Open a cache at a specific path.
+    #[must_use]
     pub fn new(root: PathBuf) -> Self {
         Self { root }
     }
 
     /// Root path of the cache.
+    #[must_use]
     pub fn root(&self) -> &Path {
         &self.root
     }
 
     /// Path to a dataset's directory in the cache.
+    #[must_use]
     pub fn dataset_dir(&self, dataset_id: &str) -> PathBuf {
         self.root.join("datasets").join(dataset_id)
     }
 
     /// Path to a specific snapshot of a dataset.
+    #[must_use]
     pub fn snapshot_dir(&self, dataset_id: &str, version: &str) -> PathBuf {
         self.dataset_dir(dataset_id).join("snapshots").join(version)
     }
 
     /// Path to the blobs directory for a dataset.
+    #[must_use]
     pub fn blobs_dir(&self, dataset_id: &str) -> PathBuf {
         self.dataset_dir(dataset_id).join("blobs")
     }
 
     /// Check if a specific dataset version is fully cached.
+    #[must_use]
     pub fn is_cached(&self, dataset_id: &str, version: &str) -> bool {
         let snap = self.snapshot_dir(dataset_id, version);
         snap.exists() && snap.join(".complete").exists()
@@ -93,6 +100,7 @@ impl Cache {
     /// Resolve a dataset to its local path. Returns `None` if not cached.
     ///
     /// If `version` is `None`, returns the latest cached version.
+    #[must_use]
     pub fn resolve(&self, dataset_id: &str, version: Option<&str>) -> Option<PathBuf> {
         if let Some(v) = version {
             let snap = self.snapshot_dir(dataset_id, v);
@@ -111,6 +119,7 @@ impl Cache {
     }
 
     /// List all cached datasets.
+    #[must_use]
     pub fn list_datasets(&self) -> Vec<CachedDataset> {
         let ds_dir = self.root.join("datasets");
         let mut out = Vec::new();
@@ -133,6 +142,7 @@ impl Cache {
     }
 
     /// List cached versions of a dataset.
+    #[must_use]
     pub fn list_versions(&self, dataset_id: &str) -> Vec<String> {
         let snap_dir = self.dataset_dir(dataset_id).join("snapshots");
         let mut versions = Vec::new();
@@ -255,6 +265,7 @@ impl Cache {
     }
 
     /// Total cache size in bytes.
+    #[must_use]
     pub fn total_size(&self) -> u64 {
         dir_size(&self.root)
     }

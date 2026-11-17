@@ -310,7 +310,7 @@ mod tests {
             self.channels.len()
         }
         fn n_samples(&self) -> usize {
-            self.channels.first().map_or(0, |v| v.len())
+            self.channels.first().map_or(0, std::vec::Vec::len)
         }
         fn channel_names(&self) -> &[String] {
             &self.names
@@ -319,7 +319,7 @@ mod tests {
             self.sr
         }
         fn channel_data(&self, index: usize) -> Option<&[f64]> {
-            self.channels.get(index).map(|v| v.as_slice())
+            self.channels.get(index).map(std::vec::Vec::as_slice)
         }
         fn duration(&self) -> f64 {
             self.n_samples() as f64 / self.sr

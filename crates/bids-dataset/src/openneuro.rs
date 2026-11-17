@@ -55,6 +55,7 @@ pub struct OpenNeuro {
 
 impl OpenNeuro {
     /// Create with default config (reads from env vars, falls back to safe defaults).
+    #[must_use]
     pub fn new() -> Self {
         Self::with_config(crate::ratelimit::RateLimitConfig::from_env())
     }
@@ -71,6 +72,7 @@ impl OpenNeuro {
     ///         .max_retries(5)         // more retries
     /// );
     /// ```
+    #[must_use]
     pub fn with_config(config: crate::ratelimit::RateLimitConfig) -> Self {
         Self {
             agent: http::make_agent(),

@@ -28,6 +28,7 @@ pub struct PaddedInt {
 
 impl PaddedInt {
     /// Parse a zero-padded integer string (e.g., `"02"`, `"001"`).
+    #[must_use]
     pub fn new(s: &str) -> Self {
         let value = s.parse::<i64>().unwrap_or(0);
         Self {
