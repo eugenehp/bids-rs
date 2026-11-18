@@ -15,7 +15,7 @@ name = "pybids_rs"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = { version = "0.25", features = ["extension-module"] }
+pyo3 = { version = "0.30", features = ["extension-module"] }
 bids-core = { workspace = true }
 bids-layout = { workspace = true }
 bids-variables = { workspace = true }

@@ -6,7 +6,7 @@
 //!
 //! ## Feature flags
 //!
-//! - **`snirf`** — Enable SNIRF (HDF5) data reading. Requires `libhdf5` on the system.
+//! - **`snirf`** — Enable SNIRF (HDF5) data reading, in pure Rust (`hdf5-no-c`; no libhdf5 needed).
 //!   Adds the `data` module with `NirsData` and `read_snirf`.
 //!
 //! See: <https://bids-specification.readthedocs.io/en/stable/modality-specific-files/near-infrared-spectroscopy.html>

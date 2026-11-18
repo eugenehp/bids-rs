@@ -31,8 +31,26 @@ use regex::Regex;
     any(target_arch = "x86_64", target_arch = "aarch64")
 ))]
 use rustls_graviola as _;
+// with both `tls-*`, graviola wins where it runs; RustCrypto's is then unused
+#[cfg(all(
+    feature = "tls-graviola",
+    feature = "tls-rustcrypto",
+    any(target_arch = "x86_64", target_arch = "aarch64")
+))]
+use rustls_rustcrypto as _;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
+
+// browser wasm fetches with the browser's XMLHttpRequest (no sockets), so
+// `http`'s ureq and the `tls-*` cryptography go unused there
+#[cfg(all(feature = "http", target_family = "wasm", target_os = "unknown"))]
+use ureq as _;
+#[cfg(all(
+    feature = "tls-rustcrypto",
+    target_family = "wasm",
+    target_os = "unknown"
+))]
+use {getrandom as _, rustls_pki_types as _, rustls_rustcrypto as _};
 
 pub use collect::{SchemaSource, collect_schema, schema_url};
 pub use version::{BidsVersion, Compatibility, MIN_COMPATIBLE_VERSION, SUPPORTED_BIDS_VERSION};

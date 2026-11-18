@@ -75,6 +75,9 @@ For more information about the BIDS standard, visit
 - **CLI tool** — `bids-cli` provides subcommands for dataset inspection,
   file listing, entity enumeration, report generation, model execution,
   metadata upgrades, and OpenNeuro dataset management.
+- **WebAssembly** — Builds for WASI and the browser, with SIMD. In a Web
+  Worker it downloads from OpenNeuro into the browser's private file system
+  (OPFS), streamed and resumable. See [WebAssembly](#webassembly).
 
 ## Quick Start
 
@@ -252,6 +255,102 @@ path = layout.build_path(entities)
 
 # Derivatives
 layout.add_derivatives("/path/to/derivatives")
+```
+
+### WebAssembly
+
+The workspace builds for `wasm32-wasip1`, `wasm32-wasip2` and the browser
+(`wasm32-unknown-unknown`), with 128-bit SIMD on (`.cargo/config.toml`).
+HTTPS is pure Rust everywhere: graviola natively, RustCrypto on wasm.
+
+- **WASI**: as natively. `wasm32-wasip2` downloads over HTTPS (wasmtime:
+  `-S inherit-network,allow-ip-name-lookup`); `wasm32-wasip1` has no
+  sockets, so network calls return an error.
+- **Browser**: requests go through the browser (OpenNeuro, its S3 bucket
+  and the BIDS schema host allow cross-origin requests), and the disk is
+  the [Origin Private File System](https://developer.mozilla.org/docs/Web/API/File_System_API/Origin_private_file_system).
+  `download_to_cache`, the other `Cache` methods and `download_to_opfs` are
+  `async` there, and `opfs::read` reads the files back. Downloads stream to
+  OPFS, so memory doesn't grow with file size.
+
+In the browser, run bids-rs in a **dedicated Web Worker**. Requests there
+are synchronous (`list_files`, `fetch_file`, `search`, `collect_schema`)
+and would freeze a page, and only a dedicated worker can write OPFS.
+`download_dataset` needs a filesystem and threads, so it returns an error
+pointing at `download_to_opfs` and `fetch_file`.
+
+```toml
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+bids = "0.0.6"
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+```
+
+```rust
+use bids::dataset::{Cache, OpenNeuro, RemoteFile, opfs};
+use wasm_bindgen::prelude::*;
+
+/// Download one subject of an OpenNeuro dataset into the browser's
+/// cache, then read its description back.
+#[wasm_bindgen]
+pub async fn fetch_subject(dataset: String, subject: String) -> Result<String, JsError> {
+    let on = OpenNeuro::new();
+    let cache = Cache::default();
+    let prefix = format!("sub-{subject}/");
+    let wanted = |f: &RemoteFile| f.path == "dataset_description.json" || f.path.starts_with(&prefix);
+
+    // resumes, and returns at once when already complete
+    let snapshot = on.download_to_cache(&dataset, "1.0.0", &cache, Some(wanted)).await?;
+    let description = opfs::read(snapshot.join("dataset_description.json").to_str().unwrap()).await?;
+    Ok(String::from_utf8(description)?)
+}
+```
+
+Build it with `cargo build --release --target wasm32-unknown-unknown` and
+then `wasm-bindgen --target web --out-dir pkg target/wasm32-unknown-unknown/release/<crate>.wasm`.
+The `wasm-bindgen` CLI must be the version of the `wasm-bindgen` crate in
+your Cargo.lock. Then load it in a module worker:
+
+```js
+// worker.js, started with new Worker('./worker.js', { type: 'module' })
+import init, { fetch_subject } from './pkg/my_bids_app.js';
+
+// listen first: a message arriving while the module loads, with no
+// handler yet, would be dropped
+const ready = init();
+self.onmessage = async ({ data }) => {
+  await ready;
+  try {
+    postMessage(await fetch_subject(data.dataset, data.subject));
+  } catch (e) {
+    postMessage(`error: ${e}`);
+  }
+};
+```
+
+Serve the page **cross-origin isolated** if you can:
+
+```text
+Cross-Origin-Opener-Policy: same-origin
+Cross-Origin-Embedder-Policy: require-corp
+```
+
+The worker then sleeps through rate-limit and retry waits with
+`Atomics.wait`. Without isolation it spins the CPU while it waits, because
+a worker has no other way to block.
+
+The browser tests (`crates/bids-dataset/tests/browser.rs`, and
+`bids-schema`'s) run in a dedicated worker through `wasm-bindgen-test-runner`
+with a WebDriver:
+
+```bash
+cargo install wasm-bindgen-cli --version <wasm-bindgen in Cargo.lock>
+CHROMEDRIVER=/path/to/chromedriver cargo test -p bids-dataset --target wasm32-unknown-unknown --test browser
+# also those that reach OpenNeuro
+CHROMEDRIVER=/path/to/chromedriver cargo test -p bids-dataset --target wasm32-unknown-unknown --test browser -- --include-ignored
 ```
 
 ## Workspace Crates
@@ -544,13 +643,13 @@ If you use `bids-rs` in your research, please cite it:
   year         = {2026},
   url          = {https://github.com/eugenehp/bids-rs},
   license      = {GPL-3.0-or-later},
-  version      = {0.0.5}
+  version      = {0.0.6}
 }
 ```
 
 **APA:**
 
-> Hauptmann, E. (2026). *bids-rs: Rust tools for BIDS (Brain Imaging Data Structure) datasets* (Version 0.0.5) [Computer software]. https://github.com/eugenehp/bids-rs
+> Hauptmann, E. (2026). *bids-rs: Rust tools for BIDS (Brain Imaging Data Structure) datasets* (Version 0.0.6) [Computer software]. https://github.com/eugenehp/bids-rs
 
 A machine-readable [`CITATION.cff`](CITATION.cff) and [`CITATION.bib`](CITATION.bib)
 are also provided — GitHub will automatically show a "Cite this repository" button.

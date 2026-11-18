@@ -32,7 +32,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.0.5"
+version = "0.0.6"
 edition = "2024"
 authors = ["Eugene Hauptmann <eugene@hauptmann.me>"]
 license = "GPL-3.0-or-later"
@@ -53,30 +53,30 @@ redundant_closure_for_method_calls = "warn"
 large_futures = "warn"
 
 [workspace.dependencies]
-bids-dataset = { path = "crates/bids-dataset", version = "0.0.5" }
-bids-core = { path = "crates/bids-core", version = "0.0.5" }
-bids-io = { path = "crates/bids-io", version = "0.0.5" }
-bids-layout = { path = "crates/bids-layout", version = "0.0.5" }
-bids-variables = { path = "crates/bids-variables", version = "0.0.5" }
-bids-eeg = { path = "crates/bids-eeg", version = "0.0.5" }
-bids-validate = { path = "crates/bids-validate", version = "0.0.5" }
-bids-derive = { path = "crates/bids-derive", version = "0.0.5" }
-bids-ieeg = { path = "crates/bids-ieeg", version = "0.0.5" }
-bids-meg = { path = "crates/bids-meg", version = "0.0.5" }
-bids-pet = { path = "crates/bids-pet", version = "0.0.5" }
-bids-perf = { path = "crates/bids-perf", version = "0.0.5" }
-bids-motion = { path = "crates/bids-motion", version = "0.0.5" }
-bids-nirs = { path = "crates/bids-nirs", version = "0.0.5" }
-bids-mrs = { path = "crates/bids-mrs", version = "0.0.5" }
-bids-micr = { path = "crates/bids-micr", version = "0.0.5" }
-bids-beh = { path = "crates/bids-beh", version = "0.0.5" }
-bids-nifti = { path = "crates/bids-nifti", version = "0.0.5" }
-bids-filter = { path = "crates/bids-filter", version = "0.0.5" }
-bids-formula = { path = "crates/bids-formula", version = "0.0.5" }
-bids-schema = { path = "crates/bids-schema", version = "0.0.5" }
-bids-inflect = { path = "crates/bids-inflect", version = "0.0.5" }
-bids-modeling = { path = "crates/bids-modeling", version = "0.0.5" }
-bids-reports = { path = "crates/bids-reports", version = "0.0.5" }
+bids-dataset = { path = "crates/bids-dataset", version = "0.0.6" }
+bids-core = { path = "crates/bids-core", version = "0.0.6" }
+bids-io = { path = "crates/bids-io", version = "0.0.6" }
+bids-layout = { path = "crates/bids-layout", version = "0.0.6" }
+bids-variables = { path = "crates/bids-variables", version = "0.0.6" }
+bids-eeg = { path = "crates/bids-eeg", version = "0.0.6" }
+bids-validate = { path = "crates/bids-validate", version = "0.0.6" }
+bids-derive = { path = "crates/bids-derive", version = "0.0.6" }
+bids-ieeg = { path = "crates/bids-ieeg", version = "0.0.6" }
+bids-meg = { path = "crates/bids-meg", version = "0.0.6" }
+bids-pet = { path = "crates/bids-pet", version = "0.0.6" }
+bids-perf = { path = "crates/bids-perf", version = "0.0.6" }
+bids-motion = { path = "crates/bids-motion", version = "0.0.6" }
+bids-nirs = { path = "crates/bids-nirs", version = "0.0.6" }
+bids-mrs = { path = "crates/bids-mrs", version = "0.0.6" }
+bids-micr = { path = "crates/bids-micr", version = "0.0.6" }
+bids-beh = { path = "crates/bids-beh", version = "0.0.6" }
+bids-nifti = { path = "crates/bids-nifti", version = "0.0.6" }
+bids-filter = { path = "crates/bids-filter", version = "0.0.6" }
+bids-formula = { path = "crates/bids-formula", version = "0.0.6" }
+bids-schema = { path = "crates/bids-schema", version = "0.0.6" }
+bids-inflect = { path = "crates/bids-inflect", version = "0.0.6" }
+bids-modeling = { path = "crates/bids-modeling", version = "0.0.6" }
+bids-reports = { path = "crates/bids-reports", version = "0.0.6" }
 
 serde = { version = "1", features = ["derive"] }
 # float_roundtrip makes JSON float parsing bit-exact. Without it serde_json
@@ -98,19 +98,39 @@ log = "0.4"
 # or `tls-rustcrypto` (every target, wasm32 included)
 ureq = { version = "3", default-features = false, features = ["json", "gzip", "rustls-no-provider", "rustls-webpki-roots"] }
 rustls-graviola = "0.4"
-rustls-rustcrypto = "0.0.2-alpha"
-sha2 = "0.10"
+rustls-rustcrypto = "0.1.0-pre.0"
+# browser wasm (wasm32-unknown-unknown) has no OS: RustCrypto's randomness
+# and rustls's clock come from JS (`crypto.getRandomValues`, `Date.now`)
+getrandom = { version = "0.4", features = ["wasm_js"] }
+rustls-pki-types = { version = "1", features = ["web"] }
+web-time = "1"
+# and its https (the browser's XMLHttpRequest and fetch) and disk (OPFS)
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+web-sys = { version = "0.3", features = [
+    "AbortSignal", "Blob", "DedicatedWorkerGlobalScope", "File",
+    "FileSystemDirectoryHandle", "FileSystemFileHandle", "FileSystemGetDirectoryOptions",
+    "FileSystemGetFileOptions", "FileSystemHandle", "FileSystemHandleKind",
+    "FileSystemRemoveOptions", "FileSystemSyncAccessHandle", "Navigator", "ReadableStream", "ReadableStreamDefaultReader", "RequestCache", "RequestInit",
+    "Headers", "Response", "StorageManager", "Window", "WorkerGlobalScope", "WorkerNavigator",
+    "XmlHttpRequest", "XmlHttpRequestResponseType",
+] }
+futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
+# its tests, in a browser (`tests/browser.rs` in bids-dataset)
+wasm-bindgen-test = "0.3"
+sha2 = "0.11"
 
 # Optional deps behind feature flags
-hdf5 = { package = "hdf5-metno", version = "0.12" }
+hdf5 = { package = "hdf5-no-c", version = "0.1.3" }
 tiff = "0.11"
 fiff = "0.1"
-ndarray = "0.16"
-arrow = { package = "arrow-array", version = "54" }
-arrow-schema = "54"
-arrow-csv = "54"
-parquet = "54"
+ndarray = "0.17"
+arrow = { package = "arrow-array", version = "60" }
+arrow-schema = "60"
+arrow-csv = "60"
+parquet = "60"
 memmap2 = "0.9"
-safetensors = "0.5"
-indicatif = "0.17"
+safetensors = "0.8"
+indicatif = "0.18"
 bytemuck = { version = "1", features = ["derive"] }

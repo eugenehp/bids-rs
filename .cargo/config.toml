@@ -2,3 +2,15 @@
 # Uncomment locally if you have sccache installed:
 # [build]
 # rustc-wrapper = "sccache"
+
+# wasm: 128-bit SIMD, which every current engine runs (Chrome 91+, Firefox 89+,
+# Safari 16.4+, Node 16.4+, wasmtime, wasmer); LLVM then vectorizes the sample
+# and voxel loops as it does with SSE2/NEON natively. An explicit RUSTFLAGS
+# overrides this, so CI's wasm job passes `+simd128` itself.
+[target.'cfg(target_family = "wasm")']
+rustflags = ["-C", "target-feature=+simd128"]
+
+# browser wasm's tests run in a browser: `wasm-bindgen-test-runner` (from
+# wasm-bindgen-cli, Cargo.lock's version) with a WebDriver (`CHROMEDRIVER`, ...)
+[target.wasm32-unknown-unknown]
+runner = "wasm-bindgen-test-runner"

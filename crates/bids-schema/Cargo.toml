@@ -13,12 +13,13 @@ rust-version.workspace = true
 [features]
 default = ["tls-graviola"]
 # Fetch published BIDS schemas over the network in `collect_schema`.
-http = ["dep:ureq"]
+http = ["dep:ureq", "dep:wasm-bindgen", "dep:js-sys", "dep:web-sys"]
 # https's cryptography, pure Rust either way: graviola's (formally verified,
 # x86-64 and aarch64) or RustCrypto's (every target, wasm32 included). With
-# both, graviola where it runs, RustCrypto elsewhere.
+# both, graviola where it runs, RustCrypto elsewhere. On wasm, `http` needs
+# `tls-rustcrypto`: graviola has no wasm backend.
 tls-graviola = ["dep:rustls-graviola"]
-tls-rustcrypto = ["dep:rustls-rustcrypto"]
+tls-rustcrypto = ["dep:rustls-rustcrypto", "dep:getrandom", "dep:rustls-pki-types"]
 
 [dependencies]
 serde = { workspace = true }
@@ -28,10 +29,17 @@ ureq = { workspace = true, optional = true }
 rustls-rustcrypto = { workspace = true, optional = true }
 bids-core = { workspace = true }
 
-# on wasm the cryptography is always RustCrypto's, whatever `tls-*` says:
-# graviola has no wasm backend
-[target.'cfg(target_family = "wasm")'.dependencies]
-rustls-rustcrypto = { workspace = true }
+# browser wasm: randomness and the clock from JS (WASI has its own), for
+# `tls-rustcrypto`; and `http`'s requests, the browser's XMLHttpRequest
+[target.'cfg(all(target_family = "wasm", target_os = "unknown"))'.dependencies]
+getrandom = { workspace = true, optional = true }
+rustls-pki-types = { workspace = true, optional = true }
+wasm-bindgen = { workspace = true, optional = true }
+js-sys = { workspace = true, optional = true }
+web-sys = { workspace = true, optional = true }
+
+[target.'cfg(all(target_family = "wasm", target_os = "unknown"))'.dev-dependencies]
+wasm-bindgen-test = { workspace = true }
 
 [target.'cfg(any(target_arch = "x86_64", target_arch = "aarch64"))'.dependencies]
 rustls-graviola = { workspace = true, optional = true }

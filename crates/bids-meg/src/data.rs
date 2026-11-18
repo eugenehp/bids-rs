@@ -25,6 +25,7 @@ pub struct MegData {
 }
 
 impl MegData {
+    #[must_use]
     pub fn n_channels(&self) -> usize {
         self.data.len()
     }
@@ -44,7 +45,7 @@ impl bids_core::timeseries::TimeSeries for MegData {
         self.sfreq
     }
     fn channel_data(&self, index: usize) -> Option<&[f64]> {
-        self.data.get(index).map(|v| v.as_slice())
+        self.data.get(index).map(std::vec::Vec::as_slice)
     }
     fn duration(&self) -> f64 {
         if self.sfreq > 0.0 {
@@ -65,19 +66,15 @@ pub fn read_fiff(path: &Path) -> Result<MegData> {
     use fiff::tree::dir_tree_find;
     use fiff::{MeasInfo, open_fiff};
 
-    let (mut reader, tree) = open_fiff(path).map_err(|e| {
-        BidsError::Io(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("FIFF open error: {}", e),
-        ))
-    })?;
+    let (mut reader, tree) = open_fiff(path)
+        .map_err(|e| BidsError::Io(std::io::Error::other(format!("FIFF open error: {}", e))))?;
 
     // Read measurement info
     let meas_info = MeasInfo::read(&mut reader, &tree)
-        .map_err(|e| BidsError::Csv(format!("Cannot read FIFF measurement info: {}", e)))?;
+        .map_err(|e| BidsError::DataFormat(format!("Cannot read FIFF measurement info: {}", e)))?;
 
     let sfreq = meas_info.sfreq;
-    let n_channels = meas_info.nchan as usize;
+    let n_channels = meas_info.nchan;
     let channel_names: Vec<String> = meas_info
         .channels
         .iter()
@@ -89,7 +86,7 @@ pub fn read_fiff(path: &Path) -> Result<MegData> {
     let cals: Vec<f64> = meas_info
         .channels
         .iter()
-        .map(|ch| ch.calibration())
+        .map(fiff::ChannelInfo::calibration)
         .collect();
 
     // Find raw data blocks in the FIFF tree
@@ -107,8 +104,9 @@ pub fn read_fiff(path: &Path) -> Result<MegData> {
     for block in &data_blocks {
         for entry in &block.directory {
             if entry.kind == FIFF_DATA_BUFFER {
-                let tag = Tag::read_at(&mut reader, entry.pos as u64)
-                    .map_err(|e| BidsError::Csv(format!("Cannot read FIFF data buffer: {}", e)))?;
+                let tag = Tag::read_at(&mut reader, entry.pos).map_err(|e| {
+                    BidsError::DataFormat(format!("Cannot read FIFF data buffer: {}", e))
+                })?;
 
                 if let Ok(samples) = tag.as_samples(n_channels) {
                     // samples is Vec<Vec<f64>> — channels × samples_in_buffer
@@ -125,7 +123,7 @@ pub fn read_fiff(path: &Path) -> Result<MegData> {
         }
     }
 
-    let n_samples = all_data.first().map(|v| v.len()).unwrap_or(0);
+    let n_samples = all_data.first().map(std::vec::Vec::len).unwrap_or(0);
 
     Ok(MegData {
         channel_names,

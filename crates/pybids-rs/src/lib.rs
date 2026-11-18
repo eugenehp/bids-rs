@@ -135,7 +135,11 @@ impl BIDSLayout {
     /// - `return_type="id"` with `target="subject"` for unique entity values
     /// - `scope="all"`, `scope="raw"`, `scope="derivatives"`
     #[pyo3(signature = (**kwargs))]
-    fn get<'py>(&self, py: Python<'py>, kwargs: Option<&Bound<'py, PyDict>>) -> PyResult<PyObject> {
+    fn get<'py>(
+        &self,
+        py: Python<'py>,
+        kwargs: Option<&Bound<'py, PyDict>>,
+    ) -> PyResult<Py<PyAny>> {
         let mut query = self
             .inner
             .get()
@@ -280,7 +284,7 @@ impl BIDSLayout {
     /// Get metadata for a file, with BIDS JSON sidecar inheritance.
     ///
     /// Returns a dict with native Python types (float, int, str, list, dict, bool, None).
-    fn get_metadata<'py>(&self, py: Python<'py>, path: &str) -> PyResult<PyObject> {
+    fn get_metadata<'py>(&self, py: Python<'py>, path: &str) -> PyResult<Py<PyAny>> {
         let md = self.inner.get_metadata(path).map_err(to_py_err)?;
         let dict = PyDict::new(py);
         for (k, v) in md.iter() {
@@ -289,7 +293,7 @@ impl BIDSLayout {
         Ok(dict.into_any().unbind())
     }
 
-    fn get_dataset_description<'py>(&self, py: Python<'py>) -> PyResult<Option<PyObject>> {
+    fn get_dataset_description<'py>(&self, py: Python<'py>) -> PyResult<Option<Py<PyAny>>> {
         Ok(self.inner.description().map(|d| {
             let dict = PyDict::new(py);
             let _ = dict.set_item("Name", &d.name);
@@ -452,7 +456,7 @@ impl BIDSLayout {
         py: Python<'py>,
         level: &str,
         merge: bool,
-    ) -> PyResult<Vec<PyObject>> {
+    ) -> PyResult<Vec<Py<PyAny>>> {
         use bids_variables::LayoutVariables;
         let collections = self
             .inner
@@ -660,11 +664,11 @@ impl BIDSFile {
 
 /// Read a NIfTI header without loading voxel data.
 #[pyfunction]
-fn read_nifti_header(path: &str) -> PyResult<HashMap<String, PyObject>> {
-    Python::with_gil(|py| {
+fn read_nifti_header(path: &str) -> PyResult<HashMap<String, Py<PyAny>>> {
+    Python::attach(|py| {
         let hdr = bids_nifti::NiftiHeader::from_file(std::path::Path::new(path))
             .map_err(|e| pyo3::exceptions::PyIOError::new_err(e.to_string()))?;
-        let mut m: HashMap<String, PyObject> = HashMap::new();
+        let mut m: HashMap<String, Py<PyAny>> = HashMap::new();
         m.insert(
             "ndim".into(),
             hdr.ndim.into_pyobject(py)?.into_any().unbind(),
@@ -762,10 +766,10 @@ fn glover_hrf(tr: f64, oversampling: usize, time_length: f64, onset: f64) -> Vec
 
 /// Parse a Wilkinson-style formula (e.g., "y ~ a * b + c").
 #[pyfunction]
-fn parse_formula(formula: &str) -> HashMap<String, PyObject> {
-    Python::with_gil(|py| {
+fn parse_formula(formula: &str) -> HashMap<String, Py<PyAny>> {
+    Python::attach(|py| {
         let f = bids_formula::parse_formula(formula);
-        let mut m: HashMap<String, PyObject> = HashMap::new();
+        let mut m: HashMap<String, Py<PyAny>> = HashMap::new();
         m.insert(
             "response".into(),
             f.response.into_pyobject(py).unwrap().into_any().unbind(),
@@ -885,7 +889,7 @@ fn to_py_err(e: bids_core::error::BidsError) -> PyErr {
 }
 
 /// Convert a serde_json::Value to a native Python object.
-fn json_to_py(py: Python<'_>, v: &serde_json::Value) -> PyResult<PyObject> {
+fn json_to_py(py: Python<'_>, v: &serde_json::Value) -> PyResult<Py<PyAny>> {
     match v {
         serde_json::Value::Null => Ok(py.None()),
         serde_json::Value::Bool(b) => {
@@ -903,7 +907,7 @@ fn json_to_py(py: Python<'_>, v: &serde_json::Value) -> PyResult<PyObject> {
         }
         serde_json::Value::String(s) => Ok(s.into_pyobject(py)?.into_any().unbind()),
         serde_json::Value::Array(arr) => {
-            let items: Vec<PyObject> = arr
+            let items: Vec<Py<PyAny>> = arr
                 .iter()
                 .map(|item| json_to_py(py, item))
                 .collect::<PyResult<_>>()?;

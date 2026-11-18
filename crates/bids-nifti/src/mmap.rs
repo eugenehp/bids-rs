@@ -107,11 +107,11 @@ impl MmapNifti {
             // SAFETY: read-only mmap, file not modified
             let mmap = unsafe { memmap2::Mmap::map(&file)? };
             let _ = std::fs::remove_file(&tmp); // cleanup (mmap keeps handle)
-            return Ok(Self {
+            Ok(Self {
                 header,
                 mmap,
                 data_offset,
-            });
+            })
         }
         #[cfg(not(feature = "mmap"))]
         Ok(Self {

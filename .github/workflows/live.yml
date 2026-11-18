@@ -1,0 +1,53 @@
+name: Live
+
+# the tests that reach OpenNeuro and the BIDS schema host, #[ignore]d in CI so
+# that a pull request doesn't fail on someone else's outage: daily, and on
+# demand (Actions > Live > Run workflow)
+on:
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  native:
+    name: Live (native)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test -p bids-dataset --test live_openneuro -- --ignored
+      - run: cargo test -p bids-schema --features http --test collect_http -- --ignored
+
+  browser:
+    name: Live (Chrome, Web Worker)
+    runs-on: ubuntu-latest
+    env:
+      RUSTFLAGS: -Dwarnings -Ctarget-feature=+simd128
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: browser
+      # as in ci.yml's browser job
+      - name: Install wasm-bindgen-test-runner
+        run: |
+          version=$(cargo metadata --format-version 1 --locked | jq -r '.packages[] | select(.name == "wasm-bindgen") | .version')
+          cargo install wasm-bindgen-cli --locked --version "$version"
+      - name: Find chromedriver
+        run: |
+          driver="$CHROMEWEBDRIVER/chromedriver"
+          if [ ! -x "$driver" ]; then
+            echo "::error::no chromedriver at '$driver' (CHROMEWEBDRIVER='$CHROMEWEBDRIVER'): has the runner image changed?"
+            exit 1
+          fi
+          "$driver" --version
+          echo "CHROMEDRIVER=$driver" >> "$GITHUB_ENV"
+      - run: cargo test -p bids-dataset --target wasm32-unknown-unknown --test browser -- --include-ignored
+      - run: cargo test -p bids-schema --no-default-features --features http,tls-rustcrypto --target wasm32-unknown-unknown --test browser -- --include-ignored

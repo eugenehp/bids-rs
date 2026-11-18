@@ -32,6 +32,8 @@ jobs:
       - run: sudo apt-get install -y mold
       - uses: Swatinem/rust-cache@v2
       - run: cargo clippy --workspace --exclude pybids-rs -- -Dwarnings
+      # every feature is pure Rust (SNIRF via hdf5-no-c), so all of them build here
+      - run: cargo clippy --workspace --exclude pybids-rs --all-features --all-targets -- -Dwarnings
 
   test:
     name: Test
@@ -42,6 +44,7 @@ jobs:
       - run: sudo apt-get install -y mold
       - uses: Swatinem/rust-cache@v2
       - run: cargo test --workspace --exclude pybids-rs --exclude bids-e2e-tests
+      - run: cargo test --workspace --exclude pybids-rs --exclude bids-e2e-tests --all-features
 
   fmt:
     name: Format
@@ -85,3 +88,71 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Run integration tests
         run: cargo test -p bids-e2e-tests --test bids_examples -- --nocapture
+
+  deny:
+    name: Dependencies (cargo-deny)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # advisories, licenses, bans, sources, by deny.toml
+      - uses: EmbarkStudios/cargo-deny-action@v2
+
+  wasm:
+    name: WebAssembly (simd128)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [wasm32-unknown-unknown, wasm32-wasip1, wasm32-wasip2]
+    env:
+      # replaces the workflow's RUSTFLAGS (mold doesn't link wasm), so it
+      # repeats .cargo/config.toml's simd128, which RUSTFLAGS would override
+      RUSTFLAGS: -Dwarnings -Ctarget-feature=+simd128
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+      # bids-cli is a command line: not for the browser, where
+      # `download_to_cache` is async
+      - run: >-
+          cargo clippy --workspace --exclude pybids-rs --exclude bids-e2e-tests
+          ${{ matrix.target == 'wasm32-unknown-unknown' && '--exclude bids-cli' || '' }}
+          --target ${{ matrix.target }}
+      - run: cargo clippy -p bids-schema --no-default-features --features http,tls-rustcrypto --target ${{ matrix.target }}
+
+  browser:
+    name: Browser tests (Chrome, Web Worker)
+    runs-on: ubuntu-latest
+    env:
+      RUSTFLAGS: -Dwarnings -Ctarget-feature=+simd128
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: browser
+      # the test runner speaks to the tests' wasm-bindgen: Cargo.lock's version
+      - name: Install wasm-bindgen-test-runner
+        run: |
+          version=$(cargo metadata --format-version 1 --locked | jq -r '.packages[] | select(.name == "wasm-bindgen") | .version')
+          cargo install wasm-bindgen-cli --locked --version "$version"
+      # ubuntu-latest has Chrome and its chromedriver (in $CHROMEWEBDRIVER)
+      - name: Find chromedriver
+        run: |
+          driver="$CHROMEWEBDRIVER/chromedriver"
+          if [ ! -x "$driver" ]; then
+            echo "::error::no chromedriver at '$driver' (CHROMEWEBDRIVER='$CHROMEWEBDRIVER'): has the runner image changed?"
+            exit 1
+          fi
+          "$driver" --version
+          echo "CHROMEDRIVER=$driver" >> "$GITHUB_ENV"
+      # the tests that reach OpenNeuro or the schema host are #[ignore]d, as
+      # natively: live.yml runs them
+      - run: cargo test -p bids-dataset --target wasm32-unknown-unknown --test browser
+      - run: cargo test -p bids-schema --no-default-features --features http,tls-rustcrypto --target wasm32-unknown-unknown --test browser

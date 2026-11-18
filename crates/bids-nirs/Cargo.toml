@@ -13,7 +13,7 @@ rust-version.workspace = true
 [features]
 default = []
 ## Enable SNIRF (Shared Near Infrared Spectroscopy Format) data reading.
-## Requires libhdf5 installed on the system. Adds the `hdf5` crate dependency.
+## SNIRF (HDF5) reading, in pure Rust via `hdf5-no-c`: no libhdf5 needed.
 snirf = ["dep:hdf5"]
 
 [dependencies]

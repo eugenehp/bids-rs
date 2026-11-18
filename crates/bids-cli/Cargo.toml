@@ -13,9 +13,12 @@ rust-version.workspace = true
 [[bin]]
 name = "bids"
 path = "src/main.rs"
+# its docs would land on the `bids` library's (same name), and two rustdocs
+# writing one directory race; a command line's are `bids --help`
+doc = false
 
 [dependencies]
-bids = { path = "../bids", version = "0.0.5" }
+bids = { path = "../bids", version = "0.0.6" }
 bids-core = { workspace = true }
 bids-layout = { workspace = true }
 bids-eeg = { workspace = true }

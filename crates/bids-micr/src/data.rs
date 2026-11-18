@@ -28,11 +28,13 @@ pub struct MicrImage {
 
 impl MicrImage {
     /// Total number of pixels (width × height).
+    #[must_use]
     pub fn n_pixels(&self) -> usize {
         self.width as usize * self.height as usize
     }
 
     /// Get a single pixel value at (x, y) for single-channel images.
+    #[must_use]
     pub fn get_pixel(&self, x: u32, y: u32) -> Option<f64> {
         if x >= self.width || y >= self.height {
             return None;
@@ -42,6 +44,7 @@ impl MicrImage {
     }
 
     /// Get all channel values at (x, y).
+    #[must_use]
     pub fn get_pixel_channels(&self, x: u32, y: u32) -> Option<Vec<f64>> {
         if x >= self.width || y >= self.height {
             return None;
@@ -55,6 +58,7 @@ impl MicrImage {
     }
 
     /// Compute the mean pixel intensity (across all channels and pixels).
+    #[must_use]
     pub fn mean(&self) -> f64 {
         if self.data.is_empty() {
             return 0.0;
@@ -74,20 +78,16 @@ pub fn read_tiff(path: &Path) -> Result<MicrImage> {
     use tiff::decoder::{Decoder, DecodingResult};
 
     let file = std::fs::File::open(path)?;
-    let mut decoder = Decoder::new(std::io::BufReader::new(file)).map_err(|e| {
-        BidsError::Io(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("TIFF error: {}", e),
-        ))
-    })?;
+    let mut decoder = Decoder::new(std::io::BufReader::new(file))
+        .map_err(|e| BidsError::Io(std::io::Error::other(format!("TIFF error: {}", e))))?;
 
     let (width, height) = decoder
         .dimensions()
-        .map_err(|e| BidsError::Csv(format!("TIFF dimensions error: {}", e)))?;
+        .map_err(|e| BidsError::DataFormat(format!("TIFF dimensions error: {}", e)))?;
 
     let color_type = decoder
         .colortype()
-        .map_err(|e| BidsError::Csv(format!("TIFF colortype error: {}", e)))?;
+        .map_err(|e| BidsError::DataFormat(format!("TIFF colortype error: {}", e)))?;
 
     let (channels, bits_per_sample) = match color_type {
         ColorType::Gray(bps) => (1, bps as u16),
@@ -104,7 +104,7 @@ pub fn read_tiff(path: &Path) -> Result<MicrImage> {
 
     let image = decoder
         .read_image()
-        .map_err(|e| BidsError::Csv(format!("TIFF read error: {}", e)))?;
+        .map_err(|e| BidsError::DataFormat(format!("TIFF read error: {}", e)))?;
 
     let data: Vec<f64> = match image {
         DecodingResult::U8(buf) => buf.iter().map(|&v| v as f64 / 255.0).collect(),
@@ -141,23 +141,19 @@ pub fn read_tiff_stack(path: &Path) -> Result<Vec<MicrImage>> {
     use tiff::decoder::{Decoder, DecodingResult};
 
     let file = std::fs::File::open(path)?;
-    let mut decoder = Decoder::new(std::io::BufReader::new(file)).map_err(|e| {
-        BidsError::Io(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("TIFF error: {}", e),
-        ))
-    })?;
+    let mut decoder = Decoder::new(std::io::BufReader::new(file))
+        .map_err(|e| BidsError::Io(std::io::Error::other(format!("TIFF error: {}", e))))?;
 
     let mut pages = Vec::new();
 
     loop {
         let (width, height) = decoder
             .dimensions()
-            .map_err(|e| BidsError::Csv(format!("TIFF dimensions error: {}", e)))?;
+            .map_err(|e| BidsError::DataFormat(format!("TIFF dimensions error: {}", e)))?;
 
         let color_type = decoder
             .colortype()
-            .map_err(|e| BidsError::Csv(format!("TIFF colortype error: {}", e)))?;
+            .map_err(|e| BidsError::DataFormat(format!("TIFF colortype error: {}", e)))?;
 
         let (channels, bits_per_sample) = match color_type {
             ColorType::Gray(bps) => (1, bps as u16),
@@ -174,7 +170,7 @@ pub fn read_tiff_stack(path: &Path) -> Result<Vec<MicrImage>> {
 
         let image = decoder
             .read_image()
-            .map_err(|e| BidsError::Csv(format!("TIFF read error: {}", e)))?;
+            .map_err(|e| BidsError::DataFormat(format!("TIFF read error: {}", e)))?;
 
         let data: Vec<f64> = match image {
             DecodingResult::U8(buf) => buf.iter().map(|&v| v as f64 / 255.0).collect(),

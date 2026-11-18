@@ -635,7 +635,7 @@ impl EegData {
         let flat_bytes: &[u8] = bytemuck::cast_slice(&flat);
 
         let tensor = TensorView::new(Dtype::F64, vec![n_ch, n_s], flat_bytes)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+            .map_err(|e| std::io::Error::other(e.to_string()))?;
 
         let mut tensors = HashMap::new();
         tensors.insert("data".to_string(), tensor);
@@ -650,15 +650,15 @@ impl EegData {
             "sampling_rate".to_string(),
             self.sampling_rates
                 .first()
-                .map(|r| r.to_string())
+                .map(std::string::ToString::to_string)
                 .unwrap_or_default(),
         );
         metadata.insert("duration".to_string(), self.duration.to_string());
         metadata.insert("n_channels".to_string(), n_ch.to_string());
         metadata.insert("n_samples".to_string(), n_s.to_string());
 
-        let bytes = safetensors::tensor::serialize(&tensors, &Some(metadata))
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+        let bytes = safetensors::tensor::serialize(&tensors, Some(metadata))
+            .map_err(|e| std::io::Error::other(e.to_string()))?;
 
         std::fs::write(path, bytes)
     }
@@ -667,6 +667,7 @@ impl EegData {
 #[cfg(feature = "ndarray")]
 impl EegData {
     /// Convert to an ndarray Array2<f64> with shape (n_channels, n_samples).
+    #[must_use]
     pub fn to_ndarray(&self) -> ndarray::Array2<f64> {
         let n_ch = self.n_channels();
         let n_s = self.n_samples(0);
@@ -680,6 +681,7 @@ impl EegData {
     }
 
     /// Create from an ndarray Array2<f64> (n_channels × n_samples).
+    #[must_use]
     pub fn from_ndarray(
         arr: &ndarray::Array2<f64>,
         channel_labels: Vec<String>,
@@ -1648,7 +1650,7 @@ fn parse_header_int<T: std::str::FromStr>(bytes: &[u8]) -> Result<T> {
         .trim()
         .parse::<T>()
         .map_err(|_| {
-            BidsError::Csv(format!(
+            BidsError::DataFormat(format!(
                 "Failed to parse header field: '{}'",
                 String::from_utf8_lossy(bytes).trim()
             ))
@@ -1673,7 +1675,7 @@ fn read_field(ext: &[u8], ch: usize, width: usize, base_offset: usize) -> String
 fn read_field_f64(ext: &[u8], ch: usize, width: usize, base_offset: usize) -> Result<f64> {
     let s = read_field(ext, ch, width, base_offset);
     s.parse::<f64>().map_err(|_| {
-        BidsError::Csv(format!(
+        BidsError::DataFormat(format!(
             "Failed to parse channel {ch} field at offset {base_offset}: '{s}'"
         ))
     })
@@ -1682,7 +1684,7 @@ fn read_field_f64(ext: &[u8], ch: usize, width: usize, base_offset: usize) -> Re
 fn read_field_int(ext: &[u8], ch: usize, width: usize, base_offset: usize) -> Result<usize> {
     let s = read_field(ext, ch, width, base_offset);
     s.parse::<usize>().map_err(|_| {
-        BidsError::Csv(format!(
+        BidsError::DataFormat(format!(
             "Failed to parse channel {ch} field at offset {base_offset}: '{s}'"
         ))
     })
@@ -1793,10 +1795,14 @@ fn parse_vhdr(text: &str) -> Result<BvHeader> {
     }
 
     if data_file.is_empty() {
-        return Err(BidsError::Csv("BrainVision header missing DataFile".into()));
+        return Err(BidsError::DataFormat(
+            "BrainVision header missing DataFile".into(),
+        ));
     }
     if channels.is_empty() {
-        return Err(BidsError::Csv("BrainVision header has no channels".into()));
+        return Err(BidsError::DataFormat(
+            "BrainVision header has no channels".into(),
+        ));
     }
 
     Ok(BvHeader {
@@ -2450,12 +2456,17 @@ Ch2=Fp2,,0.1
         assert_eq!(data.n_channels(), n_ch);
         assert_eq!(data.n_samples(0), n_rec * spr);
 
-        // Should be well under 1 second for 60s × 64ch × 2048Hz (~15MB)
-        assert!(
-            elapsed.as_millis() < 1000,
-            "Reading took {}ms, expected < 1000ms",
-            elapsed.as_millis()
-        );
+        // Should be well under 1 second for 60s × 64ch × 2048Hz (~15MB). A
+        // time limit only means something optimised: a debug build on a busy
+        // machine misses it.
+        eprintln!("  EDF 64ch × 60s × 2048Hz: {}ms", elapsed.as_millis());
+        if !cfg!(debug_assertions) {
+            assert!(
+                elapsed.as_millis() < 1000,
+                "Reading took {}ms, expected < 1000ms",
+                elapsed.as_millis()
+            );
+        }
 
         // Channel selection should be faster
         let start = std::time::Instant::now();
@@ -2465,11 +2476,13 @@ Ch2=Fp2,,0.1
         )
         .unwrap();
         let elapsed2 = start.elapsed();
-        assert!(
-            elapsed2 <= elapsed || elapsed2.as_millis() < 500,
-            "Channel-select took {}ms",
-            elapsed2.as_millis()
-        );
+        if !cfg!(debug_assertions) {
+            assert!(
+                elapsed2 <= elapsed || elapsed2.as_millis() < 500,
+                "Channel-select took {}ms",
+                elapsed2.as_millis()
+            );
+        }
 
         std::fs::remove_dir_all(&dir).unwrap();
     }

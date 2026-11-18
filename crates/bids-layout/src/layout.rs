@@ -289,12 +289,27 @@ impl BidsLayout {
         self.db.get_unique_entity_values(entity)
     }
 
-    /// Resolve a path (relative to root if not absolute) to an absolute string.
+    /// Resolve a path (relative to root if not absolute) to an absolute string,
+    /// spelled the way the index spells it.
+    ///
+    /// The root is canonical, so an absolute path through a symlink or with
+    /// `..` (`/tmp/ds/...` where `/tmp` links to `/private/tmp`) would match
+    /// nothing. Its directory is canonicalized; the file itself is not, since
+    /// in DataLad datasets files are symlinks into the annex.
     fn resolve_path(&self, path: impl AsRef<Path>) -> String {
-        let p = if path.as_ref().is_absolute() {
-            path.as_ref().to_path_buf()
+        let path = path.as_ref();
+        let p = if path.is_absolute() {
+            path.to_path_buf()
         } else {
             self.root.join(path)
+        };
+        let p = if p.starts_with(&self.root) {
+            p
+        } else {
+            match (p.parent().map(std::fs::canonicalize), p.file_name()) {
+                (Some(Ok(dir)), Some(name)) => dir.join(name),
+                _ => p,
+            }
         };
         p.to_string_lossy().into_owned()
     }
@@ -1058,5 +1073,63 @@ fn restore_json_value(value: String, dtype: &str) -> serde_json::Value {
         // Tags written before the dtype was recorded land here too, which is
         // the old best-effort behaviour.
         _ => serde_json::from_str(&value).unwrap_or(serde_json::Value::String(value)),
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used)]
+mod tests {
+    use super::*;
+
+    /// A one-file EEG dataset under a fresh temp directory.
+    fn dataset(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("bids_layout_{name}_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let eeg = dir.join("ds/sub-01/eeg");
+        std::fs::create_dir_all(&eeg).unwrap();
+        std::fs::write(
+            dir.join("ds/dataset_description.json"),
+            r#"{"Name":"t","BIDSVersion":"1.9.0"}"#,
+        )
+        .unwrap();
+        std::fs::write(
+            eeg.join("sub-01_task-rest_eeg.json"),
+            r#"{"SamplingFrequency":256,"TaskName":"rest"}"#,
+        )
+        .unwrap();
+        std::fs::write(eeg.join("sub-01_task-rest_eeg.edf"), b"").unwrap();
+        dir
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn metadata_by_a_path_through_a_symlink() {
+        let dir = dataset("symlink");
+        std::os::unix::fs::symlink(dir.join("ds"), dir.join("link")).unwrap();
+        let layout = BidsLayout::new(dir.join("link")).unwrap();
+
+        let rel = "sub-01/eeg/sub-01_task-rest_eeg.edf";
+        for path in [
+            dir.join("link").join(rel),
+            dir.join("ds").join(rel),
+            dir.join("link/sub-01/../sub-01/eeg/sub-01_task-rest_eeg.edf"),
+            PathBuf::from(rel),
+        ] {
+            let md = layout.get_metadata(&path).unwrap();
+            assert_eq!(
+                md.get("SamplingFrequency"),
+                Some(&serde_json::json!(256)),
+                "{path:?}"
+            );
+            assert!(layout.get_file(&path).unwrap().is_some(), "{path:?}");
+        }
+        assert!(
+            layout
+                .get_file(dir.join("link/nope.edf"))
+                .unwrap()
+                .is_none()
+        );
+
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 }

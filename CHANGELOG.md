@@ -6,6 +6,138 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.0.6]
+
+### Added
+
+- CI runs clippy and the tests with `--all-features` too, now that every
+  feature is pure Rust. `bids-nirs` has a SNIRF test against a file libhdf5
+  wrote (`tests/data/minimal.snirf`, from `make_minimal_snirf.py`).
+- Browser WebAssembly (`wasm32-unknown-unknown`): `bids-dataset` and
+  `bids-schema`'s `tls-rustcrypto` take randomness and the clock from JS
+  (`getrandom`'s `wasm_js`, `rustls-pki-types`'s `web`). WASI already built.
+- https on browser wasm, through the browser's synchronous `XMLHttpRequest`
+  (OpenNeuro's S3 bucket, its GraphQL API and the schema host all allow
+  cross-origin requests): `list_files`, `search`, `graphql` and
+  `collect_schema` work in the page and in Web Workers; a worker is better,
+  as the requests block the thread. The parallel `download_dataset` and
+  `download_to_cache` need a disk and threads, and say so there.
+- `OpenNeuro::fetch_file`: one file into memory, without the disk, on every
+  target.
+- Browser wasm, Web Workers: `OpenNeuro::download_to_opfs` downloads a
+  dataset (or a filtered part) into the Origin Private File System, in a
+  dedicated worker: resumable, rate-limited and retried as natively, with
+  `download_threads` files in flight as concurrent `fetch`es (twice as fast
+  as one at a time on a 600 MB test). `bids_dataset::opfs::read` reads the
+  files back. Requests time out in workers (30 s + 5 min, as natively), and
+  rate-limit and retry waits sleep with `Atomics.wait` instead of spinning
+  when the page is cross-origin isolated (COOP + COEP).
+- Browser wasm: `OpenNeuro::download_to_cache` works, as an `async fn`, in a
+  dedicated worker: the cache lives in OPFS with the native layout
+  (`snapshots/`, `.complete`, `refs/latest`), returns at once when complete,
+  resumes, and fails on any failed file, as natively. OPFS has no links, so
+  files go straight into their snapshot (no blob dedup across versions).
+  `bids-cli` no longer builds for `wasm32-unknown-unknown`, which a command
+  line has no use for; WASI still builds it.
+- Browser wasm: the rest of `Cache` works on OPFS too, async under the same
+  names and return types: `is_cached`, `resolve`, `list_datasets`,
+  `list_versions`, `store_file`, `mark_complete`, `evict`, `evict_dataset`,
+  `total_size`, `clean`. Reading, listing and removing work anywhere;
+  writing needs a dedicated worker and otherwise returns an error (writing
+  from the page used to throw a JS exception instead).
+- Browser tests: `bids-dataset`'s `tests/browser.rs`, run by
+  `wasm-bindgen-test-runner` in a dedicated worker, and in CI in headless
+  Chrome (`browser` job): the OPFS cache, byte-exact OPFS files, the rate
+  limiter's waits, and errors instead of panics. The ones that reach
+  OpenNeuro (listing, binary fetch, search, `download_to_cache`,
+  `download_to_opfs`) are `#[ignore]`d, as natively: `-- --include-ignored`.
+- `bids-schema`'s `collect_schema` over https has tests: natively
+  (`tests/collect_http.rs`) and in the browser (`tests/browser.rs`, in the
+  CI `browser` job), the published-schema fetch `#[ignore]`d.
+- Browser wasm: downloads into OPFS stream, each chunk from the response to
+  the file as it arrives, so memory no longer grows with file size (a 50 MB
+  file: under 8 MB, against 185 MB buffered). A body that isn't the listed
+  size is retried, and a file left unfinished is removed or replaced.
+- `Retry-After` is honored: a 429's (and a 5xx's that sends one) sets the
+  cooldown, in seconds or as an HTTP-date, at most 10 minutes, where it
+  used to be a fixed 30 s. `ratelimit::parse_retry_after` reads HTTP-dates
+  too. In the browser a cross-origin server must expose the header
+  (`Access-Control-Expose-Headers`), or the default cooldown applies.
+- README: a WebAssembly section, with a worker example checked in Chrome.
+- A `Live` workflow (`.github/workflows/live.yml`), daily and on demand, runs
+  the `#[ignore]`d tests that reach OpenNeuro and the schema host, natively
+  and in headless Chrome, so their breakage shows without failing pull
+  requests.
+- wasm builds enable 128-bit SIMD (`+simd128`, in `.cargo/config.toml`).
+- CI runs clippy for `wasm32-unknown-unknown`, `wasm32-wasip1` and
+  `wasm32-wasip2`, and runs `cargo deny` (`deny.toml`: advisories, licenses,
+  bans, sources). A second version of a crate now fails, except the listed
+  upstream splits. `.cargo/audit.toml` documents the same two allowed
+  unmaintained crates (`chrono` via Apache Arrow, `paste` via
+  `rustls-rustcrypto`).
+
+### Changed
+
+- `bids-nirs`'s `snirf` feature reads HDF5 in pure Rust with `hdf5-no-c`
+  instead of `hdf5-metno`: no libhdf5 on the system. Same API, same results
+  on files libhdf5 wrote (contiguous, and chunked with gzip and shuffle).
+- `pybids-rs` is on pyo3 0.30 (from 0.25), which fixes RUSTSEC-2026-0176 and
+  RUSTSEC-2026-0177.
+- `bids-dataset`'s `arrow` feature is on Arrow and Parquet 60 (from 54), the
+  version DuckDB brings, so a project with both builds one Arrow. This drops
+  `thrift` 0.17 and the zstd 0.13 stack, and their advisories.
+- `tls-rustcrypto` uses `rustls-rustcrypto` 0.1.0-pre.0 (from 0.0.2-alpha),
+  which moves to `rsa` 0.10 and `p256` 0.14: gone are the Marvin attack
+  (RUSTSEC-2023-0071), `crypto-bigint` 0.5's timing issues and
+  `rustls-webpki` 0.102.
+- `bids-cli` is on `indicatif` 0.18, dropping the unmaintained
+  `number_prefix`; the `ndarray` and `safetensors` features are on `ndarray`
+  0.17 and `safetensors` 0.8; `bids-dataset` is on `sha2` 0.11, so the lock
+  holds one digest stack. Cache blob names are unchanged (now pinned by a
+  test).
+- Reading EDF and BrainVision headers, SNIRF, TIFF and FIFF fails with
+  `BidsError::DataFormat` rather than `BidsError::Csv`, which these errors
+  were filed under though no CSV is involved. Failing to open the file is
+  still `BidsError::Io`.
+- The lockfile takes `rustls` 0.23.46, `rustls-webpki` 0.103.17,
+  `webpki-roots` 1.0.12 and `memmap2` 0.9.12. `cargo audit` reports no
+  vulnerabilities; two crates are flagged unmaintained: `chrono` (through
+  Arrow) and `paste` (through `rustls-rustcrypto`).
+
+### Fixed
+
+- `bids-schema` no longer pulls `rustls-rustcrypto` into every wasm build. It
+  was a plain dependency there, though only `http` fetches; with it came
+  `rsa`, `crypto-bigint` and `rustls-webpki` 0.102, whose seven RustSec
+  advisories `cargo audit` and `cargo deny` then reported in every lockfile
+  with `bids-layout` or `bids-validate` in it, for code nothing ran. On wasm,
+  `http` now needs `tls-rustcrypto` named, as `http` without a provider already
+  does elsewhere. `bids-dataset`, which always fetches, keeps it
+  unconditionally on wasm.
+- `BidsLayout::get_metadata` and `get_file` found nothing for an absolute
+  path spelled differently from the canonical root the layout keeps: through
+  a symlink (`/tmp/...` on macOS, where `/tmp` links to `/private/tmp`) or
+  with `..`. The path's directory is now canonicalized; the file itself is
+  not, so DataLad's annex symlinks still resolve to the indexed path.
+- Tests: the NIfTI and EDF read-speed limits apply to optimised builds only,
+  and the rate limiter's "did not wait" bounds allow for a busy machine;
+  debug builds on a loaded box failed them. `bids-e2e-tests`' library needs
+  only std, so all its dependencies are `[dev-dependencies]`.
+- The docs build again with CI's `RUSTDOCFLAGS=-Dwarnings`: three intra-doc
+  links pointed at private or unimported items (`bids-schema`, `bids-layout`,
+  `bids-variables`).
+- `download_dataset` panicked ("chunk size must be non-zero") when resuming
+  a download with every file already there, and `download_to_cache` did when
+  a snapshot had every file but wasn't marked complete.
+- `cargo doc --workspace` could fail at random: `bids-cli`'s binary and the
+  `bids` library share a name, so two rustdocs wrote one directory. The
+  binary's docs (empty) are off.
+- Browser wasm: `OpenNeuro::new()` and every download panicked (std has no
+  clock, sleep or threads there). The rate limiter's clock is now
+  `performance.now()` (`web-time`), and its waits spin on it.
+- No `unused dependency` warning for `bids-schema` and `bids-dataset` with
+  both `tls-*` features.
+
 ## [0.0.5]
 
 ### Changed
@@ -222,7 +354,8 @@ at 0.0.1.
 
 - Initial release.
 
-[Unreleased]: https://github.com/eugenehp/bids-rs/compare/v0.0.5...HEAD
+[Unreleased]: https://github.com/eugenehp/bids-rs/compare/v0.0.6...HEAD
+[0.0.6]: https://github.com/eugenehp/bids-rs/compare/v0.0.5...v0.0.6
 [0.0.5]: https://github.com/eugenehp/bids-rs/compare/v0.0.4...v0.0.5
 [0.0.4]: https://github.com/eugenehp/bids-rs/compare/v0.0.3...v0.0.4
 [0.0.3]: https://github.com/eugenehp/bids-rs/releases/tag/v0.0.3

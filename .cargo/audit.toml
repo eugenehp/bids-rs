@@ -1,0 +1,6 @@
+# cargo-audit; the same exceptions, with their reasons, as deny.toml's
+[advisories]
+ignore = [
+    "RUSTSEC-2026-0543", # chrono, unmaintained: via Apache Arrow, behind `arrow`
+    "RUSTSEC-2024-0436", # paste, unmaintained: build-time, via rustls-rustcrypto
+]

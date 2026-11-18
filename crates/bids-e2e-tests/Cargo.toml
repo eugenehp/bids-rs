@@ -12,25 +12,24 @@ keywords.workspace = true
 categories.workspace = true
 rust-version.workspace = true
 
-[dependencies]
+# the library (fixtures) needs only std; everything else is for the tests
+# (unit tests in src/, tests/, and the doc examples)
+[dev-dependencies]
 bids-core = { workspace = true }
-bids-layout = { workspace = true }
 bids-io = { workspace = true }
-bids-nifti = { workspace = true }
-bids-filter = { workspace = true }
-bids-formula = { workspace = true }
 bids-schema = { workspace = true }
-bids-inflect = { workspace = true }
-bids-modeling = { workspace = true }
-bids-variables = { workspace = true }
 bids-validate = { workspace = true }
-bids-eeg = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 walkdir = { workspace = true }
-
-# used by the integration tests (tests/) only
-[dev-dependencies]
+bids-layout = { workspace = true }
+bids-nifti = { workspace = true }
+bids-eeg = { workspace = true }
+bids-formula = { workspace = true }
+bids-inflect = { workspace = true }
+bids-modeling = { workspace = true }
+bids-filter = { workspace = true }
+bids-variables = { workspace = true }
 bids-ieeg = { workspace = true }
 bids-meg = { workspace = true }
 bids-motion = { workspace = true }

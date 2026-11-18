@@ -168,6 +168,21 @@ impl OpenNeuro {
         Ok(local_path)
     }
 
+    /// Fetch a single file from S3 into memory, without touching the disk:
+    /// the way to download on browser wasm, which has no filesystem.
+    pub fn fetch_file(&self, dataset_id: &str, remote_path: &str) -> crate::Result<Vec<u8>> {
+        let url = format!("{}/{}/{}", self.s3_bucket, dataset_id, remote_path);
+        let resp = http::get_with_retry_limited(
+            &self.agent,
+            &url,
+            self.config.max_retries,
+            Some(&self.s3_download_limiter),
+        )?;
+        let mut data = Vec::new();
+        std::io::Read::read_to_end(&mut resp.into_body().into_reader(), &mut data)?;
+        Ok(data)
+    }
+
     /// Download a full dataset (or filtered subset) to a local directory.
     ///
     /// - `filter`: optional closure — return `true` for files to download.
@@ -182,6 +197,7 @@ impl OpenNeuro {
     where
         F: Fn(&RemoteFile) -> bool,
     {
+        needs_disk_and_threads()?;
         let files = self.list_files(dataset_id, None)?;
         let targets: Vec<RemoteFile> = match &filter {
             Some(f) => files.into_iter().filter(|rf| f(rf)).collect(),
@@ -212,7 +228,9 @@ impl OpenNeuro {
         let rate_limiter = &self.s3_download_limiter;
         let retries = self.config.max_retries;
 
-        let chunk_size = to_download.len().div_ceil(n_threads);
+        // at least 1: `chunks(0)` panics, and with nothing left to download
+        // (a finished download resumed) the division gives 0
+        let chunk_size = to_download.len().div_ceil(n_threads).max(1);
         std::thread::scope(|scope| {
             for chunk in to_download.chunks(chunk_size) {
                 let agent = http::make_agent();
@@ -251,6 +269,14 @@ impl OpenNeuro {
                                             }
                                             Err(_) => {
                                                 // Remove partial file to prevent stale cache hits
+                                                // (browser wasm's File is a stub without Drop)
+                                                #[cfg_attr(
+                                                    all(
+                                                        target_family = "wasm",
+                                                        target_os = "unknown"
+                                                    ),
+                                                    allow(clippy::drop_non_drop)
+                                                )]
                                                 drop(file);
                                                 let _ = std::fs::remove_file(&local_path);
                                             }
@@ -290,6 +316,9 @@ impl OpenNeuro {
     /// Uses content-addressed blob storage for deduplication across versions.
     /// Downloads are parallelized across N threads (configured by
     /// `BIDS_DOWNLOAD_THREADS`, default 8).
+    ///
+    /// On browser wasm this is async, into OPFS (see [`crate::cache`]).
+    #[cfg(not(all(target_family = "wasm", target_os = "unknown")))]
     pub fn download_to_cache<F>(
         &self,
         dataset_id: &str,
@@ -338,7 +367,8 @@ impl OpenNeuro {
         let tmp_dir = cache.root().join("tmp");
         std::fs::create_dir_all(&tmp_dir).map_err(crate::Error::Io)?;
 
-        let chunk_size = (to_download.len() + n_threads - 1) / n_threads.max(1);
+        // at least 1, as in `download_dataset`
+        let chunk_size = to_download.len().div_ceil(n_threads.max(1)).max(1);
         std::thread::scope(|scope| {
             for chunk in to_download.chunks(chunk_size) {
                 let agent = http::make_agent();
@@ -367,7 +397,13 @@ impl OpenNeuro {
                                             &mut file,
                                         )
                                         .is_ok();
-                                        drop(file); // close before store/remove
+                                        // close before store/remove (browser wasm's
+                                        // File is a stub without Drop)
+                                        #[cfg_attr(
+                                            all(target_family = "wasm", target_os = "unknown"),
+                                            allow(clippy::drop_non_drop)
+                                        )]
+                                        drop(file);
                                         if copy_ok {
                                             if let Err(e) = cache.store_file_from_disk(
                                                 ds_id, ver, &rf.path, &tmp_file,
@@ -598,6 +634,188 @@ impl<'a> SearchBuilder<'a> {
 // support CDATA, attributes, namespaces, or other XML features.
 // If the S3 response format ever changes significantly, consider
 // switching to `quick-xml`.
+
+/// Browser wasm: downloads into the Origin Private File System.
+#[cfg(all(target_family = "wasm", target_os = "unknown"))]
+impl OpenNeuro {
+    /// [`download_dataset`](Self::download_dataset) for the browser: the
+    /// dataset (or the files `filter` keeps) into OPFS under `dataset_id/`,
+    /// read back with [`crate::opfs::read`]. Only in a dedicated Web Worker
+    /// (see [`crate::opfs`]).
+    ///
+    /// Like the native one it resumes (files already there at the listed size
+    /// are skipped), keeps the S3 rate limit and retry policy, and has up to
+    /// `download_threads` files in flight at once: as `fetch`es on the one
+    /// worker's event loop, which is the network concurrency threads give.
+    /// Bodies stream to OPFS as they arrive, so memory doesn't grow with file
+    /// size, and one that isn't the listed size is retried.
+    pub async fn download_to_opfs<F>(
+        &self,
+        dataset_id: &str,
+        filter: Option<F>,
+    ) -> crate::Result<DownloadReport>
+    where
+        F: Fn(&RemoteFile) -> bool,
+    {
+        crate::opfs::require_dedicated_worker()?;
+        let targets = self.list_filtered(dataset_id, filter.as_ref())?;
+        let dir = crate::opfs::dir(&crate::opfs::root().await?, dataset_id, true).await?;
+        let tally = self.fetch_into_opfs(dataset_id, &dir, &targets).await;
+
+        Ok(DownloadReport {
+            dataset_id: dataset_id.into(),
+            local_root: std::path::PathBuf::from(dataset_id),
+            total_files: targets.len(),
+            downloaded: tally.downloaded,
+            skipped: tally.skipped,
+            total_bytes: targets.iter().map(|f| f.size).sum(),
+            downloaded_bytes: tally.downloaded_bytes,
+            errors: tally.errors,
+        })
+    }
+
+    /// [`download_to_cache`](Self::download_to_cache) for the browser: the
+    /// dataset (or the files `filter` keeps) into the cache in OPFS (see
+    /// [`crate::cache`]), returning the snapshot's OPFS path, whose files
+    /// [`crate::opfs::read`] reads. Only in a dedicated Web Worker (see
+    /// [`crate::opfs`]).
+    ///
+    /// As natively: an already complete snapshot returns at once; files
+    /// already there at the listed size are kept, so an interrupted download
+    /// resumes; any failed file fails the call, leaving the snapshot
+    /// incomplete; and a complete one updates `refs/latest`. Downloads run as
+    /// [`download_to_opfs`](Self::download_to_opfs)'s do.
+    pub async fn download_to_cache<F>(
+        &self,
+        dataset_id: &str,
+        version: &str,
+        cache: &crate::Cache,
+        filter: Option<F>,
+    ) -> crate::Result<std::path::PathBuf>
+    where
+        F: Fn(&RemoteFile) -> bool,
+    {
+        crate::opfs::require_dedicated_worker()?;
+        let snapshot = cache.snapshot_dir(dataset_id, version);
+        if cache.is_cached(dataset_id, version).await {
+            return Ok(snapshot);
+        }
+
+        let targets = self.list_filtered(dataset_id, filter.as_ref())?;
+        let root = crate::opfs::root().await?;
+        let dir = crate::opfs::dir(&root, crate::opfs::path_str(&snapshot)?, true).await?;
+        let tally = self.fetch_into_opfs(dataset_id, &dir, &targets).await;
+        if let Some(first) = tally.errors.first() {
+            return Err(crate::Error::Network(format!(
+                "{} download errors: {first}",
+                tally.errors.len()
+            )));
+        }
+
+        cache.opfs_mark_complete(dataset_id, version).await?;
+        Ok(snapshot)
+    }
+
+    /// The dataset's files, those `filter` keeps if there is one.
+    fn list_filtered<F>(
+        &self,
+        dataset_id: &str,
+        filter: Option<&F>,
+    ) -> crate::Result<Vec<RemoteFile>>
+    where
+        F: Fn(&RemoteFile) -> bool,
+    {
+        let files = self.list_files(dataset_id, None)?;
+        Ok(match filter {
+            Some(f) => files.into_iter().filter(|rf| f(rf)).collect(),
+            None => files,
+        })
+    }
+
+    /// Download `targets` into the OPFS directory `dir`, skipping those
+    /// already there at the listed size: up to `download_threads` lanes, each
+    /// taking the next file when it's done, as `fetch`es on the event loop.
+    async fn fetch_into_opfs(
+        &self,
+        dataset_id: &str,
+        dir: &web_sys::FileSystemDirectoryHandle,
+        targets: &[RemoteFile],
+    ) -> OpfsTally {
+        use std::cell::{Cell, RefCell};
+
+        let mut to_download = Vec::new();
+        let mut skipped = 0usize;
+        for rf in targets {
+            if crate::opfs::size(dir, &rf.path).await == Some(rf.size) {
+                skipped += 1;
+            } else {
+                to_download.push(rf);
+            }
+        }
+
+        let queue = RefCell::new(to_download.into_iter());
+        let downloaded = Cell::new(0usize);
+        let downloaded_bytes = Cell::new(0u64);
+        let errors = RefCell::new(Vec::new());
+        let lane = || async {
+            loop {
+                let Some(rf) = queue.borrow_mut().next() else {
+                    break;
+                };
+                let url = format!("{}/{}/{}", self.s3_bucket, dataset_id, rf.path);
+                let written = crate::web::fetch_to_opfs(
+                    &url,
+                    self.config.max_retries,
+                    &self.s3_download_limiter,
+                    dir,
+                    &rf.path,
+                    Some(rf.size),
+                )
+                .await;
+                match written {
+                    Ok(bytes) => {
+                        downloaded.set(downloaded.get() + 1);
+                        downloaded_bytes.set(downloaded_bytes.get() + bytes);
+                    }
+                    Err(e) => errors.borrow_mut().push(format!("{}: {}", rf.path, e)),
+                }
+            }
+        };
+        futures_util::future::join_all((0..self.config.download_threads.max(1)).map(|_| lane()))
+            .await;
+
+        OpfsTally {
+            downloaded: downloaded.get(),
+            skipped,
+            downloaded_bytes: downloaded_bytes.get(),
+            errors: errors.into_inner(),
+        }
+    }
+}
+
+/// What [`OpenNeuro::fetch_into_opfs`] did.
+#[cfg(all(target_family = "wasm", target_os = "unknown"))]
+struct OpfsTally {
+    downloaded: usize,
+    skipped: usize,
+    downloaded_bytes: u64,
+    errors: Vec<String>,
+}
+
+/// The parallel download writes to disk from threads, and browser wasm has
+/// neither (std's threads panic there): an error instead, pointing at
+/// [`OpenNeuro::download_to_opfs`] and [`OpenNeuro::fetch_file`].
+#[allow(clippy::unnecessary_wraps)]
+fn needs_disk_and_threads() -> crate::Result<()> {
+    #[cfg(all(target_family = "wasm", target_os = "unknown"))]
+    return Err(crate::Error::Io(std::io::Error::new(
+        std::io::ErrorKind::Unsupported,
+        "browser wasm has no filesystem or threads to download into: use \
+         OpenNeuro::download_to_opfs (in a dedicated Web Worker) or OpenNeuro::fetch_file",
+    )));
+    #[cfg(not(all(target_family = "wasm", target_os = "unknown")))]
+    Ok(())
+}
 
 fn parse_s3_listing(
     xml: &str,

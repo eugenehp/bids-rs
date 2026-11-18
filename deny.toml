@@ -1,0 +1,75 @@
+# cargo-deny: `cargo deny check` (advisories, bans, licenses, sources)
+
+[graph]
+# every target the crates build for, wasm's dependencies included
+all-features = true
+
+[advisories]
+# every vulnerability fails; unmaintained crates fail unless listed here
+unmaintained = "all"
+yanked = "deny"
+ignore = [
+    # chrono: arrow-array/-cast/-csv and parquet (60) need it, only behind
+    # bids-dataset's optional `arrow`; no vulnerability, and nothing to switch
+    # to until Apache Arrow moves off it
+    { id = "RUSTSEC-2026-0543", reason = "transitive via Apache Arrow, behind the optional `arrow` feature" },
+    # paste: a compile-time macro crate (no runtime code) that
+    # rustls-rustcrypto needs, only on wasm or with `tls-rustcrypto`
+    { id = "RUSTSEC-2024-0436", reason = "build-time proc-macro via rustls-rustcrypto, wasm / `tls-rustcrypto` only" },
+]
+
+[licenses]
+# permissive licenses, all compatible with this workspace's GPL-3.0-or-later
+allow = [
+    "GPL-3.0-or-later",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "MIT",
+    "MIT-0",
+    "BSD-1-Clause",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "0BSD",
+    "ISC",
+    "Zlib",
+    "Unlicense",
+    "Unicode-3.0",
+    # tiny-keccak (via Arrow's const-random): public-domain dedication
+    "CC0-1.0",
+    # webpki-roots: Mozilla's CA list
+    "CDLA-Permissive-2.0",
+]
+confidence-threshold = 0.9
+
+[licenses.private]
+ignore = false
+
+[bans]
+# a second version of a crate fails, unless it's one of the upstream splits
+# below (each dependent already at its latest release): drop an entry once
+# the older side catches up, and cargo-deny reports the entry as unused
+multiple-versions = "deny"
+wildcards = "deny"
+# path dependencies inside the workspace carry `version` too, but allow them
+allow-wildcard-paths = true
+skip = [
+    # curve25519-dalek-derive (rustls-rustcrypto, wasm only) is still on syn 2;
+    # everything else is on syn 3
+    { crate = "syn@2", reason = "curve25519-dalek-derive hasn't moved to syn 3" },
+    # Arrow's ahash: getrandom 0.3 at runtime, 0.2 through const-random at
+    # build time; rustls-rustcrypto (wasm) is on 0.4. r-efi follows getrandom
+    { crate = "getrandom@0.2", reason = "const-random (via ahash, Arrow) is on getrandom 0.2" },
+    { crate = "getrandom@0.3", reason = "ahash (via Arrow) is on getrandom 0.3" },
+    { crate = "r-efi@5", reason = "getrandom 0.3 (via ahash, Arrow) is on r-efi 5" },
+    # safetensors (bids-eeg) is on hashbrown 0.16, Arrow on 0.17
+    { crate = "hashbrown@0.16", reason = "safetensors is on hashbrown 0.16" },
+    # hdf5-no-c (bids-nirs's `snirf`) is on lz4_flex 0.11 and ndarray 0.15;
+    # parquet is on lz4_flex 0.14, the workspace on ndarray 0.17
+    { crate = "lz4_flex@0.11", reason = "hdf5-no-c is on lz4_flex 0.11" },
+    { crate = "ndarray@0.15", reason = "hdf5-no-c is on ndarray 0.15" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

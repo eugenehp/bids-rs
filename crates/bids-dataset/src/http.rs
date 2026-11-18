@@ -86,6 +86,61 @@ pub fn get_with_retry(
     get_with_retry_limited(agent, url, max_retries, None)
 }
 
+/// A failed request: ureq's error, and how long the server asked to be left
+/// alone (`Retry-After`, on a 429 or 503) if it said.
+pub(crate) struct Failed {
+    pub(crate) error: ureq::Error,
+    pub(crate) retry_after: Option<std::time::Duration>,
+}
+
+impl From<ureq::Error> for Failed {
+    fn from(error: ureq::Error) -> Self {
+        Self {
+            error,
+            retry_after: None,
+        }
+    }
+}
+
+impl Failed {
+    /// An HTTP error status, with the response's `Retry-After` header value.
+    pub(crate) fn status(status: u16, retry_after: Option<&str>) -> Self {
+        Self {
+            error: ureq::Error::StatusCode(status),
+            retry_after: retry_after.and_then(crate::ratelimit::retry_after),
+        }
+    }
+}
+
+/// One GET: ureq's sockets, or on browser wasm (no sockets) the browser's
+/// `XMLHttpRequest` (see [`crate::web`]'s notes)
+fn send_get(agent: &Agent, url: &str) -> Result<ureq::http::Response<ureq::Body>, Failed> {
+    #[cfg(all(target_family = "wasm", target_os = "unknown"))]
+    {
+        let _ = agent;
+        crate::web::send("GET", url, "*/*", None)
+    }
+    #[cfg(not(all(target_family = "wasm", target_os = "unknown")))]
+    {
+        // statuses as responses, not errors: an error would drop the headers,
+        // `Retry-After` among them
+        let resp = get(agent, url)
+            .config()
+            .http_status_as_error(false)
+            .build()
+            .call()?;
+        let status = resp.status().as_u16();
+        if status >= 400 {
+            let retry_after = resp
+                .headers()
+                .get("retry-after")
+                .and_then(|v| v.to_str().ok());
+            return Err(Failed::status(status, retry_after));
+        }
+        Ok(resp)
+    }
+}
+
 /// GET with explicit rate limiter.
 ///
 /// Retry base delay is controlled by `BIDS_RETRY_BASE_MS` env var (default 1000ms).
@@ -95,17 +150,10 @@ pub fn get_with_retry_limited(
     max_retries: u32,
     limiter: Option<&crate::ratelimit::RateLimiter>,
 ) -> crate::Result<ureq::http::Response<ureq::Body>> {
-    let base_ms: u64 = std::env::var("BIDS_RETRY_BASE_MS")
-        .ok()
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(1000);
     let mut last_err = None;
     for attempt in 0..=max_retries {
         if attempt > 0 {
-            // Exponential backoff: base, 2*base, 4*base, ...
-            std::thread::sleep(std::time::Duration::from_millis(
-                base_ms * (1 << (attempt - 1)),
-            ));
+            crate::ratelimit::sleep(backoff(attempt));
         }
 
         // Rate limit
@@ -113,35 +161,19 @@ pub fn get_with_retry_limited(
             rl.acquire();
         }
 
-        match get(agent, url).call() {
+        match send_get(agent, url) {
             Ok(resp) => {
                 if let Some(rl) = limiter {
                     rl.clear_cooldown();
                 }
                 return Ok(resp);
             }
-            Err(e) => {
-                let should_retry = match &e {
-                    ureq::Error::StatusCode(429) => {
-                        // Rate limited — parse Retry-After and trigger cooldown
-                        if let Some(rl) = limiter {
-                            // ureq::Error doesn't give us headers on error,
-                            // so use default 30s cooldown
-                            rl.on_rate_limited(None);
-                        } else {
-                            // No rate limiter — just sleep 30s
-                            std::thread::sleep(std::time::Duration::from_secs(30));
-                        }
-                        true
-                    }
-                    ureq::Error::StatusCode(code) => matches!(code, 500 | 502 | 503 | 504),
-                    _ => true,
-                };
-                if should_retry && attempt < max_retries {
-                    last_err = Some(e);
+            Err(failed) => {
+                if should_retry(&failed, limiter) && attempt < max_retries {
+                    last_err = Some(failed.error);
                     continue;
                 }
-                return Err(crate::Error::Network(e.to_string()));
+                return Err(crate::Error::Network(failed.error.to_string()));
             }
         }
     }
@@ -150,6 +182,44 @@ pub fn get_with_retry_limited(
             .map(|e| e.to_string())
             .unwrap_or_else(|| "max retries exceeded".into()),
     ))
+}
+
+/// The wait before retry `attempt` (from 1): exponential, base, 2*base,
+/// 4*base, ..., the base from `BIDS_RETRY_BASE_MS` (default 1000 ms).
+pub(crate) fn backoff(attempt: u32) -> std::time::Duration {
+    let base_ms: u64 = std::env::var("BIDS_RETRY_BASE_MS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(1000);
+    std::time::Duration::from_millis(base_ms * (1 << (attempt - 1)))
+}
+
+/// Whether a failed request is worth retrying: 429, 500, 502, 503, 504 and
+/// network errors are. A 429 also starts a cooldown, for the server's
+/// `Retry-After` if it sent one, else the limiter's default (30 s without a
+/// limiter, waited here); a 5xx with `Retry-After` does too.
+pub(crate) fn should_retry(
+    failed: &Failed,
+    limiter: Option<&crate::ratelimit::RateLimiter>,
+) -> bool {
+    let cool_down = |wait: Option<std::time::Duration>| match limiter {
+        Some(rl) => rl.on_rate_limited(wait),
+        None => crate::ratelimit::sleep(wait.unwrap_or(std::time::Duration::from_secs(30))),
+    };
+    match failed.error {
+        ureq::Error::StatusCode(429) => {
+            cool_down(failed.retry_after);
+            true
+        }
+        ureq::Error::StatusCode(500 | 502 | 503 | 504) => {
+            if failed.retry_after.is_some() {
+                cool_down(failed.retry_after);
+            }
+            true
+        }
+        ureq::Error::StatusCode(_) => false,
+        _ => true,
+    }
 }
 
 /// Trait for download progress callbacks.
@@ -204,6 +274,13 @@ pub fn post_json_limited(
     }
     let json_str = serde_json::to_string(body).map_err(|e| crate::Error::Network(e.to_string()))?;
 
+    #[cfg(all(target_family = "wasm", target_os = "unknown"))]
+    let mut resp = {
+        let _ = agent;
+        crate::web::send("POST", url, "application/json", Some(&json_str))
+            .map_err(|f| crate::Error::Network(f.error.to_string()))?
+    };
+    #[cfg(not(all(target_family = "wasm", target_os = "unknown")))]
     let mut resp = agent
         .post(url)
         .header("User-Agent", USER_AGENT)
@@ -224,4 +301,102 @@ pub fn post_json_limited(
         .read_json()
         .map_err(|e| crate::Error::Network(format!("JSON parse: {e}")))?;
     Ok(json)
+}
+
+#[cfg(all(test, not(all(target_family = "wasm", target_os = "unknown"))))]
+mod tests {
+    use super::*;
+    use crate::ratelimit::RateLimiter;
+    use std::io::{Read, Write};
+    use std::time::{Duration, Instant};
+
+    /// A local server answering its connections with `responses`, in order.
+    fn serve(responses: &[&'static str]) -> String {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://{}/", listener.local_addr().unwrap());
+        let responses = responses.to_vec();
+        std::thread::spawn(move || {
+            for response in responses {
+                let (mut stream, _) = listener.accept().unwrap();
+                let mut request = [0u8; 4096];
+                let _ = stream.read(&mut request);
+                stream.write_all(response.as_bytes()).unwrap();
+            }
+        });
+        url
+    }
+
+    const OK: &str = "HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok";
+
+    fn body(resp: ureq::http::Response<ureq::Body>) -> String {
+        resp.into_body().read_to_string().unwrap()
+    }
+
+    #[test]
+    fn a_429_waits_for_its_retry_after() {
+        let url = serve(&[
+            "HTTP/1.1 429 Too Many Requests\r\nRetry-After: 1\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+            OK,
+        ]);
+        // a 60 s default cooldown: honoring the server's 1 s is what's quick
+        let limiter = RateLimiter::new_with_cooldown(0.0, 60);
+        let start = Instant::now();
+        let resp = get_with_retry_limited(&make_agent(), &url, 3, Some(&limiter)).unwrap();
+        assert_eq!(body(resp), "ok");
+        let took = start.elapsed();
+        assert!(
+            took >= Duration::from_millis(900) && took < Duration::from_secs(10),
+            "{took:?}"
+        );
+    }
+
+    #[test]
+    fn a_503_with_retry_after_waits_for_it() {
+        let url = serve(&[
+            "HTTP/1.1 503 Service Unavailable\r\nRetry-After: 2\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+            OK,
+        ]);
+        let limiter = RateLimiter::new_with_cooldown(0.0, 60);
+        let start = Instant::now();
+        let resp = get_with_retry_limited(&make_agent(), &url, 3, Some(&limiter)).unwrap();
+        assert_eq!(body(resp), "ok");
+        // the 2 s asked for, not just the 1 s backoff
+        let took = start.elapsed();
+        assert!(
+            took >= Duration::from_millis(1900) && took < Duration::from_secs(10),
+            "{took:?}"
+        );
+    }
+
+    #[test]
+    fn a_429_without_retry_after_takes_the_default_cooldown() {
+        let url = serve(&[
+            "HTTP/1.1 429 Too Many Requests\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+            OK,
+        ]);
+        let limiter = RateLimiter::new_with_cooldown(0.0, 2);
+        let start = Instant::now();
+        let resp = get_with_retry_limited(&make_agent(), &url, 3, Some(&limiter)).unwrap();
+        assert_eq!(body(resp), "ok");
+        assert!(
+            start.elapsed() >= Duration::from_millis(1900),
+            "{:?}",
+            start.elapsed()
+        );
+    }
+
+    #[test]
+    fn a_404_is_not_retried() {
+        // one response only: a retry would find nobody listening
+        let url =
+            serve(&["HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"]);
+        let start = Instant::now();
+        let e = get_with_retry_limited(&make_agent(), &url, 3, None).unwrap_err();
+        assert!(e.to_string().contains("404"), "{e}");
+        assert!(
+            start.elapsed() < Duration::from_millis(900),
+            "{:?}",
+            start.elapsed()
+        );
+    }
 }

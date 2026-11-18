@@ -1,7 +1,7 @@
 //! Loading a published BIDS schema document.
 //!
-//! [`BidsSchema::built_in()`](crate::BidsSchema::built_in) is the schema this
-//! crate ships and validates against. [`collect_schema()`] is for the other
+//! [`BidsSchema::load()`](crate::BidsSchema::load) is the schema this crate
+//! ships and validates against. [`collect_schema()`] is for the other
 //! case: reading the official schema JSON for some *other* version, to diff
 //! against or to drive tooling.
 //!
@@ -98,7 +98,6 @@ pub fn collect_schema(source: SchemaSource<'_>) -> Result<serde_json::Value> {
     feature = "http",
     not(any(
         feature = "tls-rustcrypto",
-        target_family = "wasm",
         all(
             feature = "tls-graviola",
             any(target_arch = "x86_64", target_arch = "aarch64")
@@ -106,21 +105,58 @@ pub fn collect_schema(source: SchemaSource<'_>) -> Result<serde_json::Value> {
     ))
 ))]
 compile_error!(
-    "`http` needs https's cryptography: enable `tls-graviola` (x86-64, aarch64) or `tls-rustcrypto` (any target; wasm always uses it)"
+    "`http` needs https's cryptography: enable `tls-graviola` (x86-64, aarch64) or `tls-rustcrypto` (any target, and the only one on wasm)"
 );
 
-#[cfg(feature = "http")]
+// browser wasm has no sockets (ureq would panic there): the browser's own
+// synchronous XMLHttpRequest, which blocks the thread, so call from a Web
+// Worker rather than the page's. The schema host allows cross-origin requests.
+#[cfg(all(feature = "http", target_family = "wasm", target_os = "unknown"))]
+fn fetch(url: &str) -> Result<String> {
+    use wasm_bindgen::{JsCast, JsValue};
+    let unreachable = |e: JsValue| {
+        let msg = e
+            .dyn_ref::<js_sys::Error>()
+            .map_or_else(|| format!("{e:?}"), |err| String::from(err.message()));
+        BidsError::Config(format!("schema endpoint '{url}' is not reachable: {msg}"))
+    };
+    let xhr = web_sys::XmlHttpRequest::new().map_err(unreachable)?;
+    xhr.open_with_async("GET", url, false)
+        .map_err(unreachable)?;
+    xhr.set_request_header("Accept", "application/json")
+        .map_err(unreachable)?;
+    xhr.send().map_err(unreachable)?;
+    match xhr.status().map_err(unreachable)? {
+        200..=299 => xhr
+            .response_text()
+            .map_err(|e| BidsError::Config(format!("could not read schema from '{url}': {e:?}")))?
+            .ok_or_else(|| BidsError::Config(format!("could not read schema from '{url}'"))),
+        // 0: no response at all, a network error or a cross-origin refusal
+        0 => Err(BidsError::Config(format!(
+            "schema endpoint '{url}' is not reachable: no response (network error, \
+             or the server refused a cross-origin request)"
+        ))),
+        status => Err(BidsError::Config(format!(
+            "schema endpoint '{url}' is not reachable: http status {status}"
+        ))),
+    }
+}
+
+#[cfg(all(
+    feature = "http",
+    not(all(target_family = "wasm", target_os = "unknown"))
+))]
 fn fetch(url: &str) -> Result<String> {
     // TLS in pure Rust: rustls with webpki's roots, the cryptography by feature
     // graviola's cryptography where it runs and is enabled, else RustCrypto's
-    // (always on wasm, where graviola has no backend)
+    // (the only one on wasm, where graviola has no backend)
     #[cfg(all(
         feature = "tls-graviola",
         any(target_arch = "x86_64", target_arch = "aarch64")
     ))]
     let crypto = rustls_graviola::default_provider();
     #[cfg(all(
-        any(feature = "tls-rustcrypto", target_family = "wasm"),
+        feature = "tls-rustcrypto",
         not(all(
             feature = "tls-graviola",
             any(target_arch = "x86_64", target_arch = "aarch64")

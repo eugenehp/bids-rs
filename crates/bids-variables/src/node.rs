@@ -263,10 +263,11 @@ impl NodeIndex {
         }
     }
 
-    /// Collect variables at any level into [`VariableCollection`]s.
+    /// Collect variables at any level into [`VariableCollection`](crate::VariableCollection)s.
     ///
     /// Run-level nodes keep their event timing (via
-    /// [`VariableCollection::from_run_collection`]); other levels hold simple
+    /// [`VariableCollection::from_run_collection`](crate::VariableCollection::from_run_collection));
+    /// other levels hold simple
     /// variables. With `merge`, all matching nodes are combined into a single
     /// collection instead of one per node.
     #[must_use]

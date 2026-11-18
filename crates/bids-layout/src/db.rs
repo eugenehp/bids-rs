@@ -5,8 +5,8 @@
 //! (`path`; `(file_path, entity_name)`) with last-write-wins, associations
 //! (`(src, dst, kind)`) with first-write-wins, and a replaced row keeps its
 //! place in table order. Explicit transactions roll back to the tables as they
-//! were at `BEGIN`. Reads are answered from a snapshot of hash maps (see
-//! [`Snapshot`]) built after the last write.
+//! were at `BEGIN`. Reads are answered from a snapshot of hash maps built
+//! after the last write.
 //!
 //! A database opened on a path ([`Database::open`]) writes the whole index to
 //! it on every commit and every write outside a transaction: a small,

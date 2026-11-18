@@ -31,6 +31,7 @@ pub struct NirsData {
 
 impl NirsData {
     /// Sampling frequency derived from time vector (1 / median dt).
+    #[must_use]
     pub fn sfreq(&self) -> f64 {
         if self.time.len() < 2 {
             return 0.0;
@@ -40,6 +41,7 @@ impl NirsData {
     }
 
     /// Channel names (generated as "ch1", "ch2", ... if not available).
+    #[must_use]
     pub fn channel_labels(&self) -> Vec<String> {
         (1..=self.n_channels).map(|i| format!("ch{}", i)).collect()
     }
@@ -59,7 +61,7 @@ impl bids_core::timeseries::TimeSeries for NirsData {
         self.sfreq()
     }
     fn channel_data(&self, index: usize) -> Option<&[f64]> {
-        self.data.get(index).map(|v| v.as_slice())
+        self.data.get(index).map(std::vec::Vec::as_slice)
     }
     fn duration(&self) -> f64 {
         self.time.last().copied().unwrap_or(0.0) - self.time.first().copied().unwrap_or(0.0)
@@ -71,32 +73,28 @@ impl bids_core::timeseries::TimeSeries for NirsData {
 /// Reads the first nirs group (`/nirs/data1`). The data is returned as a
 /// channels × samples matrix (transposed from SNIRF's samples × channels layout).
 pub fn read_snirf(path: &Path) -> Result<NirsData> {
-    let file = hdf5::File::open(path).map_err(|e| {
-        BidsError::Io(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("HDF5 error: {}", e),
-        ))
-    })?;
+    let file = hdf5::File::open(path)
+        .map_err(|e| BidsError::Io(std::io::Error::other(format!("HDF5 error: {}", e))))?;
 
     // Navigate to /nirs or /nirs1
     let nirs_group = file
         .group("nirs")
         .or_else(|_| file.group("nirs1"))
-        .map_err(|e| BidsError::Csv(format!("Cannot find /nirs group: {}", e)))?;
+        .map_err(|e| BidsError::DataFormat(format!("Cannot find /nirs group: {}", e)))?;
 
     // Read data from data1
     let data_group = nirs_group
         .group("data1")
-        .map_err(|e| BidsError::Csv(format!("Cannot find /nirs/data1: {}", e)))?;
+        .map_err(|e| BidsError::DataFormat(format!("Cannot find /nirs/data1: {}", e)))?;
 
     // dataTimeSeries: samples × channels (f64 or f32)
     let ts_dataset = data_group
         .dataset("dataTimeSeries")
-        .map_err(|e| BidsError::Csv(format!("Cannot find dataTimeSeries: {}", e)))?;
+        .map_err(|e| BidsError::DataFormat(format!("Cannot find dataTimeSeries: {}", e)))?;
 
     let shape = ts_dataset.shape();
     if shape.len() != 2 {
-        return Err(BidsError::Csv(format!(
+        return Err(BidsError::DataFormat(format!(
             "Expected 2D dataTimeSeries, got {}D",
             shape.len()
         )));
@@ -107,7 +105,7 @@ pub fn read_snirf(path: &Path) -> Result<NirsData> {
     // Read as flat f64 array, then reshape
     let flat: Vec<f64> = ts_dataset
         .read_raw()
-        .map_err(|e| BidsError::Csv(format!("Cannot read dataTimeSeries: {}", e)))?;
+        .map_err(|e| BidsError::DataFormat(format!("Cannot read dataTimeSeries: {}", e)))?;
 
     // Transpose: SNIRF is samples×channels (row-major), we want channels×samples
     let mut data = vec![Vec::with_capacity(n_samples); n_channels];
@@ -120,10 +118,10 @@ pub fn read_snirf(path: &Path) -> Result<NirsData> {
     // Read time vector
     let time_dataset = data_group
         .dataset("time")
-        .map_err(|e| BidsError::Csv(format!("Cannot find time dataset: {}", e)))?;
+        .map_err(|e| BidsError::DataFormat(format!("Cannot find time dataset: {}", e)))?;
     let time: Vec<f64> = time_dataset
         .read_raw()
-        .map_err(|e| BidsError::Csv(format!("Cannot read time: {}", e)))?;
+        .map_err(|e| BidsError::DataFormat(format!("Cannot read time: {}", e)))?;
 
     // Read measurement list (best effort)
     let mut measurement_list = Vec::new();

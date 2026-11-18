@@ -40,6 +40,14 @@
 //! agg.export_split("/tmp/splits", Split::ratio(0.8, 0.1, 0.1)).unwrap();
 //! ```
 
+// with both `tls-*`, graviola wins where it runs; RustCrypto's is then unused
+#[cfg(all(
+    feature = "tls-graviola",
+    feature = "tls-rustcrypto",
+    any(target_arch = "x86_64", target_arch = "aarch64")
+))]
+use rustls_rustcrypto as _;
+
 pub mod aggregate;
 pub mod benchmark;
 pub mod cache;
@@ -48,9 +56,13 @@ pub mod filter;
 pub mod http;
 pub mod ml;
 pub mod openneuro;
+#[cfg(all(target_family = "wasm", target_os = "unknown"))]
+pub mod opfs;
 pub mod paradigm;
 pub mod ratelimit;
 pub mod split;
+#[cfg(all(target_family = "wasm", target_os = "unknown"))]
+mod web;
 
 pub use aggregate::{Aggregator, FileEntry};
 pub use benchmark::{BenchmarkResult, BenchmarkResults};

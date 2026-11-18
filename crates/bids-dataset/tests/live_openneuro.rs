@@ -5,6 +5,10 @@
 //!
 //! They are behind `#[ignore]` by default so they don't run in CI without
 //! network access. Use `--ignored` to include them.
+//!
+//! Native only: the browser's (async) live tests are in `browser.rs`.
+
+#![cfg(not(all(target_family = "wasm", target_os = "unknown")))]
 
 use bids_dataset::{Aggregator, DatasetFilter, OpenNeuro, Split};
 
@@ -242,5 +246,30 @@ fn test_end_to_end_eeg_pipeline() {
         .unwrap();
     println!("Step 4 — Downloaded: {}", report);
 
+    std::fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+#[ignore]
+fn test_download_to_cache_resumes_with_everything_present() {
+    // all files there but the snapshot not marked complete (a run cut off
+    // just before the end): nothing left to download, which must not panic
+    let dir = std::env::temp_dir().join("bids_dataset_test_cache_resume");
+    let _ = std::fs::remove_dir_all(&dir);
+    let cache = bids_dataset::Cache::new(dir.clone());
+    let on = OpenNeuro::new();
+    let small = |f: &bids_dataset::RemoteFile| f.path == "dataset_description.json";
+
+    let snap = on
+        .download_to_cache("ds000001", "1.0.0", &cache, Some(small))
+        .unwrap();
+    std::fs::remove_file(snap.join(".complete")).unwrap();
+    assert!(!cache.is_cached("ds000001", "1.0.0"));
+
+    let again = on
+        .download_to_cache("ds000001", "1.0.0", &cache, Some(small))
+        .unwrap();
+    assert_eq!(again, snap);
+    assert!(cache.is_cached("ds000001", "1.0.0"));
     std::fs::remove_dir_all(&dir).unwrap();
 }
